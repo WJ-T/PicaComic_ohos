@@ -115,7 +115,7 @@ class MainPageState extends State<MainPage> {
       } else {
         //检查是否打卡
         if (network.user?.isPunched == false && appdata.settings[6] == "1") {
-          if (App.isMobile) {
+          if (App.isAndroid || App.isIOS) {
             runBackgroundService();
           } else {
             network.user?.isPunched = true;
@@ -286,7 +286,6 @@ class MainPageState extends State<MainPage> {
           appdata.settings[24] = index.toString();
           appdata.writeData();
         });
-        HapticFeedback.selectionClick();
       },
     );
   }

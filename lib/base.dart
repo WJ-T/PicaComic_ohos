@@ -347,7 +347,7 @@ class Appdata {
         "favoriteTags": favoriteTags.toList(),
       };
 
-  bool readDataFromJson(Map<String, dynamic> json) {
+  Future<bool> readDataFromJson(Map<String, dynamic> json) async {
     try {
       var newSettings = List<String>.from(json["settings"]);
       var downloadPath = settings[22];
@@ -362,7 +362,7 @@ class Appdata {
         firstUse[i] = newFirstUse[i];
       }
       if (json["history"] != null) {
-        history.readDataFromJson(json["history"]);
+        await history.readDataFromJson(json["history"]);
       }
       // merge data
       blockingKeyword = Set<String>.from(
@@ -370,12 +370,12 @@ class Appdata {
           .toList();
       favoriteTags =
           Set.from((json["favoriteTags"] ?? []) + List.from(favoriteTags));
-      writeData(false);
+      await writeData(false);
       return true;
     } catch (e, s) {
       LogManager.addLog(LogLevel.error, "Appdata.readDataFromJson",
           "error reading appdata$e\n$s");
-      readData();
+      await readData();
       return false;
     }
   }
@@ -394,11 +394,11 @@ Future<void> clearAppdata() async {
   if (await settingsFile.exists()) {
     await settingsFile.delete();
   }
-  appdata.history.clearHistory();
+  await appdata.history.clearHistory();
   appdata = Appdata();
   await appdata.readData();
   await eraseCache();
-  await JmNetwork().cookieJar.deleteAll();
+  JmNetwork().cookieJar.deleteAll();
   await LocalFavoritesManager().clearAll();
 }
 
@@ -515,6 +515,7 @@ class _Settings {
   set useDarkBackground(bool value) {
     appdata.settings[81] = value ? "1" : "0";
   }
+
 
   bool get fullyHideBlockedWorks => appdata.settings[83] == "1";
 

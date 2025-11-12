@@ -673,7 +673,7 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
           "V$appVersion",
           style: TextStyle(fontSize: 16),
         ),
-        Text("Pica Comic是一个免费的开源漫画阅读应用。".tl),
+        Text("Pica Comic HarmonyOS 适配版，基于社区开源项目二次开发。".tl),
         const SizedBox(
           height: 16,
         ),
@@ -697,7 +697,8 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
         ListTile(
           leading: const Icon(Icons.code),
           title: Text("项目地址".tl),
-          onTap: () => launchUrlString("https://github.com/ccbkv/PicaComic",
+          onTap: () => launchUrlString(
+              "https://github.com/WJ-T/PicaComic_ohos",
               mode: LaunchMode.externalApplication),
           trailing: const Icon(Icons.open_in_new),
         ),
@@ -705,7 +706,7 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
           leading: const Icon(Icons.comment_outlined),
           title: Text("问题反馈 (Github)".tl),
           onTap: () => launchUrlString(
-              "https://github.com/ccbkv/PicaComic/issues",
+              "https://github.com/WJ-T/PicaComic_ohos/issues",
               mode: LaunchMode.externalApplication),
           trailing: const Icon(Icons.open_in_new),
         ),

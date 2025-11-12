@@ -1,0 +1,51 @@
+{
+  "app": {
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "/Users/tongweijia/.ohos/config/default_ohos_6kYqI6w4-5KKFr0sJgDTXxtaPZ_0YsbnbzxdAQdhPlA=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B898CEC67E36A374199B05F64DC6ECD9D1E68031C1E672E1FD00CEB414012B4C81A930DCBF015EF",
+          "profile": "/Users/tongweijia/.ohos/config/default_ohos_6kYqI6w4-5KKFr0sJgDTXxtaPZ_0YsbnbzxdAQdhPlA=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "/Users/tongweijia/.ohos/config/default_ohos_6kYqI6w4-5KKFr0sJgDTXxtaPZ_0YsbnbzxdAQdhPlA=.p12",
+          "storePassword": "0000001B2E58A75F7CF8F10E38DE4C38D79B9F680F701C3031FC77A1DC85F32A39BB1AD69A860178B9DC93"
+        }
+      }
+    ],
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "compatibleSdkVersion": "6.0.0(20)",
+        "runtimeOS": "HarmonyOS",
+        "targetSdkVersion": "6.0.0(20)"
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sqflite",
+      "srcPath": "./sqflite",
+      "targets": [
+        {
+          "name": "default"
+        }
+      ]
+    }
+  ]
+}
