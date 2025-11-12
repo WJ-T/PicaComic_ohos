@@ -194,6 +194,10 @@ class JsEngine with _JSEngineApi{
   }
 
   dynamic runCode(String js, [String? name]) {
+    if (_engine == null) {
+      log('JS Engine is not initialized. Skip executing $name', 'JsEngine', LogLevel.error);
+      return null;
+    }
     return _engine!.evaluate(js, name: name);
   }
 

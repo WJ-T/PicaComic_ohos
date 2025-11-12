@@ -362,7 +362,7 @@ class Appdata {
         firstUse[i] = newFirstUse[i];
       }
       if (json["history"] != null) {
-        await history.readDataFromJson(json["history"]);
+        history.readDataFromJson(json["history"]);
       }
       // merge data
       blockingKeyword = Set<String>.from(
@@ -394,7 +394,7 @@ Future<void> clearAppdata() async {
   if (await settingsFile.exists()) {
     await settingsFile.delete();
   }
-  await appdata.history.clearHistory();
+  appdata.history.clearHistory();
   appdata = Appdata();
   await appdata.readData();
   await eraseCache();

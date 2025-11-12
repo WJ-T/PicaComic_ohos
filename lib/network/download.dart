@@ -128,7 +128,8 @@ class DownloadManager with _DownloadDb implements Listenable {
     }
 
     _runInit = false;
-    _db!.dispose();
+    _db?.dispose();
+    _db = null;
     downloading.clear();
     await init();
     return "ok";
@@ -191,10 +192,16 @@ class DownloadManager with _DownloadDb implements Listenable {
         }
       }
     }
-    _db = sqlite3.open("$path/download.db");
-    _createTable();
-    for (var entry in oldData.entries) {
-      _addToDb(entry.value, entry.key);
+    try {
+      _db = sqlite3.open("$path/download.db");
+      _createTable();
+      for (var entry in oldData.entries) {
+        _addToDb(entry.value, entry.key);
+      }
+    } catch (e, s) {
+      _db = null;
+      LogManager.addLog(
+          LogLevel.error, "DownloadDb", "Failed to open download database: $e\n$s");
     }
   }
 
@@ -585,8 +592,24 @@ DownloadedItem? _getComicFromJson(String id, String json, DateTime time, [String
 
 abstract mixin class _DownloadDb {
   Database? get _db;
+  bool _downloadDbWarningShown = false;
+
+  bool _ensureDownloadDb() {
+    if (_db != null) {
+      return true;
+    }
+    if (!_downloadDbWarningShown) {
+      _downloadDbWarningShown = true;
+      LogManager.addLog(LogLevel.warning, "DownloadDb",
+          "Download database is unavailable. Some download features are disabled.");
+    }
+    return false;
+  }
 
   void _createTable() {
+    if (!_ensureDownloadDb()) {
+      return;
+    }
     _db!.execute('''
       create table if not exists download (
         id text primary key,
@@ -601,6 +624,9 @@ abstract mixin class _DownloadDb {
   }
 
   void _addToDb(DownloadedItem item, String directory, [DateTime? time]) {
+    if (!_ensureDownloadDb()) {
+      return;
+    }
     _db!.execute('''
       insert or replace into download
       values (?,?,?,?,?,?,?)
@@ -616,6 +642,9 @@ abstract mixin class _DownloadDb {
   }
 
   bool isExists(String id) {
+    if (!_ensureDownloadDb()) {
+      return false;
+    }
     var result = _db!.select('''
       select id from download
       where id = ?
@@ -624,6 +653,9 @@ abstract mixin class _DownloadDb {
   }
 
   void _deleteFromDb(String id) {
+    if (!_ensureDownloadDb()) {
+      return;
+    }
     _db!.execute('''
       delete from download
       where id = ?
@@ -631,6 +663,9 @@ abstract mixin class _DownloadDb {
   }
 
   DownloadedItem? _getComicWithDb(String id) {
+    if (!_ensureDownloadDb()) {
+      return null;
+    }
     var result = _db!.select('''
       select * from download
       where id = ?
@@ -646,6 +681,9 @@ abstract mixin class _DownloadDb {
   }
 
   int get total {
+    if (!_ensureDownloadDb()) {
+      return 0;
+    }
     var result = _db!.select('''
       select count(*) from download
     ''');
@@ -655,6 +693,9 @@ abstract mixin class _DownloadDb {
   /// order: time, title, subtitle, size
   List<DownloadedItem> getAll(
       [String order = 'time', String direction = 'desc']) {
+    if (!_ensureDownloadDb()) {
+      return [];
+    }
     var result = _db!.select('''
       select * from download
       order by $order $direction
@@ -678,6 +719,9 @@ abstract mixin class _DownloadDb {
   String getDirectory(String id) {
     var directory = _cache[id];
     if(directory == null) {
+      if (!_ensureDownloadDb()) {
+        return _findAccurateDirectory(id);
+      }
       var result = _db!.select('''
       select directory from download
       where id = ?

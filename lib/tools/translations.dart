@@ -10,12 +10,12 @@ extension AppTranslation on String {
     if (locale.languageCode == "en") {
       key = "en_US";
     }
-    return (translations[key]?[this]) ?? this;
+    return (_translations[key]?[this]) ?? this;
   }
 
   String get tl => _translate();
 
-  String get tlEN => translations["en_US"]![this] ?? this;
+  String get tlEN => _translations["en_US"]?[this] ?? this;
 
   String tlParams(Map<String, String> values) {
     var res = _translate();
@@ -25,12 +25,19 @@ extension AppTranslation on String {
     return res;
   }
 
-  static late final Map<String, Map<String, String>> translations;
+  static bool _initialized = false;
+  static Map<String, Map<String, String>> _translations = const {};
 
-  static Future<void> init() async{
+  static Future<void> init() async {
+    if (_initialized) {
+      return;
+    }
     var data = await rootBundle.load("assets/translation.json");
     var json = jsonDecode(utf8.decode(data.buffer.asUint8List()));
-    translations = { for (var e in json.entries) e.key : Map<String, String>.from(e.value) };
+    _translations = {
+      for (var e in json.entries) e.key: Map<String, String>.from(e.value)
+    };
+    _initialized = true;
   }
 }
 

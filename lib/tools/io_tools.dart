@@ -498,7 +498,7 @@ Future<bool> importData([String? filePath]) async {
         "The data file version is $fileVersion, while the app data version is "
             "$appVersion\nStop importing data");
   }
-  var dataReadRes = appdata.readDataFromJson(json);
+  var dataReadRes = await appdata.readDataFromJson(json);
   if (!dataReadRes) {
     LogManager.addLog(
         LogLevel.error, "Appdata", "appdata.readDataFromJson(json) failed");

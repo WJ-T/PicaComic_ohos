@@ -14,8 +14,9 @@ class CookieJarSql {
   }
 
   void init() {
-    _db = sqlite3.open(path);
-    _db.execute('''
+    try {
+      _db = sqlite3.open(path);
+      _db.execute('''
       CREATE TABLE IF NOT EXISTS cookies (
         name TEXT NOT NULL,
         value TEXT NOT NULL,
@@ -27,6 +28,31 @@ class CookieJarSql {
         PRIMARY KEY (name, domain, path)
       );
     ''');
+    } on SqliteException catch (e, s) {
+      if (e.extendedResultCode == 26 || e.message?.contains('file is not a database') == true) {
+        try {
+          final broken = File(path);
+          if (broken.existsSync()) {
+            broken.deleteSync();
+          }
+        } catch (_) {}
+        _db = sqlite3.open(path);
+        _db.execute('''
+          CREATE TABLE IF NOT EXISTS cookies (
+            name TEXT NOT NULL,
+            value TEXT NOT NULL,
+            domain TEXT NOT NULL,
+            path TEXT,
+            expires INTEGER,
+            secure INTEGER,
+            httpOnly INTEGER,
+            PRIMARY KEY (name, domain, path)
+          );
+        ''');
+      } else {
+        rethrow;
+      }
+    }
   }
 
   void saveFromResponse(Uri uri, List<Cookie> cookies) {

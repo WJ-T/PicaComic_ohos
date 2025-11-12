@@ -4,6 +4,7 @@ import 'package:pica_comic/comic_source/comic_source.dart';
 import 'package:pica_comic/components/components.dart';
 import 'package:pica_comic/pages/main_page.dart';
 import 'package:pica_comic/foundation/app.dart';
+import 'package:pica_comic/foundation/log.dart';
 import 'package:pica_comic/tools/translations.dart';
 import 'settings/settings_page.dart';
 
@@ -113,9 +114,21 @@ mixin class _WelcomePageComponents {
           Button.filled(
               padding: const EdgeInsets.fromLTRB(24, 6, 12, 6),
               onPressed: () async {
-                await ComicSource.reload();
-                if (context.mounted) {
-                  context.to(() => const MainPage());
+                bool reloadSuccess = true;
+                try {
+                  await ComicSource.reload();
+                } catch (e, s) {
+                  reloadSuccess = false;
+                  LogManager.addLog(LogLevel.error, "WelcomePage",
+                      "Failed to reload comic sources: $e\n$s");
+                }
+                if (!context.mounted) return;
+                appdata.firstUse[3] = "1";
+                appdata.writeFirstUse();
+                App.off(context, () => const MainPage());
+                if (!reloadSuccess) {
+                  context.showMessage(
+                      message: "刷新漫画源失败，部分功能可能异常，请查看日志。");
                 }
               },
               disabled: !canNext,

@@ -184,9 +184,27 @@ class HistoryManager {
   factory HistoryManager() =>
       cache == null ? (cache = HistoryManager.create()) : cache!;
 
-  late Database _db;
+  Database? _db;
+  bool _dbWarningIssued = false;
 
-  int get length => _db.select("select count(*) from history;").first[0] as int;
+  bool _ensureDbAvailable() {
+    if (_db != null) {
+      return true;
+    }
+    if (!_dbWarningIssued) {
+      _dbWarningIssued = true;
+      LogManager.addLog(LogLevel.warning, "HistoryManager",
+          "History database is unavailable on this platform. Functions that rely on it will be no-ops.");
+    }
+    return false;
+  }
+
+  int get length {
+    if (!_ensureDbAvailable()) {
+      return 0;
+    }
+    return _db!.select("select count(*) from history;").first[0] as int;
+  }
 
   Map<String, bool>? _cachedHistory;
 
@@ -241,9 +259,16 @@ class HistoryManager {
   }
 
   Future<void> init() async {
-    _db = sqlite3.open("${App.dataPath}/history.db");
+    try {
+      _db = sqlite3.open("${App.dataPath}/history.db");
+    } catch (e, s) {
+      _db = null;
+      LogManager.addLog(LogLevel.error, "HistoryManager",
+          "Failed to open history database: $e\n$s");
+      return;
+    }
 
-    _db.execute("""
+    _db!.execute("""
         create table if not exists history  (
           target text primary key,
           title text,
@@ -259,11 +284,11 @@ class HistoryManager {
       """);
 
     // 检查是否有max_page字段, 如果没有则添加
-    var res = _db.select("""
+    var res = _db!.select("""
       PRAGMA table_info(history);
     """);
     if (res.every((row) => row["name"] != "max_page")) {
-      _db.execute("""
+      _db!.execute("""
         alter table history
         add column max_page int;
       """);
@@ -299,12 +324,15 @@ class HistoryManager {
   ///
   /// This function would be called when user start reading.
   Future<void> addHistory(History newItem) async {
-    var res = _db.select("""
+    if (!_ensureDbAvailable()) {
+      return;
+    }
+    var res = _db!.select("""
       select * from history
       where target == ?;
     """, [newItem.target]);
     if (res.isEmpty) {
-      _db.execute("""
+      _db!.execute("""
         insert into history (target, title, subtitle, cover, time, type, ep, page, readEpisode, max_page)
         values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       """, [
@@ -320,7 +348,7 @@ class HistoryManager {
         newItem.maxPage
       ]);
     } else {
-      _db.execute("""
+      _db!.execute("""
         update history
         set time = ${DateTime.now().millisecondsSinceEpoch}
         where target == ?;
@@ -333,7 +361,10 @@ class HistoryManager {
   ///退出阅读器时调用此函数, 修改阅读位置
   Future<void> saveReadHistory(History history,
       [bool updateMePage = true]) async {
-    _db.execute("""
+    if (!_ensureDbAvailable()) {
+      return;
+    }
+    _db!.execute("""
         update history
         set time = ${DateTime.now().millisecondsSinceEpoch}, ep = ?, page = ?, readEpisode = ?, max_page = ?
         where target == ?;
@@ -352,12 +383,18 @@ class HistoryManager {
   }
 
   void clearHistory() {
-    _db.execute("delete from history;");
+    if (!_ensureDbAvailable()) {
+      return;
+    }
+    _db!.execute("delete from history;");
     updateCache();
   }
 
   void remove(String id) async {
-    _db.execute("""
+    if (!_ensureDbAvailable()) {
+      return;
+    }
+    _db!.execute("""
       delete from history
       where target == '$id';
     """);
@@ -369,8 +406,12 @@ class HistoryManager {
   }
 
   void updateCache() {
+    if (!_ensureDbAvailable()) {
+      _cachedHistory = {};
+      return;
+    }
     _cachedHistory = {};
-    var res = _db.select("""
+    var res = _db!.select("""
         select * from history;
       """);
     for (var element in res) {
@@ -386,7 +427,10 @@ class HistoryManager {
       return null;
     }
 
-    var res = _db.select("""
+    if (!_ensureDbAvailable()) {
+      return null;
+    }
+    var res = _db!.select("""
       select * from history
       where target == ?;
     """, [target]);
@@ -397,7 +441,10 @@ class HistoryManager {
   }
 
   List<History> getAll() {
-    var res = _db.select("""
+    if (!_ensureDbAvailable()) {
+      return [];
+    }
+    var res = _db!.select("""
       select * from history
       order by time DESC;
     """);
@@ -405,14 +452,20 @@ class HistoryManager {
   }
 
   void vacuum() {
-    _db.execute("""
+    if (!_ensureDbAvailable()) {
+      return;
+    }
+    _db!.execute("""
       vacuum;
     """);
   }
 
   /// 获取最近一周的阅读数据, 用于生成图表, List中的元素是当天阅读的漫画数量
   List<int> getWeekData(int days) {
-    var res = _db.select("""
+    if (!_ensureDbAvailable()) {
+      return List<int>.filled(days, 0);
+    }
+    var res = _db!.select("""
       select * from history
       where time > ${DateTime.now().add(Duration(days: 1 - days)).millisecondsSinceEpoch}
       order by time ASC;
@@ -427,7 +480,10 @@ class HistoryManager {
 
   /// 获取最近阅读的漫画
   List<History> getRecent() {
-    var res = _db.select("""
+    if (!_ensureDbAvailable()) {
+      return [];
+    }
+    var res = _db!.select("""
       select * from history
       order by time DESC
       limit 20;
@@ -437,7 +493,10 @@ class HistoryManager {
 
   /// 获取历史记录的数量
   int count() {
-    var res = _db.select("""
+    if (!_ensureDbAvailable()) {
+      return 0;
+    }
+    var res = _db!.select("""
       select count(*) from history;
     """);
     return res.first[0] as int;

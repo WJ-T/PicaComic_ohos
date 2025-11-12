@@ -1,0 +1,37 @@
+{
+  "HVIGOR_OHOS_PLUGIN": {
+    "MODULES": [],
+    "NATIVE_COMPILER": "Default"
+  },
+  "HVIGOR": {
+    "IS_INCREMENTAL": true,
+    "IS_DAEMON": true,
+    "IS_PARALLEL": true,
+    "IS_HVIGORFILE_TYPE_CHECK": false,
+    "TASK_TIME": {},
+    "APIS": [
+      "getHvigorConfig",
+      "getRootNodeDescriptor",
+      "getChildNode",
+      "getNodeByName",
+      "getAllNodes",
+      "getRootNode",
+      "getNodeName",
+      "getStartParams",
+      "buildFinished"
+    ],
+    "CONFIG_PROPERTIES": {},
+    "BUILD_ID": "202511090622452230",
+    "ERROR_MESSAGE": [
+      {
+        "CODE": "00302032",
+        "MESSAGE": "Invalid exports, no system plugins were found in hvigorfile. At file: %s ",
+        "SOLUTIONS": [
+          "Check if system plugin defined correctly in file: /Volumes/tipro7000/project/pica/PicaComic/hvigorfile.ts "
+        ],
+        "TIMESTAMP": "1762629765604"
+      }
+    ],
+    "TOTAL_TIME": 383156042
+  }
+}

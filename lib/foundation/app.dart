@@ -5,6 +5,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pica_comic/foundation/app_page_route.dart';
 import 'package:pica_comic/foundation/log.dart';
 import '../base.dart';
+import 'ohos_path_provider.dart';
+import 'platform_utils.dart';
 
 export 'state_controller.dart';
 export 'widget_utils.dart';
@@ -50,8 +52,36 @@ class App {
   static late final String dataPath;
 
   static Future<void> init() async {
-    cachePath = (await getApplicationCacheDirectory()).path;
-    dataPath = (await getApplicationSupportDirectory()).path;
+    cachePath = await _resolveCachePath();
+    dataPath = await _resolveDataPath();
+  }
+
+  static Future<String> _resolveCachePath() async {
+    try {
+      return (await getApplicationCacheDirectory()).path;
+    } catch (e) {
+      if (PlatformUtils.isOhos) {
+        return OhosPathProvider.fallbackCachePath;
+      }
+      stderr.writeln('[App] Failed to obtain cache dir via path_provider: $e');
+      return Directory.systemTemp.path;
+    }
+  }
+
+  static Future<String> _resolveDataPath() async {
+    try {
+      return (await getApplicationSupportDirectory()).path;
+    } catch (e) {
+      if (PlatformUtils.isOhos) {
+        return OhosPathProvider.fallbackSupportPath;
+      }
+      stderr.writeln('[App] Failed to obtain data dir via path_provider: $e');
+      final dir = Directory('${Directory.systemTemp.path}/pica_comic_data');
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      return dir.path;
+    }
   }
 
   static back(BuildContext context) {

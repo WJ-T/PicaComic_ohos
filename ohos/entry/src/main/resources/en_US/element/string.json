@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "Pica Comic entry module"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "Flutter host"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "Pica Comic"
+    }
+  ]
+}

@@ -21,6 +21,7 @@ import 'package:pica_comic/tools/io_tools.dart';
 import 'package:pica_comic/tools/translations.dart';
 import 'package:pica_comic/tools/android_first_use_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 import 'package:workmanager/workmanager.dart';
 
 import 'base.dart';
@@ -30,11 +31,21 @@ import 'comic_source/built_in/jm.dart';
 import 'comic_source/built_in/nhentai.dart';
 import 'comic_source/built_in/picacg.dart';
 import 'foundation/app.dart';
+import 'foundation/ohos_path_provider.dart';
+import 'foundation/ohos_shared_preferences_store.dart';
+import 'foundation/ohos_sqlite.dart';
+import 'foundation/platform_utils.dart';
 import 'network/nhentai_network/nhentai_main_network.dart';
 
 Future<void> init() async {
   try {
+    OhosPathProvider.registerIfNeeded();
+    configureOhosSqlite();
     await App.init();
+    if (PlatformUtils.isOhos) {
+      SharedPreferencesStorePlatform.instance =
+          OhosSharedPreferencesStore("${App.dataPath}/shared_prefs.json");
+    }
     io.File? logFile = io.File("${App.dataPath}/log.txt");
     if(App.isAndroid) {
       var externalDirectory = await getExternalStorageDirectory();

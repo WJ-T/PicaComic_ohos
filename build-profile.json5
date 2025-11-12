@@ -1,0 +1,28 @@
+{
+  "apiType": "stageMode",
+  "buildOption": {},
+  "products": [
+    {
+      "name": "default",
+      "type": "har"
+    }
+  ],
+  "modules": [
+    {
+      "name": "sqflite",
+      "srcPath": "./sqflite/sqflite/ohos",
+      "targets": [
+        {
+          "name": "default"
+        }
+      ]
+    }
+  ],
+  "targets": [
+    {
+      "name": "default",
+      "products": ["default"],
+      "modules": ["sqflite"]
+    }
+  ]
+}

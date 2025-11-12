@@ -35,7 +35,7 @@ dependencies:
     git:
       url: https://github.com/venera-app/flutter_saf
       ref: fe182cdf40e5fa6230f451bc1d643b860f610d13
-  dynamic_color: ^1.6.9
+  dynamic_color: 1.7.0
   crypto: any
   pointycastle: ^3.7.3
   uuid: ^3.0.7
@@ -60,7 +60,7 @@ dependencies:
   image: 4.1.0
   shimmer_animation: ^2.1.0
   cookie_jar: any
-  workmanager: ^0.8.0
+  workmanager: ^0.7.0
   flutter_localizations:
     sdk: flutter
   intl: any
@@ -82,9 +82,7 @@ dependencies:
   window_manager:
   pdf: ^3.10.8
   flutter_qjs:
-    git:
-      url: https://github.com/wgh136/flutter_qjs
-      ref: 8feae95
+    path: flutter_qjs
   sliver_tools: ^0.2.12
   mime: ^1.0.5
   desktop_webview_window:

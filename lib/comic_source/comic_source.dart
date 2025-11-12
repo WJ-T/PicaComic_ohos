@@ -91,7 +91,11 @@ class ComicSource {
 
   static Future reload() async {
     sources.clear();
-    JsEngine().runCode("ComicSource.sources = {};");
+    try {
+      JsEngine().runCode("ComicSource.sources = {};");
+    } catch (e, s) {
+      log("Failed to reset JS engine: $e\n$s", "ComicSource", LogLevel.error);
+    }
     await init();
   }
 
