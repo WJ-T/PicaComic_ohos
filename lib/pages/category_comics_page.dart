@@ -6,12 +6,14 @@ import "package:pica_comic/foundation/app.dart";
 import 'package:pica_comic/network/base_comic.dart';
 import "package:pica_comic/network/res.dart";
 import "package:pica_comic/tools/translations.dart";
+import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 class CategoryComicsPage extends StatefulWidget {
   const CategoryComicsPage({
     required this.category,
     this.param,
     required this.categoryKey,
+    this.displayTitle,
     super.key,
   });
 
@@ -20,6 +22,8 @@ class CategoryComicsPage extends StatefulWidget {
   final String? param;
 
   final String categoryKey;
+
+  final String? displayTitle;
 
   @override
   State<CategoryComicsPage> createState() => _CategoryComicsPageState();
@@ -71,56 +75,148 @@ class _CategoryComicsPageState extends State<CategoryComicsPage> {
         .firstWhere((e) => e.categoryData?.key == widget.categoryKey);
     final categories = _getCategories(source);
     
+    if (App.isFluent) {
+      return fluent.ScaffoldPage(
+        header: fluent.PageHeader(
+          title: Text(
+            widget.displayTitle ??
+                (selectedCategories.length > 1
+                    ? "${selectedCategories.length}个分类"
+                    : selectedCategories.firstOrNull ?? widget.category),
+          ),
+          commandBar: widget.param != "ca" ? fluent.CommandBar(
+            primaryItems: [
+              fluent.CommandBarButton(
+                label: const Text("分类过滤"),
+                icon: const Icon(fluent.FluentIcons.filter),
+                onPressed: () {
+                  Future.delayed(Duration.zero, () {
+                    if (mounted) {
+                      fluent.showDialog(
+                        context: context,
+                        builder: (context) => CategorySelectorDialog(
+                          categories: categories,
+                          initialSelectedCategories: selectedCategories,
+                          onCategoriesSelected: (newSelectedCategories) {
+                            setState(() {
+                              selectedCategories = newSelectedCategories;
+                            });
+                          },
+                        ),
+                      );
+                    }
+                  });
+                },
+              ),
+            ],
+          ) : null,
+        ),
+        content: Column(
+          children: [
+            if (selectedCategories.length > 1) ...[
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: selectedCategories.map((category) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: fluent.FluentTheme.of(context).accentColor.normal,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(category, style: const TextStyle(color: Colors.white)),
+                          const SizedBox(width: 4),
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                selectedCategories.remove(category);
+                              });
+                            },
+                            child: const Icon(fluent.FluentIcons.clear, size: 12, color: Colors.white),
+                          )
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+            Expanded(
+              child: _CategoryComicsList(
+                key: ValueKey(
+                    "${selectedCategories.join(',')} with $optionsValue"),
+                loader: data.load,
+                category: selectedCategories.join(','),
+                options: optionsValue,
+                param: widget.param,
+                header: buildOptions(),
+                sourceKey: source.key,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: Appbar(
-        title: Text(selectedCategories.length > 1 
-            ? "${selectedCategories.length}个分类" 
-            : selectedCategories.firstOrNull ?? widget.category),
+        title: Text(
+          widget.displayTitle ??
+              (selectedCategories.length > 1
+                  ? "${selectedCategories.length}个分类"
+                  : selectedCategories.firstOrNull ?? widget.category),
+        ),
         actions: [
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Theme.of(context).colorScheme.outline),
-            ),
-            child: TextButton(
-              onPressed: () {
-                // 添加延迟确保在iPad上正确显示对话框
-                Future.delayed(Duration.zero, () {
-                  if (mounted) {
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false, // 防止意外点击外部关闭对话框
-                      builder: (context) => GestureDetector(
-                        onTap: () {
-                          Navigator.of(context).pop(); // 点击空白处关闭对话框
-                        },
-                        child: Material(
-                          color: Colors.transparent,
-                          child: GestureDetector(
-                            onTap: () {}, // 防止点击对话框内容区域时关闭
-                            child: CategorySelectorDialog(
-                              categories: categories,
-                              initialSelectedCategories: selectedCategories,
-                              onCategoriesSelected: (newSelectedCategories) {
-                                setState(() {
-                                  selectedCategories = newSelectedCategories;
-                                });
-                              },
+          if (widget.param != "ca")
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Theme.of(context).colorScheme.outline),
+              ),
+              child: TextButton(
+                onPressed: () {
+                  Future.delayed(Duration.zero, () {
+                    if (mounted) {
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) => GestureDetector(
+                          onTap: () {
+                            Navigator.of(context).pop();
+                          },
+                          child: Material(
+                            color: Colors.transparent,
+                            child: GestureDetector(
+                              onTap: () {},
+                              child: CategorySelectorDialog(
+                                categories: categories,
+                                initialSelectedCategories: selectedCategories,
+                                onCategoriesSelected: (newSelectedCategories) {
+                                  setState(() {
+                                    selectedCategories = newSelectedCategories;
+                                  });
+                                },
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  }
-                });
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.onSurface,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      );
+                    }
+                  });
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.onSurface,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                ),
+                child: const Text("分类过滤"),
               ),
-              child: const Text("分类过滤"),
             ),
-          ),
         ],
       ),
       body: Column(
@@ -217,6 +313,18 @@ class _CategoryComicsPageState extends State<CategoryComicsPage> {
 
   Widget buildOptionItem(
       String text, String value, int group, BuildContext context) {
+    if (App.isFluent) {
+      return fluent.ToggleButton(
+        checked: value == optionsValue[group],
+        onChanged: (b) {
+          if (value == optionsValue[group]) return;
+          setState(() {
+            optionsValue[group] = value;
+          });
+        },
+        child: Text(text),
+      );
+    }
     return OptionChip(
       text: text,
       isSelected: value == optionsValue[group],

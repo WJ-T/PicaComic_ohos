@@ -64,6 +64,31 @@ class _ComicSourceSettingsState extends State<ComicSourceSettings> {
 
   @override
   Widget build(BuildContext context) {
+    if (App.isFluent) {
+      return fluent.ScaffoldPage.scrollable(children: [
+        buildCard(context),
+        const _BuiltInSources(),
+        if (appdata.appSettings.isComicSourceEnabled("picacg"))
+          const PicacgSettings(false).withDivider(),
+        if (appdata.appSettings.isComicSourceEnabled("ehentai"))
+          const EhSettings(false).withDivider(),
+        if (appdata.appSettings.isComicSourceEnabled("nhentai"))
+          const NhSettings(false).withDivider(),
+        if (appdata.appSettings.isComicSourceEnabled("jm"))
+          const JmSettings(false).withDivider(),
+        if (appdata.appSettings.isComicSourceEnabled("hitomi"))
+          const HitomiSettings(false).withDivider(),
+        if (appdata.appSettings.isComicSourceEnabled("htmanga"))
+          // const HtSettings(false).withDivider(),
+          const HtSettings(false),
+        // buildCustomSettings(),
+        for (var source in ComicSource.sources.where((e) => !e.isBuiltIn))
+          buildCustom(context, source),
+        Padding(
+            padding:
+                EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom))
+      ]);
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text("漫画源"),
@@ -169,6 +194,7 @@ class _ComicSourceSettingsState extends State<ComicSourceSettings> {
       ComicSource.sources.remove(source);
       _validatePages();
       MyApp.updater?.call();
+      StateController.findOrNull(tag: "me_page_sources")?.update();
     });
   }
 
@@ -203,6 +229,7 @@ class _ComicSourceSettingsState extends State<ComicSourceSettings> {
     }
     await ComicSource.reload();
     MyApp.updater?.call();
+    StateController.findOrNull(tag: "me_page_sources")?.update();
   }
 
   Widget buildCard(BuildContext context) {
@@ -261,7 +288,7 @@ class _ComicSourceSettingsState extends State<ComicSourceSettings> {
                 TextButton(
                     onPressed: () {
                       showPopUpWidget(
-                          context, _ComicSourceList(handleAddSource));
+                          context, _ComicSourceList(handleAddSource, onClose: () => Navigator.of(context).pop()));
                     },
                     child: Text("浏览列表".tl)),
                 const Spacer(),
@@ -328,13 +355,15 @@ class _ComicSourceSettingsState extends State<ComicSourceSettings> {
     _addAllPagesWithComicSource(comicSource);
     appdata.updateSettings();
     MyApp.updater?.call();
+    StateController.findOrNull(tag: "me_page_sources")?.update();
   }
 }
 
 class _ComicSourceList extends StatefulWidget {
-  const _ComicSourceList(this.onAdd);
+  const _ComicSourceList(this.onAdd, {this.onClose});
 
   final Future<void> Function(String) onAdd;
+  final VoidCallback? onClose;
 
   @override
   State<_ComicSourceList> createState() => _ComicSourceListState();
@@ -363,8 +392,8 @@ class _ComicSourceListState extends State<_ComicSourceList> {
     return Scaffold(
       appBar: AppBar(
         title: Text("漫画源".tl),
-        actions: const [
-          IconButton(onPressed: App.globalBack, icon: Icon(Icons.close)),
+        actions: [
+          IconButton(onPressed: widget.onClose ?? App.globalBack, icon: const Icon(Icons.close)),
         ],
       ),
       body: buildBody(),
@@ -458,6 +487,7 @@ class _BuiltInSourcesState extends State<_BuiltInSources> {
             context.findAncestorStateOfType<_ComicSourceSettingsState>()
                 ?.setState(() {});
           }
+          StateController.findOrNull(tag: "me_page_sources")?.update();
         },
       ),
     );
@@ -545,6 +575,7 @@ class __EditFilePageState extends State<_EditFilePage> {
               // Save and reload configs
               await ComicSource.reload();
               MyApp.updater?.call();
+              StateController.findOrNull(tag: "me_page_sources")?.update();
               if (context.mounted) {
                 Navigator.pop(context);
               }

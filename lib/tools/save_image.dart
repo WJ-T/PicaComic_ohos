@@ -15,6 +15,7 @@ import '../foundation/app.dart';
 
 ///保存图片
 void saveImage(File file) async {
+  final imageSaver = ImageGallerySaver();
   var data = await file.readAsBytes();
   var type = detectFileType(data);
   var fileName = file.name;
@@ -22,11 +23,7 @@ void saveImage(File file) async {
     fileName += type.ext;
   }
   if (App.isAndroid || App.isIOS) {
-    await ImageGallerySaver.saveImage(
-      data,
-      quality: 100,
-      name: fileName,
-    );
+    await imageSaver.saveImage(data);
     showToast(message: "已保存".tl);
   } else if (PlatformUtils.isOhos) {
     try {

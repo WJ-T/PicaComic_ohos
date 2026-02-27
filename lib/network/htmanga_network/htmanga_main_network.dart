@@ -13,6 +13,7 @@ import 'package:html/parser.dart';
 import 'package:pica_comic/pages/pre_search_page.dart';
 import 'package:pica_comic/tools/extensions.dart';
 import 'package:pica_comic/tools/translations.dart';
+import 'package:pica_comic/network/cloudflare.dart';
 import '../../base.dart';
 
 class HtmangaNetwork {
@@ -32,17 +33,16 @@ class HtmangaNetwork {
   ///基本的Get请求
   Future<Res<String>> get(String url,
       {bool cache = true, Map<String, String>? headers}) async {
-    var dio = CachedNetwork();
+    var dio = logDio(BaseOptions(headers: {
+      "user-agent": webUA,
+      "referer": "$baseUrl/",
+      if (headers != null) ...headers
+    }));
+    dio.interceptors.add(CookieManagerSql(SingleInstanceCookieJar.instance!));
+    dio.interceptors.add(CloudflareInterceptor());
     try {
-      var res = await dio.get(
-          url,
-          BaseOptions(headers: {
-            "User-Agent": webUA,
-            if (headers != null) ...headers
-          }),
-          cookieJar: SingleInstanceCookieJar.instance,
-          expiredTime: cache ? CacheExpiredTime.short : CacheExpiredTime.no);
-      if(res.url.contains("users-login")){
+      var res = await dio.get<String>(url);
+      if(res.realUri.toString().contains("users-login")){
         return Res(null, errorMessage: "未登录或登录到期".tl);
       }
       return Res(res.data);
@@ -51,26 +51,6 @@ class HtmangaNetwork {
           e.type == DioExceptionType.sendTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
         return const Res(null, errorMessage: "连接超时");
-      } else if (e.response?.statusCode == 403 && url.contains("www.wnacg.com")) {
-        // 当使用带www的域名请求失败时，尝试使用不带www的域名重新请求
-        //修复绅士漫画源无法使用
-        String newUrl = url.replaceAll("www.wnacg.com", "wnacg.com");
-        try {
-          var res = await dio.get(
-              newUrl,
-              BaseOptions(headers: {
-                "User-Agent": webUA,
-                if (headers != null) ...headers
-              }),
-              cookieJar: SingleInstanceCookieJar.instance,
-              expiredTime: cache ? CacheExpiredTime.short : CacheExpiredTime.no);
-          if(res.url.contains("users-login")){
-            return Res(null, errorMessage: "未登录或登录到期".tl);
-          }
-          return Res(res.data);
-        } catch (e2) {
-          return Res(null, errorMessage: e.toString());
-        }
       } else {
         return Res(null, errorMessage: e.toString());
       }
@@ -82,14 +62,19 @@ class HtmangaNetwork {
   ///基本的Post请求
   Future<Res<String>> post(String url, String data) async {
     var dio = logDio(BaseOptions(headers: {
-      "User-Agent": webUA,
+      "user-agent": webUA,
+      "referer": "$baseUrl/",
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
     }));
     dio.interceptors.add(CookieManagerSql(SingleInstanceCookieJar.instance!));
+    dio.interceptors.add(CloudflareInterceptor());
     try {
       var res = await dio.post(url, data: data);
       return Res(res.data);
     } on DioException catch (e) {
+      if (e is CloudflareException) {
+        return Res(null, errorMessage: e.toString());
+      }
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.sendTimeout ||
           e.type == DioExceptionType.receiveTimeout) {

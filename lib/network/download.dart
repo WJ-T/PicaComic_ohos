@@ -294,6 +294,7 @@ class DownloadManager with _DownloadDb implements Listenable {
     _addToDb(await task.toDownloadedItem(), task.directory!);
     await _saveInfo();
     StateController.findOrNull<DownloadPageLogic>()?.refresh();
+    StateController.findOrNull(tag: "me_page_downloads")?.update();
     if (downloading.isNotEmpty) {
       //清除已完成的任务, 开始下一个任务
       downloading.first.start();
@@ -372,6 +373,8 @@ class DownloadManager with _DownloadDb implements Listenable {
         }
       }
     }
+    notifyListeners();
+    StateController.findOrNull(tag: "me_page_downloads")?.update();
   }
 
   /// return error message when error, or null if success.

@@ -53,11 +53,8 @@ dependencies:
       ref: br_v10.2.0_ohos
       path: ohos
   image_picker: ^1.0.2
-  image_gallery_saver:
-    git:
-      url: https://github.com/mahdiramezanii/image_gallery_saver
-      ref: 9a51daf
-  flutter_file_dialog: 3.0.1
+  flutter_image_gallery_saver: ^1.1.3
+  flutter_file_dialog: 3.0.3
   flutter_local_notifications: ^17.2.2
   share_plus: ^7.0.0
   local_auth: ^2.3.0
@@ -104,6 +101,8 @@ dependencies:
   syntax_highlight: ^0.4.0
   flex_seed_scheme: ^1.4.0
   math_expressions: ^2.6.0
+  auto_route: ^11.1.0
+  fluent_ui: ^4.13.0
 
 dev_dependencies:
   flutter_test:

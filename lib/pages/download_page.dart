@@ -38,6 +38,7 @@ import 'dart:io';
 import 'package:pica_comic/tools/show_delayed_dialog.dart';
 import 'package:pica_comic/tools/translations.dart';
 import 'package:pica_comic/components/components.dart';
+import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'htmanga/ht_comic_page.dart';
 
@@ -192,6 +193,9 @@ class DownloadPageLogic extends StateController {
   String tagKeyword_ = "";
   String categoryKeyword = "";
   String categoryKeyword_ = "";
+
+  /// 下载类型筛选
+  DownloadType? downloadTypeFilter;
 
   /// 普通搜索防抖计时器
   Timer? _searchDebounceTimer;
@@ -431,6 +435,53 @@ class DownloadPageLogic extends StateController {
     selected = List.generate(length, (index) => false);
     selectedNum = 0;
   }
+
+  /// 更新下载类型筛选
+  void updateDownloadTypeFilter(DownloadType? type) {
+    downloadTypeFilter = type;
+    // 重新应用筛选
+    applyTypeFilter();
+    update();
+  }
+
+  /// 应用类型筛选
+  void applyTypeFilter() {
+    List<DownloadedItem> filteredComics = baseComics;
+
+    // 应用类型筛选
+    if (downloadTypeFilter != null) {
+      filteredComics = filteredComics.where((comic) => comic.type == downloadTypeFilter).toList();
+    }
+
+    // 处理分页
+    if (isPaginationMode) {
+      maxPage = (filteredComics.length / pageSize).ceil();
+      int startIndex = (currentPage - 1) * pageSize;
+      int endIndex = startIndex + pageSize;
+      if (endIndex > filteredComics.length) {
+        endIndex = filteredComics.length;
+      }
+      comics = filteredComics.sublist(startIndex, endIndex);
+    } else {
+      comics = filteredComics;
+    }
+
+    resetSelected(comics.length);
+  }
+}
+
+/// 获取下载类型的显示名称
+String getDownloadTypeName(DownloadType type) {
+  const typeNames = {
+    DownloadType.picacg: "哔咔",
+    DownloadType.ehentai: "E-Hentai",
+    DownloadType.jm: "禁漫",
+    DownloadType.hitomi: "Hitomi",
+    DownloadType.htmanga: "HTManga",
+    DownloadType.nhentai: "nhentai",
+    DownloadType.other: "其他",
+  };
+  return typeNames[type] ?? "";
 }
 
 // 自定义文本编辑控制器，用于检测IME输入状态
@@ -484,8 +535,30 @@ class _DownloadPageState extends State<DownloadPage> {
     logic.initSearchController();
   }
 
+  ModalRoute? _route;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route != _route) {
+      _route?.animation?.removeStatusListener(_handleStatusChange);
+      _route = route;
+      _route?.animation?.addStatusListener(_handleStatusChange);
+    }
+  }
+
+  void _handleStatusChange(AnimationStatus status) {
+    if (status == AnimationStatus.reverse) {
+      if (App.isFluent) {
+        App.mainAppbarActions.value = null;
+      }
+    }
+  }
+
   @override
   void dispose() {
+    _route?.animation?.removeStatusListener(_handleStatusChange);
     logic.disposeSearchController();
     super.dispose();
   }
@@ -494,6 +567,11 @@ class _DownloadPageState extends State<DownloadPage> {
   Widget build(BuildContext context) {
     return StateBuilder<DownloadPageLogic>(
         init: logic,
+        dispose: (logic) {
+          if (App.isFluent) {
+            App.mainAppbarActions.value = null;
+          }
+        },
         builder: (logic) {
           if (logic.loading) {
             Future.wait([
@@ -503,12 +581,42 @@ class _DownloadPageState extends State<DownloadPage> {
               logic.resetSelected(logic.comics.length);
               logic.change();
             });
+            if (App.isFluent) {
+              return const fluent.ScaffoldPage(
+                content: Center(
+                  child: fluent.ProgressBar(),
+                ),
+              );
+            }
             return const Scaffold(
               body: Center(
                 child: CircularProgressIndicator(),
               ),
             );
           } else {
+            if (App.isFluent) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                var route = ModalRoute.of(context);
+                if (mounted && route != null && route.isCurrent) {
+                  if (route.animation?.status == AnimationStatus.reverse) {
+                    return;
+                  }
+                  App.mainAppbarActions.value =
+                      _buildFluentCommandBar(context, logic);
+                }
+              });
+              return fluent.ScaffoldPage(
+                header: fluent.PageHeader(
+                  title: (logic.searchMode ||
+                          logic.tagSearchMode ||
+                          logic.categorySearchMode ||
+                          logic.selecting)
+                      ? buildTitle(context, logic)
+                      : null,
+                ),
+                content: _buildFluentBody(context, logic),
+              );
+            }
             return Scaffold(
               floatingActionButton: buildFAB(context, logic),
               body: SmoothCustomScrollView(
@@ -720,6 +828,362 @@ class _DownloadPageState extends State<DownloadPage> {
             );
           }
         });
+  }
+
+  Widget _buildFluentBody(BuildContext context, DownloadPageLogic logic) {
+    return CustomScrollView(
+      slivers: [
+        if (logic.isPaginationMode)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  fluent.Button(
+                    onPressed: logic.currentPage > 1
+                        ? () {
+                            logic.currentPage--;
+                            getComics(logic).then((_) {
+                              logic.resetSelected(logic.comics.length);
+                              logic.update();
+                            });
+                          }
+                        : null,
+                    child: Text("上一页".tl),
+                  ),
+                  const SizedBox(width: 16),
+                  Text("${"页面".tl}: ${logic.currentPage}/${logic.maxPage}"),
+                  const SizedBox(width: 16),
+                  fluent.Button(
+                    onPressed: logic.currentPage < logic.maxPage
+                        ? () {
+                            logic.currentPage++;
+                            getComics(logic).then((_) {
+                              logic.resetSelected(logic.comics.length);
+                              logic.update();
+                            });
+                          }
+                        : null,
+                    child: Text("下一页".tl),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        buildComicsSliver(context, logic),
+        if (logic.isPaginationMode)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  fluent.Button(
+                    onPressed: logic.currentPage > 1
+                        ? () {
+                            logic.currentPage--;
+                            getComics(logic).then((_) {
+                              logic.resetSelected(logic.comics.length);
+                              logic.update();
+                            });
+                          }
+                        : null,
+                    child: Text("上一页".tl),
+                  ),
+                  const SizedBox(width: 16),
+                  Text("${"页面".tl}: ${logic.currentPage}/${logic.maxPage}"),
+                  const SizedBox(width: 16),
+                  fluent.Button(
+                    onPressed: logic.currentPage < logic.maxPage
+                        ? () {
+                            logic.currentPage++;
+                            getComics(logic).then((_) {
+                              logic.resetSelected(logic.comics.length);
+                              logic.update();
+                            });
+                          }
+                        : null,
+                    child: Text("下一页".tl),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        SliverPadding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
+        )
+      ],
+    );
+  }
+
+  Widget _buildFluentCommandBar(BuildContext context, DownloadPageLogic logic) {
+    if (logic.selecting) {
+      return fluent.CommandBar(
+        mainAxisAlignment: MainAxisAlignment.end,
+        primaryItems: [
+          fluent.CommandBarButton(
+            icon: const Icon(fluent.FluentIcons.select_all),
+            label: Text("全选".tl),
+            onPressed: () {
+              for (int i = 0; i < logic.selected.length; i++) {
+                logic.selected[i] = true;
+              }
+              logic.selectedNum = logic.comics.length;
+              logic.update();
+            },
+          ),
+          fluent.CommandBarButton(
+            icon: const Icon(fluent.FluentIcons.delete),
+            label: Text("删除".tl),
+            onPressed: () {
+              if (logic.selectedNum == 0) return;
+              fluent.showDialog(
+                context: context,
+                builder: (dialogContext) {
+                  return fluent.ContentDialog(
+                    title: Text("删除".tl),
+                    content: Text("要删除已选择的项目吗? 此操作无法撤销".tl),
+                    actions: [
+                      fluent.Button(
+                          onPressed: () => App.globalBack(),
+                          child: Text("取消".tl)),
+                      fluent.FilledButton(
+                          onPressed: () async {
+                            App.globalBack();
+                            var comics = <String>[];
+                            for (int i = 0; i < logic.selected.length; i++) {
+                              if (logic.selected[i]) {
+                                comics.add(logic.comics[i].id);
+                              }
+                            }
+                            await downloadManager.delete(comics);
+                            logic.refresh();
+                            StateController.findOrNull(tag: "me_page_downloads")
+                                ?.update();
+                          },
+                          child: Text("确认".tl)),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+          fluent.CommandBarButton(
+            icon: const Icon(fluent.FluentIcons.cancel),
+            label: Text("取消".tl),
+            onPressed: () {
+              logic.selecting = false;
+              logic.selectedNum = 0;
+              for (int i = 0; i < logic.selected.length; i++) {
+                logic.selected[i] = false;
+              }
+              logic.update();
+            },
+          ),
+          fluent.CommandBarButton(
+            icon: const Icon(fluent.FluentIcons.more),
+            label: Text("更多".tl),
+            onPressed: () {
+              // TODO: Implement more options for Fluent UI
+            },
+          ),
+        ],
+      );
+    }
+
+    return fluent.CommandBar(
+      mainAxisAlignment: MainAxisAlignment.end,
+      primaryItems: [
+        fluent.CommandBarButton(
+          icon: const Icon(fluent.FluentIcons.search),
+          label: Text(logic.categorySearchMode
+              ? "分类搜索".tl
+              : (logic.tagSearchMode ? "标签搜索".tl : "搜索".tl)),
+          onPressed: () {
+            if (logic.categorySearchMode) {
+              logic.categorySearchMode = false;
+              logic.searchMode = true;
+              logic.tagSearchMode = false;
+              logic.searchInit = true;
+              logic.searchController?.text = logic.keyword;
+              logic.searchController?.selection = TextSelection.fromPosition(
+                TextPosition(offset: logic.keyword.length),
+              );
+              logic.find();
+              logic.update();
+            } else if (logic.tagSearchMode) {
+              logic.tagSearchMode = false;
+              logic.searchMode = true;
+              logic.searchInit = true;
+              logic.searchController?.text = logic.keyword;
+              logic.searchController?.selection = TextSelection.fromPosition(
+                TextPosition(offset: logic.keyword.length),
+              );
+              logic.find();
+              logic.update();
+            } else if (logic.searchMode) {
+              logic.searchMode = false;
+              logic.searchInit = false;
+              logic.searchController?.clear();
+              logic.keyword = '';
+              logic.update();
+            } else {
+              logic.searchMode = true;
+              logic.searchInit = true;
+              logic.searchController?.text = logic.keyword;
+              logic.searchController?.selection = TextSelection.fromPosition(
+                TextPosition(offset: logic.keyword.length),
+              );
+              logic.find();
+              logic.update();
+            }
+          },
+        ),
+        fluent.CommandBarButton(
+          icon: const Icon(fluent.FluentIcons.tag),
+          label: Text("标签搜索".tl),
+          onPressed: () {
+            if (!logic.tagSearchMode) {
+              logic.tagSearchMode = true;
+              logic.searchMode = false;
+              logic.searchInit = true;
+              logic.searchController?.text = logic.tagKeyword;
+              logic.searchController?.selection = TextSelection.fromPosition(
+                TextPosition(offset: logic.tagKeyword.length),
+              );
+              logic.searchByTag();
+            } else {
+              logic.tagSearchMode = false;
+              logic.searchMode = false;
+              logic.selected =
+                  List.generate(logic.comics.length, (index) => false);
+              logic.selectedNum = 0;
+              logic.searchController?.text = '';
+              logic.update();
+            }
+          },
+        ),
+        fluent.CommandBarButton(
+          icon: const Icon(Icons.category_outlined),
+          label: Text("分类搜索".tl),
+          onPressed: () {
+            if (!logic.categorySearchMode) {
+              logic.categorySearchMode = true;
+              logic.searchMode = false;
+              logic.tagSearchMode = false;
+              logic.searchInit = true;
+              logic.searchController?.text = logic.categoryKeyword;
+              logic.searchController?.selection = TextSelection.fromPosition(
+                TextPosition(offset: logic.categoryKeyword.length),
+              );
+              logic.searchByCategory();
+            } else {
+              logic.categorySearchMode = false;
+              logic.searchMode = false;
+              logic.tagSearchMode = false;
+              logic.selected =
+                  List.generate(logic.comics.length, (index) => false);
+              logic.selectedNum = 0;
+              logic.searchController?.text = '';
+              logic.update();
+            }
+          },
+        ),
+        fluent.CommandBarButton(
+          icon: const Icon(fluent.FluentIcons.sort),
+          label: Text("排序".tl),
+          onPressed: () async {
+            bool changed = false;
+            await showDelayedDialog(
+              context: context,
+              builder: (context) => fluent.ContentDialog(
+                title: Text("漫画排序模式".tl),
+                content: SizedBox(
+                  height: 100,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text("漫画排序模式".tl),
+                          const Spacer(),
+                          fluent.ComboBox<int>(
+                            value: int.parse(appdata.settings[26][0]),
+                            items: ["时间", "漫画名", "作者名", "大小"]
+                                .tl
+                                .asMap()
+                                .entries
+                                .map((e) => fluent.ComboBoxItem(
+                                      value: e.key,
+                                      child: Text(e.value),
+                                    ))
+                                .toList(),
+                            onChanged: (i) {
+                              if (i != null) {
+                                appdata.settings[26] = appdata.settings[26]
+                                    .setValueAt(i.toString(), 0);
+                                appdata.updateSettings();
+                                changed = true;
+                                Navigator.pop(context);
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      fluent.ToggleSwitch(
+                        checked: appdata.settings[26][1] == "1",
+                        content: Text("倒序".tl),
+                        onChanged: (b) {
+                          if (b) {
+                            appdata.settings[26] =
+                                appdata.settings[26].setValueAt("1", 1);
+                          } else {
+                            appdata.settings[26] =
+                                appdata.settings[26].setValueAt("0", 1);
+                          }
+                          appdata.updateSettings();
+                          changed = true;
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  fluent.Button(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text("取消".tl),
+                  ),
+                ],
+              ),
+            );
+            if (changed) {
+              logic.refresh();
+            }
+          },
+        ),
+        fluent.CommandBarButton(
+          icon: const Icon(fluent.FluentIcons.download),
+          label: Text("下载管理".tl),
+          onPressed: () {
+            showPopUpWidget(
+              App.globalContext!,
+              const DownloadingPage(),
+            );
+          },
+        ),
+        fluent.CommandBarButton(
+          icon: const Icon(fluent.FluentIcons.multi_select),
+          label: Text("多选".tl),
+          onPressed: () {
+            logic.selecting = true;
+            logic.update();
+          },
+        ),
+      ],
+    );
   }
 
   Widget buildComicsSliver(BuildContext context, DownloadPageLogic logic) {
@@ -1082,18 +1546,20 @@ class _DownloadPageState extends State<DownloadPage> {
                   logic.comics[index].read();
                 },
               ),
-              DesktopMenuEntry(
-                text: "删除".tl,
-                onClick: () {
-                  showConfirmDialog(context, "确认删除".tl, "此操作无法撤销, 是否继续?".tl,
-                      () {
-                    downloadManager.delete([logic.comics[index].id]);
-                    logic.comics.removeAt(index);
-                    logic.selected.removeAt(index);
-                    logic.update();
-                  });
-                },
-              ),
+                  DesktopMenuEntry(
+                    text: "删除".tl,
+                    onClick: () {
+                      showConfirmDialog(context, "确认删除".tl, "此操作无法撤销, 是否继续?".tl,
+                          () {
+                        downloadManager.delete([logic.comics[index].id]);
+                        logic.comics.removeAt(index);
+                        logic.selected.removeAt(index);
+                        logic.update();
+                        StateController.findOrNull(tag: "me_page_downloads")
+                            ?.update();
+                      });
+                    },
+                  ),
               DesktopMenuEntry(
                 text: "导出".tl,
                 onClick: () =>
@@ -1222,6 +1688,8 @@ class _DownloadPageState extends State<DownloadPage> {
                             }
                             await downloadManager.delete(comics);
                             logic.refresh();
+                            StateController.findOrNull(tag: "me_page_downloads")
+                                ?.update();
                           },
                           child: Text("确认".tl)),
                     ],
@@ -1259,6 +1727,41 @@ class _DownloadPageState extends State<DownloadPage> {
         logic.searchFocusNode?.requestFocus();
         logic.searchInit = false;
       }
+
+      if (App.isFluent) {
+        return fluent.TextBox(
+          focusNode: logic.searchFocusNode,
+          placeholder: logic.searchMode
+              ? "搜索漫画名".tl
+              : (logic.tagSearchMode ? "搜索标签".tl : "搜索分类".tl),
+          controller: logic.searchController,
+          inputFormatters: [LowercaseEnglishInputFormatter()],
+          onChanged: (s) {
+            if (!logic.searchController!.isComposing) {
+              if (logic.searchMode) {
+                logic._debounceUpdateKeyword(s);
+              } else if (logic.tagSearchMode) {
+                logic._debounceUpdateTagKeyword(s);
+              } else {
+                logic._debounceUpdateCategoryKeyword(s);
+              }
+            }
+          },
+          onSubmitted: (s) {
+            if (logic.searchMode) {
+              logic.keyword = s;
+              logic.find();
+            } else if (logic.tagSearchMode) {
+              logic.tagKeyword = s;
+              logic.searchByTag();
+            } else {
+              logic.categoryKeyword = s;
+              logic.searchByCategory();
+            }
+          },
+        );
+      }
+
       return TextField(
         focusNode: logic.searchFocusNode,
         decoration: InputDecoration(
@@ -1404,20 +1907,10 @@ class _DownloadPageState extends State<DownloadPage> {
           child: IconButton(
             icon: const Icon(Icons.download_for_offline),
             onPressed: () {
-              // 避免与触发点击同一帧的手势冲突导致弹窗立即被遮罩关闭
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                // 再额外延迟一小段时间，避免 iPad 小窗下同一次点击事件被 ModalBarrier 捕获
-                // 在 iPad 实机上增加更长的延迟时间，确保手势冲突完全解决
-                Future.delayed(const Duration(milliseconds: 300), () {
-                  // 使用当前页面上下文而不是全局上下文，确保上下文正确
-                  if (context.mounted) {
-                    showPopUpWidget(
-                      context,
-                      const DownloadingPage(),
-                    );
-                  }
-                });
-              });
+              showPopUpWidget(
+                App.globalContext!,
+                const DownloadingPage(),
+              );
             },
           ),
         ),
@@ -1481,6 +1974,26 @@ class _DownloadPageState extends State<DownloadPage> {
                     ),
                   ]);
             },
+          ),
+        ),
+      );
+    }
+
+    // 添加类型筛选按钮
+    if (!logic.selecting && !logic.searchMode) {
+      actions.add(
+        Builder(
+          builder: (buttonContext) => Tooltip(
+            message: "类型筛选".tl,
+            child: IconButton(
+              icon: const Icon(Icons.filter_list),
+              onPressed: () {
+                showDownloadTypeFilterMenu(
+                  buttonContext: buttonContext,
+                  logic: logic,
+                );
+              },
+            ),
           ),
         ),
       );
@@ -1812,6 +2325,71 @@ class _DownloadedComicInfoViewState extends State<DownloadedComicInfoView> {
   @override
   Widget build(BuildContext context) {
     getInfo();
+    if (App.isFluent) {
+      return fluent.ScaffoldPage(
+        header: fluent.PageHeader(
+          title: Text(name),
+          leading: fluent.IconButton(
+            icon: const Icon(fluent.FluentIcons.back),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        content: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              Expanded(
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 300,
+                    childAspectRatio: 4,
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                  ),
+                  itemBuilder: (BuildContext context, int i) {
+                    return fluent.Button(
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 16),
+                          Expanded(child: Text(eps[i])),
+                          const SizedBox(width: 4),
+                          if (downloadedEps.contains(i))
+                            const Icon(fluent.FluentIcons.download),
+                          const SizedBox(width: 16),
+                        ],
+                      ),
+                      onPressed: () => readSpecifiedEps(i),
+                      onLongPress: () => deleteEpisode(i),
+                    );
+                  },
+                  itemCount: eps.length,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: fluent.Button(
+                        onPressed: () {
+                          App.globalBack();
+                          _toComicInfoPage(widget.item);
+                        },
+                        child: Text("查看详情".tl)),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: fluent.FilledButton(
+                        onPressed: () => read(), child: Text("阅读".tl)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.only(left: 16, right: 16),
       child: Column(
@@ -2004,4 +2582,76 @@ void _toComicInfoPage(DownloadedItem comic) {
   } else if (comic is CustomDownloadedItem) {
     context.to(() => ComicPage(sourceKey: comic.sourceKey, id: comic.comicId));
   }
+}
+
+/// 显示下载类型筛选菜单
+void showDownloadTypeFilterMenu({
+  required BuildContext buttonContext,
+  required DownloadPageLogic logic,
+}) {
+  final RenderBox? renderBox = buttonContext.findRenderObject() as RenderBox?;
+  if (renderBox == null) return;
+
+  final Offset offset = renderBox.localToGlobal(Offset.zero);
+  final Size buttonSize = renderBox.size;
+  final Size screenSize = MediaQuery.of(App.globalContext!).size;
+
+  showMenu<DownloadType?>(
+    context: App.globalContext!,
+    position: RelativeRect.fromLTRB(
+      offset.dx,
+      offset.dy + buttonSize.height,
+      screenSize.width - offset.dx - buttonSize.width,
+      screenSize.height - offset.dy - buttonSize.height,
+    ),
+    items: [
+      PopupMenuItem<DownloadType?>(
+        value: null,
+        child: Row(
+          children: [
+            if (logic.downloadTypeFilter == null)
+              const Icon(Icons.check, size: 20),
+            if (logic.downloadTypeFilter != null)
+              const SizedBox(width: 28),
+            const SizedBox(width: 8),
+            Text("全部".tl),
+          ],
+        ),
+        onTap: () {
+          Future.delayed(const Duration(milliseconds: 100), () {
+            logic.updateDownloadTypeFilter(null);
+          });
+        },
+      ),
+      const PopupMenuDivider(),
+      ...[
+        DownloadType.picacg,
+        DownloadType.ehentai,
+        DownloadType.jm,
+        DownloadType.hitomi,
+        DownloadType.htmanga,
+        DownloadType.nhentai,
+        DownloadType.other,
+      ].map((type) {
+        final typeName = getDownloadTypeName(type);
+        return PopupMenuItem<DownloadType?>(
+          value: type,
+          child: Row(
+            children: [
+              if (logic.downloadTypeFilter == type)
+                const Icon(Icons.check, size: 20),
+              if (logic.downloadTypeFilter != type)
+                const SizedBox(width: 28),
+              Text(typeName),
+            ],
+          ),
+          onTap: () {
+            Future.delayed(const Duration(milliseconds: 100), () {
+              logic.updateDownloadTypeFilter(type);
+            });
+          },
+        );
+      }),
+    ],
+  );
 }

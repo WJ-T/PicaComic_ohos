@@ -115,6 +115,7 @@ class ImageFavoriteManager{
 
     }
     Webdav.uploadData();
+    Future.microtask(() => StateController.findOrNull(tag: "me_page")?.update());
   }
 
   static void delete(ImageFavorite favorite){
@@ -126,6 +127,7 @@ class ImageFavoriteManager{
       where id = ? and ep = ? and page = ?;
     """, [favorite.id, favorite.ep, favorite.page]);
     Webdav.uploadData();
+    Future.microtask(() => StateController.findOrNull(tag: "me_page")?.update());
   }
 
   static bool exist(String id, int ep, int page) {
