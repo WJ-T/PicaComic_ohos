@@ -23,6 +23,10 @@
     {
       "name": "perm_download_dir",
       "value": "访问公共下载目录以保存漫画到 Download/com.github.pacalini.pica_comic。"
+    },
+    {
+      "name": "perm_read_pasteboard",
+      "value": "读取剪贴板内容以识别并打开漫画相关链接。"
     }
   ]
 }

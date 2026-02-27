@@ -38,6 +38,14 @@
       {"name": "ohos.permission.INTERNET"},
       {"name": "ohos.permission.VIBRATE"},
       {
+        "name": "ohos.permission.READ_PASTEBOARD",
+        "reason": "$string:perm_read_pasteboard",
+        "usedScene": {
+          "abilities": ["EntryAbility"],
+          "when": "inuse"
+        }
+      },
+      {
         "name": "ohos.permission.READ_MEDIA",
         "reason": "$string:perm_read_media",
         "usedScene": {
