@@ -65,7 +65,7 @@ build_arch() {
   done
 
   "$cxx" -std=c++17 -fPIC -O2 --sysroot="$SYSROOT" \
-    -I"$SRC_DIR" "$SRC_DIR/ffi.cpp" "$out_dir"/*.o -shared \
+    -I"$SRC_DIR" "$SRC_DIR/ffi.cpp" "$out_dir"/*.o -shared -static-libstdc++ \
     -o "$out_dir/$LIB_NAME" -lm -ldl
 
   local target_dir="$PROJECT_ROOT/ohos/entry/libs/$abi"

@@ -115,18 +115,33 @@ abstract base class JSRuntime extends Opaque {}
 abstract base class JSPropertyEnum extends Opaque {}
 
 DynamicLibrary _openOhosLib() {
+  final tried = <String>[];
   final candidates = <String>[
     'libflutter_qjs_plugin.so',
+    'libflutter_qjs_plugin.z.so',
+    '/data/storage/el1/bundle/libs/arm64/libflutter_qjs_plugin.so',
+    '/data/storage/el1/bundle/libs/arm64/libflutter_qjs_plugin.z.so',
+    '/data/storage/el1/bundle/lib/arm64/libflutter_qjs_plugin.so',
+    '/data/storage/el1/bundle/lib/arm64/libflutter_qjs_plugin.z.so',
     '/system/lib64/libflutter_qjs_plugin.so',
+    '/system/lib64/libflutter_qjs_plugin.z.so',
     '/system/lib/libflutter_qjs_plugin.so',
+    '/system/lib/libflutter_qjs_plugin.z.so',
     '/vendor/lib64/libflutter_qjs_plugin.so',
+    '/vendor/lib64/libflutter_qjs_plugin.z.so',
     '/vendor/lib/libflutter_qjs_plugin.so',
+    '/vendor/lib/libflutter_qjs_plugin.z.so',
   ];
   for (final path in candidates) {
     try {
+      tried.add(path);
       return DynamicLibrary.open(path);
     } catch (_) {}
   }
+  try {
+    return DynamicLibrary.process();
+  } catch (_) {}
+  stderr.writeln('Failed to load QuickJS on OHOS. Tried: ${tried.join(', ')}');
   throw UnsupportedError('Unable to load QuickJS library on OHOS.');
 }
 
