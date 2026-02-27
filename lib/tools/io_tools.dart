@@ -650,6 +650,33 @@ Future<void> exportStringDataAsFile(String data, String fileName) async {
 }
 
 Future<String?> getDataFromUserSelectedFile(List<String> extensions) async {
+  if (PlatformUtils.isOhos) {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: extensions,
+        allowMultiple: false,
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) {
+        return null;
+      }
+      final picked = result.files.first;
+      final path = picked.path;
+      if (path != null && path.isNotEmpty) {
+        return File(path).readAsStringSync();
+      }
+      final bytes = picked.bytes;
+      if (bytes != null && bytes.isNotEmpty) {
+        return utf8.decode(bytes, allowMalformed: true);
+      }
+    } catch (e, s) {
+      LogManager.addLog(
+          LogLevel.error, "getDataFromUserSelectedFile", "OHOS file picker failed: $e\n$s");
+    }
+    return null;
+  }
+
   String? filePath;
   if (App.isMobile) {
     var params = const OpenFileDialogParams();

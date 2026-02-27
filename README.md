@@ -1,6 +1,6 @@
 # Pica Comic (OHOS Fork)
 
-[![flutter](https://img.shields.io/badge/flutter-3.35.1-blue)](https://flutter.dev/)
+[![flutter](https://img.shields.io/badge/flutter-3.35.8--ohos-blue)](https://flutter.dev/)
 [![License](https://img.shields.io/github/license/Pacalini/PicaComic)](https://github.com/Pacalini/PicaComic/blob/master/LICENSE)
 [![Download](https://img.shields.io/github/v/release/Pacalini/PicaComic)](https://github.com/Pacalini/PicaComic/releases)
 [![stars](https://img.shields.io/github/stars/Pacalini/PicaComic)](https://github.com/Pacalini/PicaComic/stargazers)
@@ -32,65 +32,152 @@ An [AUR package](https://aur.archlinux.org/packages/pica-comic-bin) is packed by
 paru -S pica-comic-bin
 ```
 
-## Build
+## Build (OHOS)
 
-1. Clone the repository
+This fork is maintained for **OHOS/HarmonyOS development first**.
+If you are onboarding a new device/environment, use this section instead of old cached notes.
 
-```shell
-git clone https://github.com/WJ-T/PicaComic_ohos
+### Verified toolchain (2026-02-27)
+
+- Flutter: `3.35.8-ohos-0.0.2`
+- Dart: `3.9.2`
+- HarmonyOS SDK: `6.0.2.130` (API 22)
+- Node: `18.20.1`
+- ohpm: `6.0.1`
+
+### 1. One-time environment setup
+
+Windows CMD:
+
+```bat
+set "JAVA_HOME=C:\Program Files\Huawei\DevEco Studio\jbr"
+set "PATH=%JAVA_HOME%\bin;%PATH%"
+flutter config --enable-ohos
+flutter config --ohos-sdk D:\command-line-tools\sdk
+flutter precache --ohos
 ```
 
-2. Install flutter: https://docs.flutter.dev/get-started/install
-3. Build Application: https://docs.flutter.dev/deployment
+macOS (zsh/bash):
 
-## HarmonyOS / OHOS (experimental)
+```bash
+export JAVA_HOME="/Applications/DevEco-Studio.app/Contents/jbr/Contents/Home"
+export PATH="$JAVA_HOME/bin:$PATH"
+flutter config --enable-ohos
+flutter config --ohos-sdk "$HOME/Library/OpenHarmony/Sdk"
+flutter precache --ohos
+```
 
-An OpenHarmony host project now lives under `ohos/`. To produce a `.hap` package:
+If `ohos/har/flutter.har` is missing (both platforms):
 
-1. Install the OpenHarmony or HarmonyOS SDK and set `OHOS_SDK_HOME` (or run `flutter config --ohos-sdk <path>`).
-2. Enable the Flutter OHOS feature and fetch artifacts：
+```bash
+bash tool/prepare_ohos_har.sh
+```
 
-   ```shell
-   flutter config --enable-ohos
-   flutter precache --ohos
-   ./tool/prepare_ohos_har.sh
-   ```
-3. Build the QuickJS FFI library for HarmonyOS (needed for the in-app JS engine):
+### 2. Bootstrap project on a new machine
 
-   ```shell
-   ./tool/build_quickjs_ohos.sh
-   ```
+Windows CMD:
 
-   The script compiles `libflutter_qjs_plugin.so` for `arm64-v8a` and `x86_64` with the DevEco / HarmonyOS toolchain. Re-run it whenever you update `flutter_qjs/cxx`.
-4. Build the Hap from the repo root (arm64 by default):
+```bat
+git clone https://github.com/WJ-T/PicaComic_ohos
+cd /d D:\path\to\PicaComic_ohos
+flutter pub get
+cd /d ohos
+where ohpm
+ohpm.bat install --all
+cd /d ..
+```
 
-   ```shell
-   flutter build hap --target-platform=ohos-arm64
-   ```
+macOS (zsh/bash):
 
-   The output appears under `build/ohos/outputs/`.
-5. Build a **release** hap (make sure your `flutter.har` comes from the release engine; debug engines expect JIT artifacts and will crash on AOT packages):
+```bash
+git clone https://github.com/WJ-T/PicaComic_ohos
+cd /path/to/PicaComic_ohos
+flutter pub get
+cd ohos
+which ohpm
+ohpm install --all
+cd ..
+```
 
-   ```shell
-   rm -f ohos/har/flutter.har
-   ./tool/prepare_ohos_har.sh ohos-arm64-release
-   cd ohos
-   ohpm clean && ohpm install --all
-   cd ..
-   HOS_SDK_HOME=/path/to/HarmonyOS_SDK \
-     flutter build hap --release --target-platform=ohos-arm64
-   ```
+### 3. Build release hap (recommended path)
 
-   - `HOS_SDK_HOME` must point to a HarmonyOS SDK that contains both `hmscore` and `openharmony`; the OpenHarmony SDK bundled with DevEco Studio alone is not enough.
-   - After the build finishes, run `unzip -p ohos/entry/build/default/outputs/default/entry-default-signed.hap module.json | grep buildMode` to confirm it is `release`.
-6. If you prefer to keep building/running directly inside DevEco Studio/Hvigor instead of `flutter build hap`, run before each build:
+Windows CMD:
 
-   ```shell
-   ./tool/sync_ohos_flutter_assets.sh [debug|profile|release]
-   ```
-7. Optionally open the `ohos` folder in DevEco Studio 5.0+ to fine-tune signing or launch on a device/emulator.
+```bat
+cd /d D:\path\to\PicaComic_ohos
+flutter clean
+flutter pub get
+cd /d ohos
+ohpm.bat install --all
+cd /d ..
+flutter build hap --release --target-platform=ohos-arm64
+hdc install -r ohos\entry\build\default\outputs\default\entry-default-signed.hap
+```
 
-The `ohos/har` directory is ignored by git—`flutter build hap` copies the required `flutter.har` there automatically. Most pure-Dart plugins work out of the box; native functionality still requires individual OHOS implementations.
+macOS (zsh/bash):
+
+```bash
+cd /path/to/PicaComic_ohos
+flutter clean
+flutter pub get
+cd ohos
+ohpm install --all
+cd ..
+flutter build hap --release --target-platform=ohos-arm64
+hdc install -r ohos/entry/build/default/outputs/default/entry-default-signed.hap
+```
+
+Output:
+
+- `ohos/entry/build/default/outputs/default/entry-default-signed.hap`
+
+### 4. DevEco Studio workflow (optional)
+
+1. Open the `ohos` folder in DevEco Studio.
+2. Run `Sync and Refresh Project`.
+3. Run `Build > Clean Project`.
+4. Run or build Hap from DevEco.
+
+Before the first DevEco build on a new machine (or after dependency changes), execute:
+
+Windows CMD:
+
+```bat
+cd /d D:\path\to\PicaComic_ohos\ohos
+ohpm.bat install --all
+```
+
+macOS (zsh/bash):
+
+```bash
+cd /path/to/PicaComic_ohos/ohos
+ohpm install --all
+```
+
+### 5. Tool scripts in this repo
+
+- `tool/prepare_ohos_har.sh`: copies `flutter.har` from Flutter engine cache into `ohos/har/`.
+- `tool/build_quickjs_ohos.sh`: rebuilds `libflutter_qjs_plugin.so`; run when `flutter_qjs/cxx` changes.
+- `tool/sync_ohos_flutter_assets.sh`: only needed for specific DevEco/hvigor asset-sync workflows; **not required** for normal `flutter build hap`.
+
+### 6. Common issues
+
+- `Error: spawn java ENOENT`
+
+  - Cause: Java is not in `PATH` for hvigor signing.
+  - Fix: set `JAVA_HOME` to DevEco JBR and prepend `JAVA_HOME/bin` to `PATH` (Windows/macOS).
+- `Cannot find module '@ohos/flutter_ohos'` / `file_picker_ohos`
+
+  - Cause: ohpm dependencies not installed or stale cache.
+  - Fix: run `where ohpm` (Windows) or `which ohpm` (macOS) to verify ohpm is in PATH, then run `ohpm(.bat) install --all` in `ohos/`, then Sync/Clean/Rebuild in DevEco.
+- `MissingPluginException(...file_selector...)` on OHOS
+
+  - Cause: old package still running or stale build artifacts.
+  - Fix: rebuild and reinstall latest hap from this branch.
+- System settings version updated but app About page still old
+
+  - Cause: stale `libapp.so`/old installed package.
+  - Fix: `flutter clean` + rebuild hap + reinstall app.
 
 ## Introduction
 

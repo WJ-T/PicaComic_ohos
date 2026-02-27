@@ -24,8 +24,7 @@ void findUpdate(BuildContext context) {
                     fluent.FilledButton(
                         onPressed: () {
                           getDownloadUrl().then((s) {
-                            launchUrlString(s,
-                                mode: LaunchMode.externalApplication);
+                            AppUrlLauncher.launchExternalUrl(s);
                           });
                         },
                         child: Text("下载".tl))

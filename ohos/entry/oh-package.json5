@@ -8,14 +8,6 @@
   "license": "",
   "dependencies": {
     "@ohos/flutter_ohos": "har/flutter.har",
-    "flutter_inappwebview_ohos": "file:../har/flutter_inappwebview_ohos.har",
-    "file_selector_ohos": "file:../har/file_selector_ohos.har",
-    "image_picker_ohos": "file:../har/image_picker_ohos.har",
-    "path_provider_ohos": "file:../har/path_provider_ohos.har",
-    "shared_preferences_ohos": "file:../har/shared_preferences_ohos.har",
-    "url_launcher_ohos": "file:../har/url_launcher_ohos.har",
-    "share_plus": "file:../har/share_plus.har",
-    "image_gallery_saver": "file:../har/image_gallery_saver.har",
     "sqflite": "file:../sqflite",
     "file_picker_ohos": "file:../har/file_picker_ohos.har"
   },
@@ -23,6 +15,8 @@
     "@ohos/hypium": "1.0.6"
   },
   "overrides": {
-    "@ohos/flutter_ohos": "file:../../har/flutter.har"
+    "@ohos/flutter_ohos": "file:../har/flutter.har",
+    "file_picker_ohos": "file:../har/file_picker_ohos.har",
+    "sqflite": "file:../sqflite"
   }
 }

@@ -481,16 +481,17 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
         fluent.ListTile(
           leading: const Icon(Icons.code),
           title: Text("项目地址".tl),
-          onPressed: () => launchUrlString("https://github.com/ccbkv/PicaComic",
-              mode: LaunchMode.externalApplication),
+          onPressed: () => AppUrlLauncher.launchExternalUrl(
+            "https://github.com/ccbkv/PicaComic",
+          ),
           trailing: const Icon(Icons.open_in_new),
         ),
         fluent.ListTile(
           leading: const Icon(Icons.comment_outlined),
           title: Text("问题反馈 (Github)".tl),
-          onPressed: () => launchUrlString(
-              "https://github.com/ccbkv/PicaComic/issues",
-              mode: LaunchMode.externalApplication),
+          onPressed: () => AppUrlLauncher.launchExternalUrl(
+            "https://github.com/ccbkv/PicaComic/issues",
+          ),
           trailing: const Icon(Icons.open_in_new),
         ),
       ],
