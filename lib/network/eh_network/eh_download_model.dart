@@ -9,11 +9,11 @@ import 'package:pica_comic/foundation/image_manager.dart';
 import 'package:pica_comic/network/file_downloader.dart';
 import 'package:pica_comic/network/http_client.dart';
 import 'dart:io';
-import '../../tools/io_tools.dart';
+import '../../utils/io_tools.dart';
 import '../download.dart';
 import 'eh_main_network.dart';
 import 'get_gallery_id.dart';
-import 'package:pica_comic/tools/zip_utils.dart';
+import 'package:pica_comic/utils/zip_utils.dart';
 
 class DownloadedGallery extends DownloadedItem{
   Gallery gallery;

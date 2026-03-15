@@ -9,7 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pica_comic/base.dart';
-import 'package:pica_comic/comic_source/comic_source.dart';
+import 'package:pica_comic/foundation/comic_source/comic_source.dart';
 import 'package:pica_comic/components/components.dart';
 import 'package:pica_comic/foundation/cache_manager.dart';
 import 'package:pica_comic/foundation/history.dart';
@@ -19,8 +19,8 @@ import 'package:pica_comic/foundation/platform_utils.dart';
 import 'package:pica_comic/network/cookie_jar.dart';
 import 'package:pica_comic/network/download.dart';
 import 'package:pica_comic/network/download_model.dart';
-import 'package:pica_comic/tools/io_extensions.dart';
-import 'package:pica_comic/tools/zip_utils.dart';
+import 'package:pica_comic/utils/io_extensions.dart';
+import 'package:pica_comic/utils/zip_utils.dart';
 
 import '../foundation/app.dart';
 

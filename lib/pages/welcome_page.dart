@@ -3,13 +3,13 @@ import 'package:file_picker_ohos/file_picker_ohos.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pica_comic/base.dart';
-import 'package:pica_comic/comic_source/comic_source.dart';
+import 'package:pica_comic/foundation/comic_source/comic_source.dart';
 import 'package:pica_comic/components/components.dart';
 import 'package:pica_comic/pages/main_page.dart';
 import 'package:pica_comic/foundation/app.dart';
 import 'package:pica_comic/foundation/log.dart';
-import 'package:pica_comic/tools/translations.dart';
-import '../tools/font_manager.dart';
+import 'package:pica_comic/utils/translations.dart';
+import '../utils/font_manager.dart';
 import 'settings/settings_page.dart';
 
 import '../main.dart';

@@ -5,8 +5,8 @@ import 'package:pica_comic/base.dart';
 import 'package:pica_comic/components/components.dart';
 import 'package:pica_comic/pages/ehentai/eh_user_cookie_parser.dart';
 import 'package:pica_comic/pages/webview.dart';
-import 'package:pica_comic/tools/translations.dart';
-import 'package:pica_comic/tools/app_url_launcher.dart';
+import 'package:pica_comic/utils/translations.dart';
+import 'package:pica_comic/utils/app_url_launcher.dart';
 
 import '../../foundation/app.dart';
 import '../../network/eh_network/eh_main_network.dart';

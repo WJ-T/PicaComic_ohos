@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:pica_comic/base.dart';
-import 'package:pica_comic/comic_source/comic_source.dart';
+import 'package:pica_comic/foundation/comic_source/comic_source.dart';
 import 'package:pica_comic/foundation/history.dart';
 import 'package:pica_comic/network/app_dio.dart';
 import 'package:pica_comic/network/base_comic.dart';
@@ -19,11 +19,11 @@ import 'package:pica_comic/network/nhentai_network/nhentai_main_network.dart';
 import 'package:pica_comic/pages/comic_page.dart';
 import 'package:pica_comic/pages/picacg/comic_page.dart';
 import 'package:pica_comic/pages/reader/comic_reading_page.dart';
-import 'package:pica_comic/tools/extensions.dart';
-import 'package:pica_comic/tools/io_tools.dart';
+import 'package:pica_comic/utils/extensions.dart';
+import 'package:pica_comic/utils/io_tools.dart';
 import 'package:pica_comic/foundation/ui_mode.dart';
-import 'package:pica_comic/tools/pdf.dart';
-import 'package:pica_comic/tools/tags_translation.dart';
+import 'package:pica_comic/utils/pdf.dart';
+import 'package:pica_comic/utils/tags_translation.dart';
 import 'package:pica_comic/pages/downloading_page.dart';
 import 'package:pica_comic/pages/ehentai/eh_gallery_page.dart';
 import 'package:pica_comic/pages/hitomi/hitomi_comic_page.dart';
@@ -35,8 +35,8 @@ import 'package:pica_comic/network/eh_network/eh_download_model.dart';
 import 'package:pica_comic/network/jm_network/jm_download.dart';
 import 'package:pica_comic/network/picacg_network/picacg_download_model.dart';
 import 'dart:io';
-import 'package:pica_comic/tools/show_delayed_dialog.dart';
-import 'package:pica_comic/tools/translations.dart';
+import 'package:pica_comic/utils/show_delayed_dialog.dart';
+import 'package:pica_comic/utils/translations.dart';
 import 'package:pica_comic/components/components.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
@@ -439,6 +439,22 @@ class DownloadPageLogic extends StateController {
   /// 更新下载类型筛选
   void updateDownloadTypeFilter(DownloadType? type) {
     downloadTypeFilter = type;
+    
+    // 重置所有搜索状态
+    searchMode = false;
+    tagSearchMode = false;
+    categorySearchMode = false;
+    searchInit = false;
+    
+    // 清空搜索输入框
+    searchController?.clear();
+    keyword = "";
+    tagKeyword = "";
+    categoryKeyword = "";
+    
+    // 重置分页
+    resetPagination();
+    
     // 重新应用筛选
     applyTypeFilter();
     update();
@@ -1274,7 +1290,13 @@ class _DownloadPageState extends State<DownloadPage> {
         }
       } else {
         // 默认使用所有漫画
-        fullResultComics = logic.baseComics;
+        if (logic.downloadTypeFilter != null) {
+          fullResultComics = logic.baseComics
+              .where((element) => element.type == logic.downloadTypeFilter)
+              .toList();
+        } else {
+          fullResultComics = logic.baseComics;
+        }
       }
 
       // 计算最大页数
@@ -1979,12 +2001,12 @@ class _DownloadPageState extends State<DownloadPage> {
       );
     }
 
-    // 添加类型筛选按钮
+    // 添加漫画源筛选按钮
     if (!logic.selecting && !logic.searchMode) {
       actions.add(
         Builder(
           builder: (buttonContext) => Tooltip(
-            message: "类型筛选".tl,
+            message: "漫画源筛选".tl,
             child: IconButton(
               icon: const Icon(Icons.filter_list),
               onPressed: () {

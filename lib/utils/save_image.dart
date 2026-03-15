@@ -5,9 +5,9 @@ import 'package:file_picker_ohos/file_picker_ohos.dart' as fp;
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:pica_comic/components/components.dart';
 import 'package:pica_comic/foundation/log.dart';
-import 'package:pica_comic/tools/file_type.dart';
-import 'package:pica_comic/tools/io_tools.dart';
-import 'package:pica_comic/tools/translations.dart';
+import 'package:pica_comic/utils/file_type.dart';
+import 'package:pica_comic/utils/io_tools.dart';
+import 'package:pica_comic/utils/translations.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:pica_comic/foundation/platform_utils.dart';
 

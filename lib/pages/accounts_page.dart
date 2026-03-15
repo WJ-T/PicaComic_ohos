@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pica_comic/comic_source/comic_source.dart';
+import 'package:pica_comic/foundation/comic_source/comic_source.dart';
 import 'package:pica_comic/components/components.dart';
 import 'package:pica_comic/foundation/app.dart';
 import 'package:pica_comic/foundation/ui_mode.dart';
-import 'package:pica_comic/tools/translations.dart';
-import 'package:pica_comic/tools/app_url_launcher.dart';
+import 'package:pica_comic/utils/translations.dart';
+import 'package:pica_comic/utils/app_url_launcher.dart';
 
 class AccountsPageLogic extends StateController {
   final _reLogin = <String, bool>{};
