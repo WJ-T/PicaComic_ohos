@@ -220,26 +220,57 @@ class _ComicSourceSettingsState extends State<ComicSourceSettings> {
   }
 
   void chooseFile() async {
-    const XTypeGroup typeGroup = XTypeGroup(
-      extensions: <String>['js'],
-      uniformTypeIdentifiers: <String>['public.javascript-source'],
-    );
-    final XFile? file =
-        await openFile(acceptedTypeGroups: <XTypeGroup>[typeGroup]);
-    if (file == null) return;
     try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['js'],
+        withData: true,
+        allowMultiple: false,
+      );
+      if (result == null) {
+        try {
+          result = await FilePicker.platform.pickFiles(
+            withData: true,
+            allowMultiple: false,
+          );
+        } on PlatformException {
+          return;
+        }
+      }
+      if (result == null || result.files.isEmpty) return;
+      final file = result.files.single;
+      final lowerName = file.name.toLowerCase();
+      if (!lowerName.endsWith('.js')) {
+        showToast(message: "仅支持 .js 文件".tl);
+        return;
+      }
+      String content;
+      if (file.path != null && file.path!.isNotEmpty && File(file.path!).existsSync()) {
+        content = File(file.path!).readAsStringSync();
+      } else if (file.bytes != null && file.bytes!.isNotEmpty) {
+        content = utf8.decode(file.bytes!, allowMalformed: true);
+      } else {
+        showToast(message: "读取文件失败".tl);
+        return;
+      }
       var fileName = file.name;
-      // file.readAsString 会导致中文乱码
-      var bytes = await file.readAsBytes();
-      var content = utf8.decode(bytes);
       await addSource(content, fileName);
-    } catch (e) {
+    } on PlatformException catch (e) {
+      if (e.code == 'unknown_activity' || e.code == 'unknown_activity_error') {
+        return;
+      }
+      LogManager.addLog(
+          LogLevel.error, "ComicSourceSettings.chooseFile", e.toString());
+      showToast(message: e.toString());
+    } catch (e, s) {
+      LogManager.addLog(
+          LogLevel.error, "ComicSourceSettings.chooseFile", "$e\n$s");
       showToast(message: e.toString());
     }
   }
 
   void help() {
-    launchUrlString(
+    AppUrlLauncher.launchExternalUrl(
       "https://github.com/ccbkv/PicaComic/blob/master/doc/comic_source.md",
     );
   }
@@ -511,7 +542,7 @@ class _ComicSourceListState extends State<_ComicSourceList> {
                   children: [
                     TextButton(
                       onPressed: () {
-                        launchUrlString(
+                        AppUrlLauncher.launchExternalUrl(
                           "https://github.com/venera-app/venera/blob/master/doc/comic_source.md",
                         );
                       },

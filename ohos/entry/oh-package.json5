@@ -9,7 +9,8 @@
   "dependencies": {
     "@ohos/flutter_ohos": "har/flutter.har",
     "sqflite": "file:../sqflite",
-    "file_picker_ohos": "file:../har/file_picker_ohos.har"
+    "file_picker_ohos": "file:../har/file_picker_ohos.har",
+    "flutter_inappwebview_ohos": "file:../har/flutter_inappwebview_ohos.har"
   },
   "devDependencies": {
     "@ohos/hypium": "1.0.6"

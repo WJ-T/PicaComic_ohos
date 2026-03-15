@@ -20,7 +20,8 @@ class App {
   static bool get isMacOS => Platform.isMacOS;
   static bool get isDesktop =>
       Platform.isWindows || Platform.isLinux || Platform.isMacOS;
-  static bool get isMobile => Platform.isAndroid || Platform.isIOS;
+  static bool get isMobile =>
+      Platform.isAndroid || Platform.isIOS || PlatformUtils.isOhos;
 
   static bool get isFluent =>
       appdata.settings.length > 91 && appdata.settings[91] == "1";

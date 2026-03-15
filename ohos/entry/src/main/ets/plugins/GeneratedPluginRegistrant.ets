@@ -1,4 +1,5 @@
 import { FlutterEngine, Log } from '@ohos/flutter_ohos';
+import InAppWebViewFlutterPlugin from 'flutter_inappwebview_ohos';
 import FilePickerPlugin from 'file_picker_ohos';
 
 /**
@@ -13,6 +14,7 @@ export class GeneratedPluginRegistrant {
 
   static registerWith(flutterEngine: FlutterEngine) {
     try {
+      flutterEngine.getPlugins()?.add(new InAppWebViewFlutterPlugin());
       flutterEngine.getPlugins()?.add(new FilePickerPlugin());
     } catch (e) {
       Log.e(
