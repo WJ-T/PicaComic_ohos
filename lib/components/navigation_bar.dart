@@ -330,28 +330,29 @@ class NaviPaneState extends State<NaviPane>
   }
 
   Widget buildTop() {
-    return Material(
-      child: Container(
-        padding: const EdgeInsets.only(left: 16, right: 16),
-        height: _kTopBarHeight,
-        width: double.infinity,
-        child: Row(
-          children: [
-            Text(
-              widget.paneItems[currentPage].label,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const Spacer(),
-            for (var action in widget.paneActions)
-              Tooltip(
-                message: action.label,
-                child: IconButton(
-                  icon: Icon(action.icon),
-                  onPressed: action.onTap,
-                ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withOpacity(0.86),
+      ),
+      height: _kTopBarHeight,
+      width: double.infinity,
+      padding: const EdgeInsets.only(left: 16, right: 16),
+      child: Row(
+        children: [
+          Text(
+            widget.paneItems[currentPage].label,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const Spacer(),
+          for (var action in widget.paneActions)
+            Tooltip(
+              message: action.label,
+              child: IconButton(
+                icon: Icon(action.icon),
+                onPressed: action.onTap,
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -739,22 +740,100 @@ class _NaviMainViewState extends State<_NaviMainView> {
       return state.buildMainViewContent();
     }
     var shouldShowAppBar = state.controller.value < 2;
-    return Column(
-      children: [
-        if (shouldShowAppBar) state.buildTop().paddingTop(context.padding.top),
-        Expanded(
-          child: MediaQuery.removePadding(
-            context: context,
-            removeTop: shouldShowAppBar,
+    final useAdaptive = App.isIOS &&
+        (appdata.settings.length > 90 ? appdata.settings[90] == "1" : false);
+    if (shouldShowAppBar && useAdaptive) {
+      return AdaptiveScaffold(
+        appBar: AdaptiveAppBar(
+          title: state.widget.paneItems[state.currentPage].label,
+          useNativeToolbar: true,
+          actions: [
+            for (var action in state.widget.paneActions)
+              AdaptiveAppBarAction(
+                onPressed: action.onTap,
+                iosSymbol: action.label == "设置" ? 'gear' : 'magnifyingglass',
+                icon: action.icon,
+              ),
+          ],
+        ),
+        bottomNavigationBar: AdaptiveBottomNavigationBar(
+          useNativeBottomBar: true,
+          items: List.generate(state.widget.paneItems.length, (index) {
+            String icon;
+            switch (index) {
+              case 0:
+                icon = 'house.fill';
+                break;
+              case 1:
+                icon = 'heart.fill';
+                break;
+              case 2:
+                icon = 'safari.fill';
+                break;
+              default:
+                icon = 'square.grid.2x2.fill';
+            }
+            return AdaptiveNavigationDestination(
+              icon: icon,
+              label: state.widget.paneItems[index].label,
+            );
+          }),
+          selectedIndex: state.currentPage,
+          onTap: (index) {
+            state.updatePage(index);
+          },
+        ),
+        body: SafeArea(
+          top: false,
+          bottom: false,
+          child: Padding(
+            padding: EdgeInsets.only(
+              top: NaviPaneState._kTopBarHeight,
+              bottom: state.bottomBarHeight,
+            ),
             child: AnimatedSwitcher(
               duration: _fastAnimationDuration,
               child: state.buildMainViewContent(),
             ),
           ),
         ),
-        if (shouldShowAppBar)
-          state.buildBottom().paddingBottom(context.padding.bottom),
-      ],
-    );
+      );
+    } else {
+      return Scaffold(
+        appBar: shouldShowAppBar
+            ? AppBar(
+                elevation: 0,
+                scrolledUnderElevation: 0,
+                toolbarHeight: NaviPaneState._kTopBarHeight,
+                titleSpacing: 16,
+                backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.86),
+                title: Text(
+                  state.widget.paneItems[state.currentPage].label,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                actions: [
+                  for (var action in state.widget.paneActions)
+                    Tooltip(
+                      message: action.label,
+                      child: IconButton(
+                        icon: Icon(action.icon),
+                        onPressed: action.onTap,
+                      ),
+                    ),
+                ],
+              )
+            : null,
+        body: AnimatedSwitcher(
+          duration: _fastAnimationDuration,
+          child: state.buildMainViewContent(),
+        ),
+        bottomNavigationBar: shouldShowAppBar
+            ? SafeArea(top: false, bottom: true, child: state.buildBottom())
+            : null,
+      );
+    }
   }
 }

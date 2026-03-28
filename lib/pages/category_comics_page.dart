@@ -49,7 +49,7 @@ class _CategoryComicsPageState extends State<CategoryComicsPage> {
           return true;
         }).toList();
         optionsValue = options.map((e) => e.options.keys.first).toList();
-        
+
         // 初始化选中的分类
         if (widget.param != null && widget.param!.contains(',')) {
           selectedCategories = widget.param!.split(',');
@@ -74,7 +74,7 @@ class _CategoryComicsPageState extends State<CategoryComicsPage> {
     final source = ComicSource.sources
         .firstWhere((e) => e.categoryData?.key == widget.categoryKey);
     final categories = _getCategories(source);
-    
+
     if (App.isFluent) {
       return fluent.ScaffoldPage(
         header: fluent.PageHeader(
@@ -164,7 +164,9 @@ class _CategoryComicsPageState extends State<CategoryComicsPage> {
     }
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: Appbar(
+        scrolledUnderElevation: 0,
         title: Text(
           widget.displayTitle ??
               (selectedCategories.length > 1
@@ -241,7 +243,7 @@ class _CategoryComicsPageState extends State<CategoryComicsPage> {
               ),
             ),
           ],
-          
+
           Expanded(
             child: _CategoryComicsList(
               key: ValueKey(
@@ -258,7 +260,7 @@ class _CategoryComicsPageState extends State<CategoryComicsPage> {
       ),
     );
   }
-  
+
   // 获取分类列表
   List<String> _getCategories(ComicSource source) {
     // 尝试从picacg源获取分类列表
@@ -306,7 +308,7 @@ class _CategoryComicsPageState extends State<CategoryComicsPage> {
         "重口地帶"
       ];
     }
-    
+
     // 默认返回当前分类
     return [widget.category];
   }

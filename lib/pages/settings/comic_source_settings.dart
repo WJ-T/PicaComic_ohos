@@ -543,7 +543,7 @@ class _ComicSourceListState extends State<_ComicSourceList> {
                     TextButton(
                       onPressed: () {
                         AppUrlLauncher.launchExternalUrl(
-                          "https://github.com/venera-app/venera/blob/master/doc/comic_source.md",
+                          "https://github.com/ccbkv/PicaComic/blob/master/doc/comic_source.md",
                         );
                       },
                       child: Text("帮助".tl),

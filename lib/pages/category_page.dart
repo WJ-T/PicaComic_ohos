@@ -9,6 +9,7 @@ import 'package:pica_comic/pages/category_comics_page.dart';
 import 'package:pica_comic/base.dart';
 import 'package:pica_comic/utils/translations.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
+import 'package:pica_comic/pages/settings/settings_page.dart';
 
 class AllCategoryPage extends StatefulWidget {
   const AllCategoryPage({super.key});
@@ -19,13 +20,13 @@ class AllCategoryPage extends StatefulWidget {
 
 class _AllCategoryPageState extends State<AllCategoryPage>
     with AutomaticKeepAliveClientMixin<AllCategoryPage> {
-  
+
   @override
   bool get wantKeepAlive => true; // 保持页面状态
-  
+
   late TabController _tabController;
   int _fluentCurrentIndex = 0;
-  
+
   @override
   void initState() {
     super.initState();
@@ -37,12 +38,12 @@ class _AllCategoryPageState extends State<AllCategoryPage>
         .map((e) => e!)
         .toList();
     categories = categories.where((element) => allCategories.contains(element)).toList();
-    
+
     _tabController = TabController(
       length: categories.length,
       vsync: Navigator.of(context),
     );
-    
+
     // 添加监听器，在标签切换时保存状态
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
@@ -51,11 +52,11 @@ class _AllCategoryPageState extends State<AllCategoryPage>
       }
     });
   }
-  
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    
+
     // 从PageStorage恢复之前保存的标签索引
     final savedIndex = PageStorage.of(context).readState(context, identifier: 'category_tab_index') as int?;
     if (savedIndex != null && savedIndex >= 0 && savedIndex < _tabController.length) {
@@ -63,17 +64,51 @@ class _AllCategoryPageState extends State<AllCategoryPage>
       _fluentCurrentIndex = savedIndex;
     }
   }
-  
+
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
   }
-  
+
+  void _showCategoryPagesSettings() {
+    showPopUpWidget(
+        App.globalContext!,
+        MultiPagesFilter(
+          "分类页面".tl,
+          67,
+          categoryPages(),
+          onChange: () {
+            setState(() {});
+          },
+        ));
+  }
+
+  Widget buildEmpty() {
+    var msg = "没有分类页面".tl;
+    msg += '\n';
+    VoidCallback onTap;
+    if (ComicSource.sources.isEmpty) {
+      msg += "请添加一些源".tl;
+      onTap = () {
+        App.globalContext!.to(() => const SettingsPage());
+      };
+    } else {
+      msg += "请检查您的设置".tl;
+      onTap = _showCategoryPagesSettings;
+    }
+    return NetworkError(
+      message: msg,
+      retry: onTap,
+      withAppbar: false,
+      buttonText: "管理".tl,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context); // 必须调用，以使AutomaticKeepAliveClientMixin生效
-    
+
     var categories = appdata.appSettings.categoryPages;
     var allCategories = ComicSource.sources
         .map((e) => e.categoryData?.key)
@@ -89,7 +124,7 @@ class _AllCategoryPageState extends State<AllCategoryPage>
         length: categories.length,
         vsync: Navigator.of(context),
       );
-      
+
       // 重新添加监听器
       _tabController.addListener(() {
         if (_tabController.indexIsChanging) {
@@ -97,6 +132,10 @@ class _AllCategoryPageState extends State<AllCategoryPage>
           PageStorage.of(context).writeState(context, _tabController.index, identifier: 'category_tab_index');
         }
       });
+    }
+
+    if (categories.isEmpty) {
+      return buildEmpty();
     }
 
     if (App.isFluent) {
@@ -128,7 +167,8 @@ class _AllCategoryPageState extends State<AllCategoryPage>
       child: Column(
         children: [
           SizedBox(height: MediaQuery.of(context).padding.top),
-          FilledTabBar(
+          AppTabBar(
+            key: PageStorageKey(categories.toString()),
             tabs: categories.map((e) {
               String title = e;
               try {
@@ -142,6 +182,11 @@ class _AllCategoryPageState extends State<AllCategoryPage>
               );
             }).toList(),
             controller: _tabController,
+            actionButton: TabActionButton(
+              icon: const Icon(Icons.add),
+              text: "添加".tl,
+              onPressed: _showCategoryPagesSettings,
+            ),
           ),
           Expanded(
             child: TabBarView(

@@ -35,7 +35,7 @@ class DesktopMenuRoute<T> extends PopupRoute<T> {
     if (top + height > size.height - 15) {
       top = size.height - height - 15;
     }
-    
+
     if (App.isFluent) {
       return Stack(
         children: [
@@ -161,4 +161,140 @@ class DesktopMenuEntry {
   final void Function() onClick;
 
   DesktopMenuEntry({required this.text, this.icon, required this.onClick});
+}
+
+void showMenuX(BuildContext context, Offset location, List<MenuEntry> entries, {Widget? title}) {
+  Navigator.of(context, rootNavigator: true).push(_MenuRoute(entries, location, title: title));
+}
+
+class _MenuRoute<T> extends PopupRoute<T> {
+  final List<MenuEntry> entries;
+
+  final Offset location;
+
+  final Widget? title;
+
+  _MenuRoute(this.entries, this.location, {this.title});
+
+  @override
+  Color? get barrierColor => Colors.transparent;
+
+  @override
+  bool get barrierDismissible => true;
+
+  @override
+  String? get barrierLabel => "menu";
+
+  double get entryHeight => App.isMobile ? 42 : 36;
+
+  @override
+  Widget buildPage(BuildContext context, Animation<double> animation,
+      Animation<double> secondaryAnimation) {
+    var width = entries.first.icon == null ? 216.0 : 242.0;
+    final size = MediaQuery.of(context).size;
+    var left = location.dx;
+    if (left < 10) {
+      left = 10;
+    }
+    if (left + width > size.width - 10) {
+      left = size.width - width - 10;
+    }
+    var top = location.dy;
+    var height = 16 + entryHeight * entries.length + (title != null ? 60 : 0);
+    if (top + height > size.height - 15) {
+      top = size.height - height - 15;
+    }
+    return Stack(
+      children: [
+        Positioned(
+          left: left,
+          top: top,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              border: context.brightness == Brightness.dark
+                  ? Border.all(color: context.colorScheme.outlineVariant)
+                  : null,
+              boxShadow: [
+                BoxShadow(
+                  color: context.colorScheme.shadow.withOpacity(0.2),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: Material(
+                color: context.colorScheme.surface,
+                borderRadius: BorderRadius.circular(4),
+                child: Container(
+                  width: width,
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (title != null) ...[
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                          child: title!,
+                        ),
+                        const Divider(height: 1),
+                        const SizedBox(height: 8),
+                      ],
+                      ...entries.map((e) => buildEntry(e, context)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        )
+      ],
+    );
+  }
+
+  Widget buildEntry(MenuEntry entry, BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(4),
+      onTap: () {
+        Navigator.of(context).pop();
+        entry.onClick();
+      },
+      child: SizedBox(
+        height: entryHeight,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              if (entry.icon != null)
+                Icon(
+                  entry.icon,
+                  size: 18,
+                  color: entry.color,
+                ),
+              const SizedBox(width: 12),
+              Text(
+                  entry.text,
+                  style: TextStyle(color: entry.color)
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Duration get transitionDuration => const Duration(milliseconds: 200);
+
+  @override
+  Widget buildTransitions(BuildContext context, Animation<double> animation,
+      Animation<double> secondaryAnimation, Widget child) {
+    return FadeTransition(
+      opacity: animation.drive(Tween<double>(begin: 0, end: 1)
+          .chain(CurveTween(curve: Curves.ease))),
+      child: child,
+    );
+  }
 }

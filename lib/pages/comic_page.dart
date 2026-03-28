@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pica_comic/base.dart';
@@ -117,8 +118,7 @@ class _ComicPageImpl extends BaseComicPage<ComicInfoData> {
             DownloadManager().addCustomDownload(data!, selectedEps);
             App.globalBack();
             showToast(message: "已加入下载队列".tl);
-          }, downloaded),
-          useSurfaceTintColor: true);
+          }, downloaded));
     }
   }
 
@@ -202,6 +202,7 @@ class _ComicPageImpl extends BaseComicPage<ComicInfoData> {
 
   @override
   void tapOnTag(String tag, String key) {
+    HistoryManager.addSearchHistory(tag);
     context.to(
           () => SearchResultPage(
         keyword: tag,
@@ -267,6 +268,9 @@ class _ComicPageImpl extends BaseComicPage<ComicInfoData> {
 
   @override
   bool? get favoriteOnPlatformInitial => data?.isFavorite;
+
+  @override
+  double? get stars => data?.stars;
 
   ComicPageLogic<ComicInfoData> get logic =>
       StateController.find<ComicPageLogic<ComicInfoData>>(tag: tag);
@@ -732,17 +736,19 @@ abstract class BaseComicPage<T extends Object> extends StatelessWidget {
   /// interface for building more info widget
   Widget? get buildMoreInfo => null;
 
+  /// stars rating
+  double? get stars => null;
+
   /// translation tags to CN
   bool get enableTranslationToCN {
     var source = ComicSource.find(sourceKey);
-    // For JS plugins, check if enableTagsTranslate is true
-    if (source != null && !source.isBuiltIn && source.enableTagsTranslate) {
+    // Check if enableTagsTranslate is true for both JS plugins and built-in sources
+    if (source != null && source.enableTagsTranslate) {
       var shouldTranslate = App.locale.languageCode == "zh";
-     // print("DEBUG: JS Plugin $sourceKey enableTagsTranslate=${source.enableTagsTranslate}, language=${App.locale.languageCode}, shouldTranslate=$shouldTranslate");
+     // print("DEBUG: Source $sourceKey enableTagsTranslate=${source.enableTagsTranslate}, language=${App.locale.languageCode}, shouldTranslate=$shouldTranslate");
       return shouldTranslate;
     }
-    // For built-in sources, use the default behavior
-   // print("DEBUG: Built-in source $sourceKey or enableTagsTranslate=false");
+   // print("DEBUG: Source $sourceKey enableTagsTranslate=false or not found");
     return false;
   }
 
@@ -997,43 +1003,53 @@ abstract class BaseComicPage<T extends Object> extends StatelessWidget {
     );
   }
 
-  void showMoreActions() {
-    final width = MediaQuery.of(context).size.width;
-    showMenu(
-      context: context,
-      position: RelativeRect.fromLTRB(width, 0, 0, 0),
-      items: [
-        PopupMenuItem(
-          child: Text("复制标题".tl),
-          onTap: () {
+ void showMoreActions() {
+    var context = App.globalContext!;
+    showMenuX(
+        context,
+        Offset(
+          context.width - 16,
+          context.padding.top,
+        ),
+        [
+        MenuEntry(
+          icon: Icons.copy,
+          text: "复制标题".tl,
+          onClick: () {
             var text = title!;
             if (url != null) {
               text += ":$url";
             }
             Clipboard.setData(ClipboardData(text: text));
-            showToast(message: "已复制".tl, icon: const Icon(Icons.check));
+            context.showMessage(message: "已复制".tl);
           },
         ),
-        if (url != null)
-          PopupMenuItem(
-            child: Text("复制链接".tl),
-            onTap: () {
-              Clipboard.setData(ClipboardData(text: url!));
-              showToast(message: "已复制".tl, icon: const Icon(Icons.check));
+          MenuEntry(
+            icon: Icons.copy_rounded,
+            text: "复制ID".tl,
+            onClick: () {
+              Clipboard.setData(ClipboardData(text: id));
+              context.showMessage(message: "已复制".tl);
             },
           ),
-        PopupMenuItem(
-          child: Text("分享".tl),
-          onTap: () {
-            var text = title!;
-            if (url != null) {
-              text += ":$url";
-            }
-            Share.share(text);
-          },
-        ),
-      ],
-    );
+          if (url != null)
+            MenuEntry(
+              icon: Icons.link,
+              text: "复制URL".tl,
+              onClick: () {
+                Clipboard.setData(ClipboardData(text: url!));
+                context.showMessage(message: "已复制".tl);
+              },
+            ),
+          if (url != null)
+            MenuEntry(
+              icon: Icons.open_in_browser,
+              text: "打开网页".tl,
+              onClick: () {
+                launchUrlString(url!);
+              },
+            ),
+        ]);
   }
 
   Widget buildComicInfo(ComicPageLogic<T> logic, BuildContext context,
@@ -1147,7 +1163,7 @@ abstract class BaseComicPage<T extends Object> extends StatelessWidget {
         ),
       ),
       onTap: () =>
-          App.globalTo(() => ShowImagePageWithHero(cover!, "image$tag")),
+          App.globalTo(() => ShowImagePageWithHero(cover!, "image$tag", title: title)),
     );
   }
 
@@ -1341,7 +1357,7 @@ abstract class BaseComicPage<T extends Object> extends StatelessWidget {
 
     final width = MediaQuery.of(context).size.width;
     bool isMobile = width < changePoint;
-    bool hasHistory = logic.history != null && 
+    bool hasHistory = logic.history != null &&
         (logic.history!.ep > 1 || logic.history!.page > 1);
 
     return Column(
@@ -1431,25 +1447,23 @@ abstract class BaseComicPage<T extends Object> extends StatelessWidget {
                   onPressed: () {
                     showDialog(
                       context: context,
-                      builder: (context) => AlertDialog(
-                        title: Text("从本地下载中删除?".tl),
+                      builder: (context) => ContentDialog(
+                        title: "从本地下载中删除?".tl,
+                        content: const SizedBox.shrink(),
                         actions: [
-                          TextButton(
+                          FilledButton(
                             onPressed: () async {
-                              Navigator.of(context).pop();
+                              context.pop();
                               await downloadManager.delete([downloadedId]);
                               showToast(message: "已删除".tl);
                               logic.update();
                               StateController.findOrNull(tag: "me_page_downloads")
                                   ?.update();
                             },
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color.fromARGB(255, 197, 52, 42),
+                            ),
                             child: Text("删除".tl),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                            child: Text("取消".tl),
                           ),
                         ],
                       ),
@@ -1570,10 +1584,43 @@ abstract class BaseComicPage<T extends Object> extends StatelessWidget {
       );
     }
 
+    // Display stars rating if available
+    if (stars != null) {
+      yield Padding(
+        padding: const EdgeInsets.fromLTRB(18, 8, 30, 8),
+        child: Row(
+          children: [
+            const SizedBox(width: 8),
+            ...List.generate(5, (index) {
+              double starValue = index + 1;
+              IconData icon;
+              if (stars! >= starValue) {
+                icon = Icons.star;
+              } else if (stars! >= starValue - 0.5) {
+                icon = Icons.star_half;
+              } else {
+                icon = Icons.star_border;
+              }
+              return Icon(
+                icon,
+                color: Colors.amber,
+                size: 20,
+              );
+            }),
+            const SizedBox(width: 8),
+            Text(
+              stars!.toStringAsFixed(1),
+              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
+            ),
+          ],
+        ),
+      );
+    }
+
     _logic.colorIndex = 0;
 
     //print("DEBUG: Building info cards for source $sourceKey, tags: ${tags?.keys}, enableTranslationToCN: $enableTranslationToCN");
-    
+
     for (var key in tags!.keys) {
      // print("DEBUG: Processing tag category '$key' with ${tags![key]!.length} tags");
       yield Padding(
@@ -1753,7 +1800,8 @@ abstract class BaseComicPage<T extends Object> extends StatelessWidget {
     if (thumbnails == null ||
         (thumbnails!.thumbnails.isEmpty &&
             !tag.contains("Hitomi") &&
-            !tag.contains("Eh"))) return [];
+            !tag.contains("Eh") &&
+            !tag.contains("ehentai"))) return [];
     if (thumbnails!.thumbnails.isEmpty) {
       thumbnails!.get(update);
     }
@@ -1874,7 +1922,6 @@ abstract class BaseComicPage<T extends Object> extends StatelessWidget {
         App.globalContext!,
         widget,
         title: "收藏漫画".tl,
-        useSurfaceTintColor: true,
       );
     }
   }
@@ -2088,7 +2135,7 @@ class _FavoriteComicWidgetState extends State<FavoriteComicWidget> {
                     ),
                   ),
                 const Spacer(),
-                if (isSelected) const AnimatedCheckIcon()
+                if (isSelected) AnimatedCheckIcon()
               ],
             ),
           ),

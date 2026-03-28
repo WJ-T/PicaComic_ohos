@@ -46,9 +46,9 @@ typedef CommentsLoader = Future<Res<List<Comment>>> Function(
 typedef SendCommentFunc = Future<Res<bool>> Function(
     String id, String? subId, String content, String? replyTo);
 
-typedef GetImageLoadingConfigFunc = Map<String, dynamic> Function(
+typedef GetImageLoadingConfigFunc = Future<Map<String, dynamic>> Function(
     String imageKey, String comicId, String epId)?;
-typedef GetThumbnailLoadingConfigFunc = Map<String, dynamic> Function(
+typedef GetThumbnailLoadingConfigFunc = Future<Map<String, dynamic>> Function(
     String imageKey)?;
 
 class ComicSource {
@@ -142,10 +142,10 @@ class ComicSource {
   /// Load comic pages.
   final LoadComicPagesFunc? loadComicPages;
 
-  final Map<String, dynamic> Function(
+  final Future<Map<String, dynamic>> Function(
       String imageKey, String comicId, String epId)? getImageLoadingConfig;
 
-  final Map<String, dynamic> Function(String imageKey)?
+  final Future<Map<String, dynamic>> Function(String imageKey)?
       getThumbnailLoadingConfig;
 
   final String? matchBriefIdReg;
@@ -495,6 +495,8 @@ class ComicInfoData with HistoryMixin {
 
   final String? subId;
 
+  final double? stars;
+
   const ComicInfoData(
       this.title,
       this.subTitle,
@@ -509,7 +511,8 @@ class ComicInfoData with HistoryMixin {
       this.sourceKey,
       this.comicId,
       {this.isFavorite,
-      this.subId});
+      this.subId,
+      this.stars});
 
   Map<String, dynamic> toJson() {
     return {
@@ -523,6 +526,7 @@ class ComicInfoData with HistoryMixin {
       "comicId": comicId,
       "isFavorite": isFavorite,
       "subId": subId,
+      "stars": stars,
     };
   }
 
@@ -548,7 +552,8 @@ class ComicInfoData with HistoryMixin {
         thumbnailMaxPage = 0,
         suggestions = null,
         isFavorite = json["isFavorite"],
-        subId = json["subId"];
+        subId = json["subId"],
+        stars = json["stars"] != null ? (json["stars"] as num).toDouble() : null;
 
   @override
   HistoryType get historyType => HistoryType(sourceKey.hashCode);

@@ -140,7 +140,7 @@ class MainPageState extends State<MainPage> {
     if (res != true) return;
     var info = await getUpdatesInfo();
     if (info == null) return;
-    
+
     if (App.isFluent) {
       fluent.showDialog(
         context: App.globalContext!,
@@ -174,19 +174,18 @@ class MainPageState extends State<MainPage> {
     showDialog(
         context: App.globalContext!,
         builder: (dialogContext) {
-          return AlertDialog(
-            title: Text("有可用更新".tl),
-            content: Text(info),
+          return ContentDialog(
+            title: "有可用更新".tl,
+            content: Text(info).paddingHorizontal(16).paddingVertical(8),
             actions: [
-              TextButton(
+              Button.text(
                   onPressed: () {
                     dialogContext.pop();
                     appdata.settings[2] = "0";
                     appdata.writeData();
                   },
                   child: const Text("关闭更新检查")),
-              TextButton(onPressed: dialogContext.pop, child: Text("取消".tl)),
-              TextButton(
+              Button.filled(
                   onPressed: () {
                     getDownloadUrl().then((s) {
                       AppUrlLauncher.launchExternalUrl(s);
@@ -209,17 +208,16 @@ class MainPageState extends State<MainPage> {
           showDialog(
             context: context,
             builder: (dialogContext) {
-              return AlertDialog(
-                title: Text("下载管理器".tl),
-                content: Text("继续未完成的下载?".tl),
+              return ContentDialog(
+                title: "下载管理器".tl,
+                content: Text("继续未完成的下载?".tl).paddingHorizontal(16).paddingVertical(8),
                 actions: [
-                  TextButton(onPressed: dialogContext.pop, child: Text("否".tl)),
-                  TextButton(
+                  Button.text(
                       onPressed: () {
                         downloadManager.start();
                         dialogContext.pop();
                       },
-                      child: Text("是".tl))
+                      child: Text("是".tl)),
                 ],
               );
             },
@@ -234,10 +232,10 @@ class MainPageState extends State<MainPage> {
     _navigatorKey = GlobalKey();
     App.mainNavigatorKey = _navigatorKey;
     _observer = NaviObserver();
-    
+
     // Initialize with the initial page setting, not the current page state
     _currentIndex = int.parse(appdata.settings[23]);
-    
+
     // Keep all original functionality
     _login();
     notifications.requestPermission();
@@ -248,7 +246,7 @@ class MainPageState extends State<MainPage> {
     if (appdata.firstUse[3] == "0") {
       appdata.firstUse[3] = "1";
       appdata.writeData();
-      
+
       // 在Android平台上同时更新AndroidFirstUseManager
       if (App.isAndroid) {
         AndroidFirstUseManager.instance.setFirstUse3("1");
@@ -257,7 +255,7 @@ class MainPageState extends State<MainPage> {
 
     Future.delayed(const Duration(milliseconds: 300), () => Webdav.syncData())
         .then((v) => checkClipboard());
-    
+
     super.initState();
   }
 

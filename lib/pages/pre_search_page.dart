@@ -8,13 +8,14 @@ import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:pica_comic/foundation/pair.dart';
 import 'package:pica_comic/pages/comic_page.dart';
 import 'package:pica_comic/pages/search_result_page.dart';
+import 'package:pica_comic/pages/aggregated_search_page.dart';
 import 'package:pica_comic/utils/app_links.dart';
 import 'package:pica_comic/utils/extensions.dart';
 import 'package:pica_comic/utils/tags_translation.dart';
 import 'package:pica_comic/utils/translations.dart';
 import 'package:sliver_tools/sliver_tools.dart';
 
-typedef FilterChip = FilterChipFixedWidth;
+
 
 class _FloatingSearchBar extends StatefulWidget {
   const _FloatingSearchBar(
@@ -125,6 +126,8 @@ class PreSearchController extends StateController {
 
   bool limitHistory = true;
 
+  bool aggregatedSearch = false;
+
   void updateOptions() {
     for (var source in ComicSource.sources) {
       if (source.key == target &&
@@ -185,13 +188,21 @@ class PreSearchPage extends StatelessWidget {
     }
 
     var context = App.mainNavigatorKey!.currentContext!;
-    context.to(
-      () => SearchResultPage(
-        keyword: keyword,
-        sourceKey: type ?? searchController.target,
-        options: searchController.options,
-      ),
-    );
+
+    if (searchController.aggregatedSearch) {
+      // 聚合搜索：同時搜索所有可用的漫畫源
+      context.to(
+        () => AggregatedSearchPage(keyword: keyword),
+      );
+    } else {
+      context.to(
+        () => SearchResultPage(
+          keyword: keyword,
+          sourceKey: type ?? searchController.target,
+          options: searchController.options,
+        ),
+      );
+    }
   }
 
   void findSuggestions() {
@@ -568,10 +579,11 @@ class PreSearchPage extends StatelessWidget {
   Widget buildTargetSelector(BuildContext context) {
     buildItem(PreSearchController logic, String id, String text) => Padding(
           padding: const EdgeInsets.all(4),
-          child: FilterChip(
+          child: FilterChipFixedWidth(
             label: Text(text),
-            selected: logic.target == id,
+            selected: logic.target == id || logic.aggregatedSearch,
             onSelected: (b) {
+              if (logic.aggregatedSearch) return;
               logic.updateTarget(id);
             },
           ),
@@ -590,6 +602,17 @@ class PreSearchPage extends StatelessWidget {
                   buildItem(logic, source.key, source.name.tl)
               ],
             ).paddingHorizontal(12),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text("聚合搜索".tl),
+              leading: Checkbox(
+                value: logic.aggregatedSearch,
+                onChanged: (value) {
+                  logic.aggregatedSearch = value ?? false;
+                  logic.update();
+                },
+              ),
+            ),
             const SizedBox(height: 8)
           ],
         );
@@ -625,6 +648,11 @@ class PreSearchPage extends StatelessWidget {
     return StateBuilder<PreSearchController>(
       id: "mode",
       builder: (logic) {
+        // 聚合搜索時隱藏搜索選項
+        if (logic.aggregatedSearch) {
+          return const SizedBox();
+        }
+
         var children = <Widget>[];
         if (logic.searchPageData.customOptionsBuilder != null) {
           children.add(
@@ -643,7 +671,7 @@ class PreSearchPage extends StatelessWidget {
             children.add(Wrap(
               runSpacing: 8,
               spacing: 8,
-              children: option.options.entries.map((e) {
+              children: option.options.entries.map<Widget>((e) {
                 return OptionChip(
                   text: e.value.tl,
                   isSelected: logic.options[i] == e.key,
