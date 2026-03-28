@@ -114,14 +114,19 @@ class _ComicSourceSettingsState extends State<ComicSourceSettings> {
 
 
   void delete(ComicSource source) {
-    showConfirmDialog(App.globalContext!, "删除".tl, "要删除此漫画源吗?".tl, () {
-      var file = File(source.filePath);
-      file.delete();
-      ComicSource.sources.remove(source);
-      _validatePages();
-      MyApp.updater?.call();
-      StateController.findOrNull(tag: "me_page_sources")?.update();
-    });
+    showConfirmDialog(
+      context: App.globalContext!,
+      title: "删除".tl,
+      content: "要删除此漫画源吗?".tl,
+      onConfirm: () {
+        var file = File(source.filePath);
+        file.delete();
+        ComicSource.sources.remove(source);
+        _validatePages();
+        MyApp.updater?.call();
+        StateController.findOrNull(tag: "me_page_sources")?.update();
+      },
+    );
   }
 
   void edit(ComicSource source) async {

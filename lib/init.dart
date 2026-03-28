@@ -100,7 +100,7 @@ Future<void> init() async {
         handleAppLinks(uri);
       });
     }
-    if (App.isMobile) {
+    if (supportsWorkmanager) {
       Workmanager().initialize(
         onStart,
       );

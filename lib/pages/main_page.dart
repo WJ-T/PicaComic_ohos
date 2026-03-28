@@ -111,7 +111,7 @@ class MainPageState extends State<MainPage> {
       } else {
         //检查是否打卡
         if (network.user?.isPunched == false && appdata.settings[6] == "1") {
-          if (App.isAndroid || App.isIOS) {
+          if (supportsWorkmanager) {
             runBackgroundService();
           } else {
             network.user?.isPunched = true;

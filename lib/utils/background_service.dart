@@ -7,6 +7,8 @@ import '../base.dart';
 import '../network/picacg_network/methods.dart';
 import 'notification.dart';
 
+bool get supportsWorkmanager => App.isAndroid || App.isIOS;
+
 @pragma('vm:entry-point')
 void onStart() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +39,9 @@ void onStart() {
 }
 
 void runBackgroundService() async{
+  if (!supportsWorkmanager) {
+    return;
+  }
   await Workmanager().cancelAll();
   await Workmanager().registerPeriodicTask(
     "Piacg PunchIn",
@@ -47,5 +52,8 @@ void runBackgroundService() async{
 }
 
 void cancelBackgroundService() async{
+  if (!supportsWorkmanager) {
+    return;
+  }
   await Workmanager().cancelAll();
 }

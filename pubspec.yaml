@@ -97,7 +97,7 @@ dependencies:
       url: https://gitcode.com/openharmony-sig/flutter_inappwebview
       path: flutter_inappwebview
   syntax_highlight: ^0.4.0
-  flex_seed_scheme: ^4.0.1
+  flex_seed_scheme: ^1.5.0
   file_picker: ^10.3.8
   math_expressions: ^2.6.0
   auto_route: ^11.1.0

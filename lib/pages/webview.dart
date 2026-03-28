@@ -27,13 +27,8 @@ extension WebviewExtension on InAppWebViewController {
     if (url[url.length - 1] == '/') {
       url = url.substring(0, url.length - 1);
     }
-    CookieManager cookieManager = CookieManager.instance(
-      webViewEnvironment: AppWebview.webViewEnvironment,
-    );
-    final cookies = await cookieManager.getCookies(
-      url: WebUri(url),
-      webViewController: this,
-    );
+    CookieManager cookieManager = CookieManager.instance();
+    final cookies = await cookieManager.getCookies(url: WebUri(url));
     var res = <io.Cookie>[];
     for (var cookie in cookies) {
       var c = io.Cookie(cookie.name, cookie.value);
@@ -78,8 +73,6 @@ class AppWebview extends StatefulWidget {
 
   final bool singlePage;
 
-  static WebViewEnvironment? webViewEnvironment;
-
   @override
   State<AppWebview> createState() => _AppWebviewState();
 }
@@ -90,41 +83,6 @@ class _AppWebviewState extends State<AppWebview> {
   String title = "Webview";
 
   double _progress = 0;
-
-  late var future = _createWebviewEnvironment();
-
-  Future<bool> _createWebviewEnvironment() async {
-    // 获取代理设置 - 使用索引 [8]
-    var proxy = appdata.settings[8].toString();
-    // 只在 Android 平台处理代理设置，iOS 不支持 WebViewFeature API
-    // 并且只处理非系统代理和非直连的情况
-    if (App.isAndroid && proxy != "system" && proxy != "direct" && proxy != "0" && proxy.isNotEmpty) {
-      var proxyAvailable = await WebViewFeature.isFeatureSupported(
-        WebViewFeature.PROXY_OVERRIDE,
-      );
-      if (proxyAvailable) {
-        ProxyController proxyController = ProxyController.instance();
-        await proxyController.clearProxyOverride();
-        if (!proxy.contains("://")) {
-          proxy = "http://$proxy";
-        }
-        await proxyController.setProxyOverride(
-          settings: ProxySettings(
-            proxyRules: [ProxyRule(url: proxy)],
-          ),
-        );
-      }
-    }
-    if (!App.isWindows) {
-      return true;
-    }
-    AppWebview.webViewEnvironment = await WebViewEnvironment.create(
-      settings: WebViewEnvironmentSettings(
-        userDataFolder: "${App.dataPath}\\webview",
-      ),
-    );
-    return true;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -162,24 +120,9 @@ class _AppWebviewState extends State<AppWebview> {
       )
     ];
 
-    Widget body = FutureBuilder(
-      future: future,
-      builder: (context, e) {
-        if (e.error != null) {
-          return Center(child: Text("Error: ${e.error}"));
-        }
-        if (!e.hasData) {
-          return const SizedBox();
-        }
-        return createWebviewWithEnvironment(
-          AppWebview.webViewEnvironment,
-        );
-      },
-    );
-
-    body = Stack(
+    final body = Stack(
       children: [
-        Positioned.fill(child: body),
+        Positioned.fill(child: createWebview()),
         if (_progress < 1.0)
           const Positioned.fill(
               child: Center(child: CircularProgressIndicator()))
@@ -198,9 +141,8 @@ class _AppWebviewState extends State<AppWebview> {
         body: body);
   }
 
-  Widget createWebviewWithEnvironment(WebViewEnvironment? e) {
+  Widget createWebview() {
     return InAppWebView(
-      webViewEnvironment: e,
       initialSettings: InAppWebViewSettings(
         isInspectable: true,
       ),
