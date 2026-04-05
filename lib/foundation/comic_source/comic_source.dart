@@ -46,6 +46,22 @@ typedef CommentsLoader = Future<Res<List<Comment>>> Function(
 typedef SendCommentFunc = Future<Res<bool>> Function(
     String id, String? subId, String content, String? replyTo);
 
+typedef ChapterCommentsLoader = Future<Res<List<Comment>>> Function(
+    String comicId, String epId, int page, String? replyTo);
+
+typedef SendChapterCommentFunc = Future<Res<bool>> Function(
+    String comicId, String epId, String content, String? replyTo);
+
+/// [isLiking] is true if the user is liking the comment, false if unliking.
+/// return the new likes count or null.
+typedef LikeCommentFunc = Future<Res<int?>> Function(
+    String comicId, String? subId, String commentId, bool isLiking);
+
+/// [isUp] is true if the user is upvoting the comment, false if downvoting.
+/// return the new vote count or null.
+typedef VoteCommentFunc = Future<Res<int?>> Function(
+    String comicId, String? subId, String commentId, bool isUp, bool isCancel);
+
 typedef GetImageLoadingConfigFunc = Future<Map<String, dynamic>> Function(
     String imageKey, String comicId, String epId)?;
 typedef GetThumbnailLoadingConfigFunc = Future<Map<String, dynamic>> Function(
@@ -94,11 +110,7 @@ class ComicSource {
 
   static Future reload() async {
     sources.clear();
-    try {
-      JsEngine().runCode("ComicSource.sources = {};");
-    } catch (e, s) {
-      log("Failed to reset JS engine: $e\n$s", "ComicSource", LogLevel.error);
-    }
+    JsEngine().runCode("ComicSource.sources = {};");
     await init();
   }
 
@@ -163,6 +175,14 @@ class ComicSource {
   final CommentsLoader? commentsLoader;
 
   final SendCommentFunc? sendCommentFunc;
+
+  final ChapterCommentsLoader? chapterCommentsLoader;
+
+  final SendChapterCommentFunc? sendChapterCommentFunc;
+
+  final LikeCommentFunc? likeCommentFunc;
+
+  final VoteCommentFunc? voteCommentFunc;
 
   final RegExp? idMatcher;
 
@@ -241,7 +261,11 @@ class ComicSource {
       : initData = null,
         comicTileBuilderOverride = null,
         idMatcher = null,
-        comicPageBuilder = null;
+        comicPageBuilder = null,
+        chapterCommentsLoader = null,
+        sendChapterCommentFunc = null,
+        likeCommentFunc = null,
+        voteCommentFunc = null;
 
   ComicSource.named({
     required this.name,
@@ -263,6 +287,10 @@ class ComicSource {
     this.version = '',
     this.commentsLoader,
     this.sendCommentFunc,
+    this.chapterCommentsLoader,
+    this.sendChapterCommentFunc,
+    this.likeCommentFunc,
+    this.voteCommentFunc,
     this.initData,
     this.comicTileBuilderOverride,
     this.idMatcher,
@@ -291,6 +319,10 @@ class ComicSource {
         version = "",
         commentsLoader = null,
         sendCommentFunc = null,
+        chapterCommentsLoader = null,
+        sendChapterCommentFunc = null,
+        likeCommentFunc = null,
+        voteCommentFunc = null,
         initData = null,
         comicTileBuilderOverride = null,
         idMatcher = null,
@@ -627,7 +659,11 @@ class Comment {
   final String? time;
   final int? replyCount;
   final String? id;
+  int? score;
+  final bool? isLiked;
+  int? voteStatus;
 
-  const Comment(this.userName, this.avatar, this.content, this.time,
-      this.replyCount, this.id);
+  Comment(this.userName, this.avatar, this.content, this.time,
+      this.replyCount, this.id,
+      {this.score, this.isLiked, this.voteStatus});
 }

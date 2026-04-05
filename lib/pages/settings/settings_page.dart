@@ -14,7 +14,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_reorderable_grid_view/widgets/reorderable_builder.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pica_comic/base.dart';
-import 'package:file_picker_ohos/file_picker_ohos.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:pica_comic/foundation/comic_source/built_in/picacg.dart';
 import 'package:pica_comic/foundation/js_engine.dart';
 import 'package:pica_comic/foundation/comic_source/built_in/jm.dart';
@@ -28,7 +28,6 @@ import 'package:pica_comic/components/components.dart' hide Select;
 import 'package:pica_comic/pages/logs_page.dart';
 import 'package:pica_comic/utils/extensions.dart';
 import 'package:pica_comic/utils/io_tools.dart';
-import 'package:pica_comic/utils/app_url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import '../../foundation/comic_source/comic_source.dart';
 import '../../components/components.dart' hide Select;
@@ -482,17 +481,16 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
         fluent.ListTile(
           leading: const Icon(Icons.code),
           title: Text("项目地址".tl),
-          onPressed: () => AppUrlLauncher.launchExternalUrl(
-            "https://github.com/ccbkv/PicaComic",
-          ),
+          onPressed: () => launchUrlString("https://github.com/ccbkv/PicaComic",
+              mode: LaunchMode.externalApplication),
           trailing: const Icon(Icons.open_in_new),
         ),
         fluent.ListTile(
           leading: const Icon(Icons.comment_outlined),
           title: Text("问题反馈 (Github)".tl),
-          onPressed: () => AppUrlLauncher.launchExternalUrl(
-            "https://github.com/ccbkv/PicaComic/issues",
-          ),
+          onPressed: () => launchUrlString(
+              "https://github.com/ccbkv/PicaComic/issues",
+              mode: LaunchMode.externalApplication),
           trailing: const Icon(Icons.open_in_new),
         ),
       ],
@@ -916,52 +914,17 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
             leading: const Icon(Icons.add_circle_outline),
             title: Text("导入字体".tl),
             onTap: () async {
-              try {
-                FilePickerResult? result = await FilePicker.platform.pickFiles(
-                  // 先不用过滤，减少 unknown_path 触发概率
-                  allowMultiple: false,
-                  withData: true,
-                );
-                // fallback：再次尝试不加载字节
-                if (result == null || result.files.isEmpty) {
-                  result = await FilePicker.platform.pickFiles(
-                    allowMultiple: false,
-                    withData: false,
-                  );
-                }
-                if (result == null || result.files.isEmpty) return;
+              FilePickerResult? result = await FilePicker.platform.pickFiles(
+                type: FileType.custom,
+                allowedExtensions: ['ttf', 'otf'],
+              );
 
-                final file = result.files.single;
-                final lowerName = file.name.toLowerCase();
-                if (!(lowerName.endsWith('.ttf') || lowerName.endsWith('.otf'))) {
-                  context.showMessage(message: "仅支持 .ttf / .otf 字体文件".tl);
-                  return;
-                }
-
-                String tempPath = file.path ?? '';
-                // 如果只有 bytes，没有可读路径，先落盘到可写目录
-                if ((tempPath.isEmpty || !File(tempPath).existsSync()) &&
-                    file.bytes != null &&
-                    file.bytes!.isNotEmpty) {
-                  final dir = await getApplicationSupportDirectory();
-                  final tmp = File(
-                      '${dir.path}/font_${DateTime.now().millisecondsSinceEpoch}_${file.name}');
-                  await tmp.writeAsBytes(file.bytes!, flush: true);
-                  tempPath = tmp.path;
-                }
-                if (tempPath.isEmpty || !File(tempPath).existsSync()) {
-                  context.showMessage(message: "导入字体失败: unknown_path".tl);
-                  return;
-                }
-                final name = await FontManager().addFont(tempPath);
-                if (name != null && mounted) {
+              if (result != null && result.files.single.path != null) {
+                var name =
+                    await FontManager().addFont(result.files.single.path!);
+                if (name != null) {
                   setState(() {});
                 }
-              } on PlatformException catch (e) {
-                if (e.code == 'unknown_activity' || e.code == 'unknown_activity_error') {
-                  return;
-                }
-                context.showMessage(message: "导入字体失败: ${e.code}".tl);
               }
             },
           ),
@@ -1008,7 +971,22 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
               },
             ),
           ),
-
+          ListTile(
+            leading: const Icon(Icons.comment),
+            title: Text("显示章节评论".tl),
+            trailing: Switch(
+              value: appdata.settings.length > 92 ? appdata.settings[92] == "1" : true,
+              onChanged: (b) {
+                setState(() {
+                  while (appdata.settings.length <= 92) {
+                    appdata.settings.add("1");
+                  }
+                  appdata.settings[92] = b ? "1" : "0";
+                });
+                appdata.updateSettings();
+              },
+            ),
+          ),
           if (App.isIOS)
             ListTile(
               leading: const Icon(Icons.tab),
@@ -1292,13 +1270,7 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
           "V$appVersion",
           style: TextStyle(fontSize: 16),
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            "Pica Comic HarmonyOS 适配版，基于社区开源项目二次开发。".tl,
-            textAlign: TextAlign.center,
-          ),
-        ),
+        Text("Pica Comic是一个免费的开源漫画阅读应用。".tl),
         const SizedBox(
           height: 16,
         ),
@@ -1322,15 +1294,16 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
         ListTile(
           leading: const Icon(Icons.code),
           title: Text("项目地址".tl),
-          onTap: () => AppUrlLauncher.launchExternalUrl(
-              "https://github.com/WJ-T/PicaComic_ohos"),
+          onTap: () => launchUrlString("https://github.com/ccbkv/PicaComic",
+              mode: LaunchMode.externalApplication),
           trailing: const Icon(Icons.open_in_new),
         ),
         ListTile(
           leading: const Icon(Icons.comment_outlined),
           title: Text("问题反馈 (Github)".tl),
-          onTap: () => AppUrlLauncher.launchExternalUrl(
-              "https://github.com/WJ-T/PicaComic_ohos/issues"),
+          onTap: () => launchUrlString(
+              "https://github.com/ccbkv/PicaComic/issues",
+              mode: LaunchMode.externalApplication),
           trailing: const Icon(Icons.open_in_new),
         ),
         // ListTile(

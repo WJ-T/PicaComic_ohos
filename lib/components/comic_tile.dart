@@ -13,7 +13,7 @@ abstract class ComicTile extends StatelessWidget {
   const ComicTile({Key? key, this.sourceKey, this.heroID}) : super(key: key);
 
   final String? sourceKey;
-
+  
   final String? heroID;
 
   Widget get image;
@@ -281,7 +281,7 @@ abstract class ComicTile extends StatelessWidget {
   Widget _buildDetailedMode(BuildContext context) {
     return LayoutBuilder(builder: (context, constrains) {
       final height = constrains.maxHeight - 16;
-
+      
       Widget imageWidget = Container(
         width: height * 0.68,
         height: double.infinity,
@@ -299,14 +299,14 @@ abstract class ComicTile extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: image,
       );
-
+      
       if (heroID != null) {
         imageWidget = Hero(
           tag: "cover$heroID",
           child: imageWidget,
         );
       }
-
+      
       return InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: onTap_,
@@ -358,14 +358,14 @@ abstract class ComicTile extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: image,
     );
-
+    
     if (heroID != null) {
       imageWidget = Hero(
         tag: "cover$heroID",
         child: imageWidget,
       );
     }
-
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
       child: Material(

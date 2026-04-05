@@ -21,7 +21,7 @@ class CategorySelector extends StatefulWidget {
 
 class _CategorySelectorState extends State<CategorySelector> {
   bool _expanded = false;
-
+  
   void _toggleCategory(String category) {
     setState(() {
       if (widget.selectedCategories.contains(category)) {
@@ -73,10 +73,10 @@ class _CategorySelectorState extends State<CategorySelector> {
             ),
           ],
         ),
-
+        
         if (_expanded) ...[
           const SizedBox(height: 8),
-
+          
           // 全选/取消全选按钮
           Row(
             children: [
@@ -96,9 +96,9 @@ class _CategorySelectorState extends State<CategorySelector> {
               ),
             ],
           ),
-
+          
           const SizedBox(height: 8),
-
+          
           // 分类选择器
           Wrap(
             spacing: 8,
@@ -112,9 +112,9 @@ class _CategorySelectorState extends State<CategorySelector> {
               );
             }).toList(),
           ),
-
+          
           const SizedBox(height: 16),
-
+          
           // 确定按钮
           Align(
             alignment: Alignment.centerRight,
@@ -158,7 +158,7 @@ class _CategorySelectorDialogState extends State<CategorySelectorDialog> {
     super.initState();
     _selectedCategories = List.from(widget.initialSelectedCategories);
   }
-
+  
   @override
   void dispose() {
     // 确保在组件销毁时清理资源
@@ -217,9 +217,9 @@ class _CategorySelectorDialogState extends State<CategorySelectorDialog> {
                 ),
               ],
             ),
-
+            
             const SizedBox(height: 16),
-
+            
             // 分类选择器
             SizedBox(
               height: MediaQuery.of(context).size.height * 0.6,

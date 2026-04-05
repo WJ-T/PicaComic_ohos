@@ -253,7 +253,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     if (appdata.settings.length > 95 && appdata.settings[95].isNotEmpty) {
       return (appdata.settings[95], null);
     }
-
+    
     String? font;
     List<String>? fallback;
     if (App.isLinux || App.isWindows) {

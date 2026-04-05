@@ -35,7 +35,7 @@ class DesktopMenuRoute<T> extends PopupRoute<T> {
     if (top + height > size.height - 15) {
       top = size.height - height - 15;
     }
-
+    
     if (App.isFluent) {
       return Stack(
         children: [
@@ -171,7 +171,7 @@ class _MenuRoute<T> extends PopupRoute<T> {
   final List<MenuEntry> entries;
 
   final Offset location;
-
+  
   final Widget? title;
 
   _MenuRoute(this.entries, this.location, {this.title});

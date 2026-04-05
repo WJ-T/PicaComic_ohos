@@ -20,13 +20,13 @@ class AllCategoryPage extends StatefulWidget {
 
 class _AllCategoryPageState extends State<AllCategoryPage>
     with AutomaticKeepAliveClientMixin<AllCategoryPage> {
-
+  
   @override
   bool get wantKeepAlive => true; // 保持页面状态
-
+  
   late TabController _tabController;
   int _fluentCurrentIndex = 0;
-
+  
   @override
   void initState() {
     super.initState();
@@ -38,12 +38,12 @@ class _AllCategoryPageState extends State<AllCategoryPage>
         .map((e) => e!)
         .toList();
     categories = categories.where((element) => allCategories.contains(element)).toList();
-
+    
     _tabController = TabController(
       length: categories.length,
       vsync: Navigator.of(context),
     );
-
+    
     // 添加监听器，在标签切换时保存状态
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
@@ -52,11 +52,11 @@ class _AllCategoryPageState extends State<AllCategoryPage>
       }
     });
   }
-
+  
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-
+    
     // 从PageStorage恢复之前保存的标签索引
     final savedIndex = PageStorage.of(context).readState(context, identifier: 'category_tab_index') as int?;
     if (savedIndex != null && savedIndex >= 0 && savedIndex < _tabController.length) {
@@ -64,7 +64,7 @@ class _AllCategoryPageState extends State<AllCategoryPage>
       _fluentCurrentIndex = savedIndex;
     }
   }
-
+  
   @override
   void dispose() {
     _tabController.dispose();
@@ -104,11 +104,11 @@ class _AllCategoryPageState extends State<AllCategoryPage>
       buttonText: "管理".tl,
     );
   }
-
+  
   @override
   Widget build(BuildContext context) {
     super.build(context); // 必须调用，以使AutomaticKeepAliveClientMixin生效
-
+    
     var categories = appdata.appSettings.categoryPages;
     var allCategories = ComicSource.sources
         .map((e) => e.categoryData?.key)
@@ -124,7 +124,7 @@ class _AllCategoryPageState extends State<AllCategoryPage>
         length: categories.length,
         vsync: Navigator.of(context),
       );
-
+      
       // 重新添加监听器
       _tabController.addListener(() {
         if (_tabController.indexIsChanging) {
