@@ -305,7 +305,7 @@ class ComicReadingPage extends StatelessWidget {
                 });
               }
               //监听音量键
-              if (appdata.settings[7] == "1") {
+              if (supportsVolumeKeyListener && appdata.settings[7] == "1") {
                 if (logic.listenVolume == null) {
                   logic.listenVolume = ListenVolumeController(
                       () => logic.jumpToLastPage(),
