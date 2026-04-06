@@ -209,8 +209,11 @@ class ComicReadingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StateBuilder<ComicReadingPageLogic>(initState: (logic) {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
-      if (appdata.settings[14] == "1") {
+      final alwaysShowStatusBar = appdata.settings.length > 95 && appdata.settings[95] == "1";
+      SystemChrome.setEnabledSystemUIMode(
+        alwaysShowStatusBar ? SystemUiMode.edgeToEdge : SystemUiMode.immersive,
+      );
+      if (supportsKeepScreenOn && appdata.settings[14] == "1") {
         setKeepScreenOn();
       }
       if (appdata.settings[76] == "1") {
@@ -240,7 +243,7 @@ class ComicReadingPage extends StatelessWidget {
       if (logic.listenVolume != null) {
         logic.listenVolume!.stop();
       }
-      if (appdata.settings[14] == "1") {
+      if (supportsKeepScreenOn && appdata.settings[14] == "1") {
         cancelKeepScreenOn();
       }
       logic.runningAutoPageTurning = false;
