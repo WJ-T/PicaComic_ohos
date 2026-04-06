@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:pica_comic/foundation/app.dart';
+import 'package:pica_comic/foundation/platform_utils.dart';
 
-bool get supportsVolumeKeyListener => App.isAndroid || App.isIOS;
+bool get supportsVolumeKeyListener =>
+    App.isAndroid || App.isIOS || PlatformUtils.isOhos;
 
 class ListenVolumeController{
   void Function() whenUp;
