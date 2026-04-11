@@ -600,38 +600,62 @@ class _BatteryWidget extends StatefulWidget {
 }
 
 class _BatteryWidgetState extends State<_BatteryWidget> {
-  late Battery _battery;
   late int _batteryLevel = 100;
   Timer? _timer;
   bool _hasBattery = false;
-  BatteryState state = BatteryState.unknown;
+  bool _isCharging = false;
 
   @override
   void initState() {
     super.initState();
-    _battery = Battery();
     _checkBatteryAvailability();
   }
 
   void _checkBatteryAvailability() async {
-    try {
-      _batteryLevel = await _battery.batteryLevel;
-      state = await _battery.batteryState;
-      if (_batteryLevel > 0 && state != BatteryState.unknown) {
+    final status = await _readBatteryStatus();
+    if (!mounted || status == null) {
+      return;
+    }
+    setState(() {
+      _batteryLevel = status.$1;
+      _isCharging = status.$2;
+      _hasBattery = true;
+    });
+    _timer = Timer.periodic(const Duration(seconds: 10), (timer) async {
+      final status = await _readBatteryStatus();
+      if (!mounted || status == null) {
+        return;
+      }
+      if (_batteryLevel != status.$1 || _isCharging != status.$2) {
         setState(() {
-          _hasBattery = true;
-        });
-        _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-          _battery.batteryLevel.then((level) {
-            if (_batteryLevel != level) {
-              setState(() {
-                _batteryLevel = level;
-              });
-            }
-          });
+          _batteryLevel = status.$1;
+          _isCharging = status.$2;
         });
       }
-    } catch (_) {}
+    });
+  }
+
+  Future<(int, bool)?> _readBatteryStatus() async {
+    if (OhosBatteryBridge.isSupported) {
+      final status = await OhosBatteryBridge.read();
+      if (status == null) {
+        return null;
+      }
+      return (status.level, status.charging);
+    }
+    try {
+      final battery = Battery();
+      final level = await battery.batteryLevel;
+      final state = await battery.batteryState;
+      if (level <= 0 && state == BatteryState.unknown) {
+        return null;
+      }
+      final charging =
+          state == BatteryState.charging || state == BatteryState.full;
+      return (level, charging);
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
@@ -652,7 +676,7 @@ class _BatteryWidgetState extends State<_BatteryWidget> {
     IconData batteryIcon;
     Color batteryColor = Theme.of(context).colorScheme.onSurface;
 
-    if (state == BatteryState.charging) {
+    if (_isCharging) {
       batteryIcon = Icons.battery_charging_full;
     } else if (batteryLevel >= 96) {
       batteryIcon = Icons.battery_full_sharp;

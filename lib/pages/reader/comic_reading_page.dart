@@ -44,6 +44,7 @@ import '../../foundation/ui_mode.dart';
 import '../../network/hitomi_network/hitomi_models.dart';
 import '../../utils/extensions.dart';
 import '../../utils/key_down_event.dart';
+import '../../utils/ohos_battery.dart';
 import 'package:pica_comic/network/picacg_network/methods.dart' as picacg;
 import 'package:pica_comic/utils/translations.dart';
 

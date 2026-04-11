@@ -4,10 +4,15 @@ import 'package:pica_comic/network/app_dio.dart';
 
 String? _updateInfo;
 
+const kProjectRepoUrl = "https://github.com/nimmi114514/PicaComic_ohos";
+const kProjectIssuesUrl = "$kProjectRepoUrl/issues";
+const kProjectLatestReleaseApiUrl =
+    "https://api.github.com/repos/nimmi114514/PicaComic_ohos/releases/latest";
+const kProjectLatestReleaseUrl = "$kProjectRepoUrl/releases/latest";
+
 Future<String> getLatestVersion() async {
   var dio = logDio();
-  var res = await dio
-      .get("https://api.github.com/repos/WJ-T/PicaComic_ohos/releases/latest");
+  var res = await dio.get(kProjectLatestReleaseApiUrl);
   _updateInfo = res.data["body"];
   return (res.data["tag_name"] as String).replaceFirst("v", "");
 }
@@ -72,5 +77,5 @@ Future<String?> getUpdatesInfo() async {
 }
 
 Future<String> getDownloadUrl() async {
-  return "https://github.com/WJ-T/PicaComic_ohos/releases/latest";
+  return kProjectLatestReleaseUrl;
 }

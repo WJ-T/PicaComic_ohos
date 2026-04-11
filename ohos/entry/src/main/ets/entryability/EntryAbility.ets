@@ -1,5 +1,6 @@
 import { FlutterAbility, FlutterEngine } from '@ohos/flutter_ohos';
 import DownloadBridgePlugin from '../plugins/download/DownloadBridgePlugin';
+import BatteryPlugin from '../plugins/battery/BatteryPlugin';
 import UrlLauncherPlugin from '../plugins/url_launcher/UrlLauncherPlugin';
 import VolumeKeyPlugin from '../plugins/volume/VolumeKeyPlugin';
 import { GeneratedPluginRegistrant } from '../plugins/GeneratedPluginRegistrant';
@@ -28,6 +29,7 @@ export default class EntryAbility extends FlutterAbility {
     super.configureFlutterEngine(flutterEngine);
     GeneratedPluginRegistrant.registerWith(flutterEngine);
     flutterEngine.getPlugins()?.add(new DownloadBridgePlugin());
+    flutterEngine.getPlugins()?.add(new BatteryPlugin());
     flutterEngine.getPlugins()?.add(new UrlLauncherPlugin());
     flutterEngine.getPlugins()?.add(new VolumeKeyPlugin());
   }

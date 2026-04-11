@@ -481,14 +481,13 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
         fluent.ListTile(
           leading: const Icon(Icons.code),
           title: Text("项目地址".tl),
-          onPressed: () => AppUrlLauncher.launchExternalUrl("https://github.com/ccbkv/PicaComic"),
+          onPressed: () => AppUrlLauncher.launchExternalUrl(kProjectRepoUrl),
           trailing: const Icon(Icons.open_in_new),
         ),
         fluent.ListTile(
           leading: const Icon(Icons.comment_outlined),
           title: Text("问题反馈 (Github)".tl),
-          onPressed: () => AppUrlLauncher.launchExternalUrl(
-              "https://github.com/ccbkv/PicaComic/issues"),
+          onPressed: () => AppUrlLauncher.launchExternalUrl(kProjectIssuesUrl),
           trailing: const Icon(Icons.open_in_new),
         ),
       ],
@@ -1292,14 +1291,13 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
         ListTile(
           leading: const Icon(Icons.code),
           title: Text("项目地址".tl),
-          onTap: () => AppUrlLauncher.launchExternalUrl("https://github.com/ccbkv/PicaComic"),
+          onTap: () => AppUrlLauncher.launchExternalUrl(kProjectRepoUrl),
           trailing: const Icon(Icons.open_in_new),
         ),
         ListTile(
           leading: const Icon(Icons.comment_outlined),
           title: Text("问题反馈 (Github)".tl),
-          onTap: () => AppUrlLauncher.launchExternalUrl(
-              "https://github.com/ccbkv/PicaComic/issues"),
+          onTap: () => AppUrlLauncher.launchExternalUrl(kProjectIssuesUrl),
           trailing: const Icon(Icons.open_in_new),
         ),
         // ListTile(
