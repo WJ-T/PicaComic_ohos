@@ -254,7 +254,9 @@ class _ComicSourceSettingsState extends State<ComicSourceSettings> {
         return;
       }
       String content;
-      if (file.path != null && file.path!.isNotEmpty && File(file.path!).existsSync()) {
+      if (file.path != null &&
+          file.path!.isNotEmpty &&
+          File(file.path!).existsSync()) {
         content = File(file.path!).readAsStringSync();
       } else if (file.bytes != null && file.bytes!.isNotEmpty) {
         content = utf8.decode(file.bytes!, allowMalformed: true);

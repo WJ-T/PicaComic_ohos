@@ -493,6 +493,124 @@ enum SettingType {
   input,
 }
 
+class ComicChapters {
+  final Map<String, String>? _chapters;
+
+  final Map<String, Map<String, String>>? _groupedChapters;
+
+  const ComicChapters(Map<String, String> this._chapters)
+      : _groupedChapters = null;
+
+  const ComicChapters.grouped(
+      Map<String, Map<String, String>> this._groupedChapters)
+      : _chapters = null;
+
+  factory ComicChapters.fromJson(dynamic json) {
+    if (json is! Map) return ComicChapters(const {});
+    var chapters = <String, String>{};
+    var groupedChapters = <String, Map<String, String>>{};
+    for (var entry in json.entries) {
+      var key = entry.key?.toString() ?? '';
+      if (key.isEmpty) continue;
+      var value = entry.value;
+      if (value is Map) {
+        var innerMap = <String, String>{};
+        for (var innerEntry in value.entries) {
+          var innerKey = innerEntry.key?.toString() ?? '';
+          if (innerKey.isNotEmpty) {
+            innerMap[innerKey] = innerEntry.value?.toString() ?? '';
+          }
+        }
+        if (innerMap.isNotEmpty) {
+          groupedChapters[key] = innerMap;
+        }
+      } else if (value != null) {
+        chapters[key] = value.toString();
+      }
+    }
+    if (groupedChapters.isNotEmpty) {
+      return ComicChapters.grouped(groupedChapters);
+    } else if (chapters.isNotEmpty) {
+      return ComicChapters(chapters);
+    } else {
+      return ComicChapters(const {});
+    }
+  }
+
+  static ComicChapters? fromJsonOrNull(dynamic json) {
+    if (json == null) return null;
+    return ComicChapters.fromJson(json);
+  }
+
+  Map<String, dynamic> toJson() {
+    if (_chapters != null) {
+      return _chapters;
+    } else {
+      return _groupedChapters!;
+    }
+  }
+
+  bool get isGrouped => _groupedChapters != null;
+
+  Iterable<String> get groups => _groupedChapters?.keys ?? [];
+
+  Map<String, String> get allChapters {
+    if (_chapters != null) return _chapters!;
+    var res = <String, String>{};
+    for (var entry in _groupedChapters!.values) {
+      res.addAll(entry);
+    }
+    return res;
+  }
+
+  Map<String, String> getGroup(String group) {
+    return _groupedChapters![group] ?? {};
+  }
+
+  Map<String, String> getGroupByIndex(int index) {
+    return _groupedChapters!.values.elementAt(index);
+  }
+
+  int get length {
+    return isGrouped
+        ? _groupedChapters!.values.map((e) => e.length).reduce((a, b) => a + b)
+        : _chapters!.length;
+  }
+
+  int get groupCount => _groupedChapters?.length ?? 0;
+
+  Iterable<String> get ids sync* {
+    if (isGrouped) {
+      for (var entry in _groupedChapters!.values) {
+        yield* entry.keys;
+      }
+    } else {
+      yield* _chapters!.keys;
+    }
+  }
+
+  Iterable<String> get titles sync* {
+    if (isGrouped) {
+      for (var entry in _groupedChapters!.values) {
+        yield* entry.values;
+      }
+    } else {
+      yield* _chapters!.values;
+    }
+  }
+
+  String? operator [](String key) {
+    if (isGrouped) {
+      for (var entry in _groupedChapters!.values) {
+        if (entry.containsKey(key)) return entry[key];
+      }
+      return null;
+    } else {
+      return _chapters![key];
+    }
+  }
+}
+
 class ComicInfoData with HistoryMixin {
   @override
   final String title;
@@ -508,7 +626,7 @@ class ComicInfoData with HistoryMixin {
   final Map<String, List<String>> tags;
 
   /// id-name
-  final Map<String, String>? chapters;
+  final ComicChapters? chapters;
 
   final List<String>? thumbnails;
 
@@ -553,7 +671,7 @@ class ComicInfoData with HistoryMixin {
       "cover": cover,
       "description": description,
       "tags": tags,
-      "chapters": chapters,
+      "chapters": chapters?.toJson(),
       "sourceKey": sourceKey,
       "comicId": comicId,
       "isFavorite": isFavorite,
@@ -576,7 +694,7 @@ class ComicInfoData with HistoryMixin {
         cover = json["cover"],
         description = json["description"],
         tags = _generateMap(json["tags"]),
-        chapters = Map<String, String>.from(json["chapters"]),
+        chapters = ComicChapters.fromJsonOrNull(json["chapters"]),
         sourceKey = json["sourceKey"],
         comicId = json["comicId"],
         thumbnails = null,
@@ -592,6 +710,37 @@ class ComicInfoData with HistoryMixin {
 
   @override
   String get target => comicId;
+
+  String? findUpdateTime() {
+    const acceptedNamespaces = [
+      "更新",
+      "最後更新",
+      "最后更新",
+      "update",
+      "last update",
+    ];
+    for (var entry in tags.entries) {
+      if (acceptedNamespaces.contains(entry.key.toLowerCase()) &&
+          entry.value.isNotEmpty) {
+        var value = entry.value.first;
+        var parts = value.split(RegExp(r'[-/年月日]'));
+        if (parts.length >= 3) {
+          try {
+            var year = int.parse(parts[0]);
+            var month = int.parse(parts[1]);
+            var day = int.parse(parts[2].split(RegExp(r'[^\d]')).first);
+            if (year < 2000 || year > 3000) return null;
+            if (month < 1 || month > 12) return null;
+            if (day < 1 || day > 31) return null;
+            return "$year-$month-$day";
+          } catch (_) {
+            continue;
+          }
+        }
+      }
+    }
+    return null;
+  }
 }
 
 typedef CategoryComicsLoader = Future<Res<List<BaseComic>>> Function(

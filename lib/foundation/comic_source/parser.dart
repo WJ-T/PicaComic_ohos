@@ -94,6 +94,7 @@ class ComicSourceParser {
     final commentsLoader = _parseCommentsLoader();
     final sendCommentFunc = _parseSendCommentFunc();
     final chapterCommentsLoader = _parseChapterCommentsLoader();
+    final sendChapterCommentFunc = _parseSendChapterCommentFunc();
     final veneraSettings = _parseVeneraSettings();
 
     var source = ComicSource.named(
@@ -117,6 +118,7 @@ class ComicSourceParser {
         commentsLoader: commentsLoader,
         sendCommentFunc: sendCommentFunc,
         chapterCommentsLoader: chapterCommentsLoader,
+        sendChapterCommentFunc: sendChapterCommentFunc,
         enableTagsTranslate: enableTagsTranslate,
         veneraSettings: veneraSettings);
 
@@ -537,25 +539,10 @@ class ComicSourceParser {
         if (recommend is List) {
           recommendComics = recommend.map((e) => CustomComic.fromJson(e, _key!)).toList();
         }
-        // Handle chapters - support both flat Map<String, String> and nested Map<String, Map<String, String>>
-        Map<String, String>? chapters;
+        ComicChapters? chapters;
         var chaptersData = res["chapters"];
-        if (chaptersData is Map) {
-          chapters = {};
-          for (var entry in chaptersData.entries) {
-            if (entry.value is Map) {
-              // Nested map - flatten it
-              (entry.value as Map).forEach((k, v) {
-                chapters![k.toString()] = v.toString();
-              });
-            } else {
-              // Flat map
-              chapters[entry.key.toString()] = entry.value.toString();
-            }
-          }
-          if (chapters.isEmpty) {
-            chapters = null;
-          }
+        if (chaptersData != null) {
+          chapters = ComicChapters.fromJsonOrNull(chaptersData);
         }
         // Check if comic has loadThumbnails function (Venera compatibility)
         Future<Res<List<String>>> Function(String, int)? thumbnailLoader;
@@ -840,6 +827,25 @@ class ComicSourceParser {
                 voteStatus: e["voteStatus"]
             )).toList(),
             subData: res["maxPage"]);
+      } catch (e, s) {
+        log("$e\n$s", "Network", LogLevel.error);
+        return Res.error(e.toString());
+      }
+    };
+  }
+
+  SendChapterCommentFunc? _parseSendChapterCommentFunc(){
+    if(!_checkExists("comic.sendChapterComment")) return null;
+    return (comicId, epId, content, replyTo) async {
+      try {
+        var res = await JsEngine().runCode("""
+          ComicSource.sources.$_key.comic.sendChapterComment(
+            ${jsonEncode(comicId)}, ${jsonEncode(epId)}, ${jsonEncode(content)}, ${jsonEncode(replyTo)})
+        """);
+        if (res == null) {
+          return Res.error("Invalid response from sendChapterComment");
+        }
+        return const Res(true);
       } catch (e, s) {
         log("$e\n$s", "Network", LogLevel.error);
         return Res.error(e.toString());

@@ -123,11 +123,15 @@ class Appdata {
     "0", //90
     "0", //91 Fluent UI
     "1", //92 显示章节评论
-     "0", //93 在搜索列表中隐藏已阅读项目
-     "100", //94 已读项目隐藏阈值
-     "0", //95 阅读器中始终显示状态栏
-     "0", //96 主页历史记录样式, 0-封面, 1-文本
-     "0", //97 多标签或门搜索(实验性)
+    "0", //93 在搜索列表中隐藏已阅读项目
+    "100", //94 已读项目隐藏阈值
+    "0", //95 阅读器中始终显示状态栏
+    "0", //96 主页历史记录样式, 0-封面, 1-文本
+    "0", //97 多标签或门搜索(实验性)
+    "0", //98 在阅读器中显示时间和电量信息
+    "0", //99 章节末尾显示评论
+    "", //100 webdav disableSyncFields
+
   ];
 
   /// 隐式数据, 用于存储一些不需要用户设置的数据, 此数据通常为某些组件的状态, 此设置不应当被同步
@@ -147,6 +151,7 @@ class Appdata {
     "lastHalfYear", // 最近半年
     "lastYear", // 最近一年
     "0", // 图片收藏数量筛选
+    "1", //15 webdav autoSync
   ];
 
   void writeFavoriteTags() async {
@@ -709,7 +714,7 @@ class Appdata {
         "favoriteTags": favoriteTags.toList(),
       };
 
-  Future<bool> readDataFromJson(Map<String, dynamic> json) async {
+  bool readDataFromJson(Map<String, dynamic> json) {
     try {
       var newSettings = List<String>.from(json["settings"]);
       var downloadPath = settings[22];
@@ -732,12 +737,12 @@ class Appdata {
           .toList();
       favoriteTags =
           Set.from((json["favoriteTags"] ?? []) + List.from(favoriteTags));
-      await writeData(false);
+      writeData(false);
       return true;
     } catch (e, s) {
       LogManager.addLog(LogLevel.error, "Appdata.readDataFromJson",
           "error reading appdata$e\n$s");
-      await readData();
+      readData();
       return false;
     }
   }
@@ -760,7 +765,7 @@ Future<void> clearAppdata() async {
   appdata = Appdata();
   await appdata.readData();
   await eraseCache();
-  JmNetwork().cookieJar.deleteAll();
+  await JmNetwork().cookieJar.deleteAll();
   await LocalFavoritesManager().clearAll();
 }
 
@@ -876,7 +881,6 @@ class _Settings {
     appdata.settings[81] = value ? "1" : "0";
   }
 
-
   bool get fullyHideBlockedWorks => appdata.settings[83] == "1";
 
   set fullyHideBlockedWorks(bool value) {
@@ -945,5 +949,47 @@ class _Settings {
       appdata.settings.add("0");
     }
     appdata.settings[97] = value ? "1" : "0";
+  }
+
+  bool get enableClockAndBatteryInfoInReader {
+    while (appdata.settings.length <= 98) {
+      appdata.settings.add("0");
+    }
+    return appdata.settings[98] == "1";
+  }
+
+  set enableClockAndBatteryInfoInReader(bool value) {
+    while (appdata.settings.length <= 98) {
+      appdata.settings.add("0");
+    }
+    appdata.settings[98] = value ? "1" : "0";
+  }
+
+  bool get showChapterCommentsAtEnd {
+    while (appdata.settings.length <= 99) {
+      appdata.settings.add("0");
+    }
+    return appdata.settings[99] == "1";
+  }
+
+  set showChapterCommentsAtEnd(bool value) {
+    while (appdata.settings.length <= 99) {
+      appdata.settings.add("0");
+    }
+    appdata.settings[99] = value ? "1" : "0";
+  }
+
+  String get followUpdatesFolder {
+    while (appdata.settings.length <= 101) {
+      appdata.settings.add("");
+    }
+    return appdata.settings[101];
+  }
+
+  set followUpdatesFolder(String value) {
+    while (appdata.settings.length <= 101) {
+      appdata.settings.add("");
+    }
+    appdata.settings[101] = value;
   }
 }
