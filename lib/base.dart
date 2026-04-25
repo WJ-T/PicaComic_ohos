@@ -660,14 +660,6 @@ class Appdata {
             "Failed to read implicit data: $e");
         writeImplicitData();
       }
-
-      try {
-        readComicSpecificSettings();
-      } catch (e) {
-        LogManager.addLog(LogLevel.error, "Appdata.readData",
-            "Failed to read comic specific settings: $e");
-      }
-
       while (settings.length < 91) {
         settings.add("0");
       }
@@ -755,75 +747,6 @@ class Appdata {
   }
 
   final appSettings = _Settings();
-
-  /// 漫画特定阅读设置
-  Map<String, Map<String, dynamic>> _comicSpecificSettings = {};
-
-  bool isComicSpecificSettingsEnabled(String comicId, String sourceKey) {
-    return _comicSpecificSettings["$comicId@$sourceKey"]?.containsKey("enabled") == true &&
-        _comicSpecificSettings["$comicId@$sourceKey"]!["enabled"] == true;
-  }
-
-  void setEnabledComicSpecificSettings(
-    String comicId,
-    String sourceKey,
-    bool enabled,
-  ) {
-    var key = "$comicId@$sourceKey";
-    _comicSpecificSettings.putIfAbsent(key, () => {});
-    _comicSpecificSettings[key]!["enabled"] = enabled;
-    _saveComicSpecificSettings();
-  }
-
-  /// 获取阅读设置，如果 comicId 不为 null 且启用了漫画特定设置，则返回漫画特定值，否则返回全局设置
-  String getReaderSetting(String? comicId, String? sourceKey, int settingIndex) {
-    if (comicId == null || sourceKey == null) {
-      return settings[settingIndex];
-    }
-    if (!isComicSpecificSettingsEnabled(comicId, sourceKey)) {
-      return settings[settingIndex];
-    }
-    var key = "$comicId@$sourceKey";
-    var value = _comicSpecificSettings[key]?[settingIndex.toString()];
-    if (value == null) {
-      return settings[settingIndex];
-    }
-    return value.toString();
-  }
-
-  /// 设置阅读设置，如果 comicId 不为 null 且启用了漫画特定设置，则保存到漫画特定设置，否则保存到全局设置
-  void setReaderSetting(String? comicId, String? sourceKey, int settingIndex, String value) {
-    if (comicId != null && sourceKey != null && isComicSpecificSettingsEnabled(comicId, sourceKey)) {
-      var key = "$comicId@$sourceKey";
-      _comicSpecificSettings.putIfAbsent(key, () => {});
-      _comicSpecificSettings[key]![settingIndex.toString()] = value;
-      _saveComicSpecificSettings();
-    } else {
-      settings[settingIndex] = value;
-    }
-  }
-
-  void _saveComicSpecificSettings() async {
-    var file = File("${App.dataPath}/comic_specific_settings.json");
-    await file.writeAsString(jsonEncode(_comicSpecificSettings));
-  }
-
-  Future<void> readComicSpecificSettings() async {
-    try {
-      var file = File("${App.dataPath}/comic_specific_settings.json");
-      if (file.existsSync()) {
-        var json = jsonDecode(await file.readAsString());
-        if (json is Map) {
-          _comicSpecificSettings = Map<String, Map<String, dynamic>>.from(
-            json.map((k, v) => MapEntry(k, Map<String, dynamic>.from(v))),
-          );
-        }
-      }
-    } catch (e) {
-      LogManager.addLog(LogLevel.error, "Appdata.readComicSpecificSettings",
-          "Failed to read comic specific settings: $e");
-    }
-  }
 }
 
 var appdata = Appdata();
