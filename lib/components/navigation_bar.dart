@@ -98,6 +98,11 @@ class NaviPaneState extends State<NaviPane>
 
   static const _kTopBarHeight = 48.0;
 
+  bool get enableLiquidGlassBottomBar =>
+      PlatformUtils.isOhos &&
+      appdata.settings.length > 103 &&
+      appdata.settings[103] == "1";
+
   double get bottomBarHeight =>
       _kBottomBarHeight + MediaQuery.of(context).padding.bottom;
 
@@ -375,6 +380,63 @@ class NaviPaneState extends State<NaviPane>
   }
 
   Widget buildBottom() {
+    if (enableLiquidGlassBottomBar) {
+      final theme = Theme.of(context);
+      final primary = theme.colorScheme.primary;
+      final isDark = theme.brightness == Brightness.dark;
+      final bottomPadding =
+          math.max(MediaQuery.of(context).viewPadding.bottom, 10.0);
+      final baseGlassColor = isDark
+          ? const Color.fromRGBO(28, 28, 32, 0.58)
+          : const Color.fromRGBO(255, 255, 255, 0.16);
+      final indicatorGlassColor = primary.withValues(
+        alpha: isDark ? 0.28 : 0.20,
+      );
+      return Padding(
+        padding: EdgeInsets.fromLTRB(12, 0, 12, bottomPadding),
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 488),
+            child: GlassBottomBar(
+              quality: GlassQuality.premium,
+              selectedIconColor: primary,
+              unselectedIconColor:
+                  theme.colorScheme.onSurface.withValues(alpha: 0.72),
+              indicatorColor: primary.withValues(alpha: 0.10),
+              magnification: 1.18,
+              indicatorSettings: LiquidGlassSettings(
+                blur: 0,
+                glassColor: indicatorGlassColor,
+                saturation: 1.18,
+                ambientStrength: 0.48,
+                thickness: 28,
+              ),
+              glassSettings: LiquidGlassSettings(
+                blur: 28,
+                glassColor: baseGlassColor,
+                ambientStrength: isDark ? 0.36 : 0.52,
+                saturation: 1.16,
+                thickness: 18,
+              ),
+              verticalPadding: 14,
+              barHeight: 56,
+              selectedIndex: currentPage,
+              onTabSelected: updatePage,
+              tabs: widget.paneItems
+                  .map(
+                    (e) => GlassBottomBarTab(
+                      label: e.label,
+                      icon: Icon(e.icon),
+                      activeIcon: Icon(e.activeIcon),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        ),
+      );
+    }
     return Material(
       textStyle: Theme.of(context).textTheme.labelSmall,
       elevation: 0,
@@ -757,7 +819,10 @@ class _NaviMainViewState extends State<_NaviMainView> {
       return state.buildMainViewContent();
     }
     var shouldShowAppBar = state.controller.value < 2;
+    var useLiquidGlassBottomBar =
+        shouldShowAppBar && state.enableLiquidGlassBottomBar;
     return Scaffold(
+      extendBody: useLiquidGlassBottomBar,
       appBar: shouldShowAppBar
           ? AppBar(
               elevation: 0,
@@ -790,7 +855,9 @@ class _NaviMainViewState extends State<_NaviMainView> {
         child: state.buildMainViewContent(),
       ),
       bottomNavigationBar: shouldShowAppBar
-          ? SafeArea(top: false, bottom: true, child: state.buildBottom())
+          ? (useLiquidGlassBottomBar
+              ? state.buildBottom()
+              : SafeArea(top: false, bottom: true, child: state.buildBottom()))
           : null,
     );
   }

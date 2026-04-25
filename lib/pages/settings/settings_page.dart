@@ -33,6 +33,7 @@ import '../../foundation/comic_source/comic_source.dart';
 import '../../components/components.dart' hide Select;
 import '../../foundation/app.dart';
 import '../../foundation/local_favorites.dart';
+import '../../foundation/platform_utils.dart';
 import '../../network/cookie_jar.dart';
 import '../../network/download.dart';
 import '../../network/eh_network/eh_main_network.dart';
@@ -969,6 +970,23 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
               },
             ),
           ),
+          if (PlatformUtils.isOhos)
+            ListTile(
+              leading: const Icon(Icons.water_drop_outlined),
+              title: Text("液态玻璃导航栏".tl),
+              subtitle: Text("实验性功能,可能存在性能或点击区域问题".tl),
+              trailing: Switch(
+                value: appdata.settings.length > 103 ? appdata.settings[103] == "1" : false,
+                onChanged: (b) {
+                  while (appdata.settings.length <= 103) {
+                    appdata.settings.add("0");
+                  }
+                  appdata.settings[103] = b ? "1" : "0";
+                  appdata.updateSettings();
+                  MyApp.updater?.call();
+                },
+              ),
+            ),
           ListTile(
             leading: const Icon(Icons.comment),
             title: Text("显示章节评论".tl),
