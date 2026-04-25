@@ -40,10 +40,12 @@ import 'package:pica_comic/utils/save_image.dart';
 import 'package:pica_comic/utils/time.dart';
 import 'package:pica_comic/network/jm_network/jm_network.dart';
 import '../../foundation/app.dart';
+import '../../foundation/platform_utils.dart';
 import '../../foundation/ui_mode.dart';
 import '../../network/hitomi_network/hitomi_models.dart';
 import '../../utils/extensions.dart';
 import '../../utils/key_down_event.dart';
+import '../../utils/ohos_continuation.dart';
 import '../../utils/ohos_battery.dart';
 import 'package:pica_comic/network/picacg_network/methods.dart' as picacg;
 import 'package:pica_comic/utils/translations.dart';
@@ -71,6 +73,8 @@ part 'reading_type.dart';
 part 'reading_settings.dart';
 
 part 'reading_data.dart';
+
+part 'continuation.dart';
 
 ///阅读器
 class ComicReadingPage extends StatelessWidget {
@@ -234,6 +238,11 @@ class ComicReadingPage extends StatelessWidget {
       BaseImageProvider.clearCache();
       BaseImageProvider.setCacheSizeLimit(100 * 1024 * 1024);
       logic.openEpsView = openEpsDrawer;
+      logic.continuationIndexCallback ??= (_) {
+        unawaited(syncReaderContinuationState(readingData, logic));
+      };
+      logic.addIndexChangeCallback(logic.continuationIndexCallback!);
+      unawaited(syncReaderContinuationState(readingData, logic));
       if (useDarkBackground) {
       }
     }, dispose: (logic) {
@@ -246,6 +255,11 @@ class ComicReadingPage extends StatelessWidget {
       if (logic.listenVolume != null) {
         logic.listenVolume!.stop();
       }
+      if (logic.continuationIndexCallback != null) {
+        logic.removeIndexChangeCallback(logic.continuationIndexCallback!);
+        logic.continuationIndexCallback = null;
+      }
+      unawaited(clearReaderContinuationState());
       if (supportsKeepScreenOn && appdata.settings[14] == "1") {
         cancelKeepScreenOn();
       }

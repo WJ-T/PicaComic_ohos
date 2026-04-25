@@ -12,9 +12,6 @@
     "file_picker_ohos": "file:../har/file_picker_ohos.har",
     "flutter_inappwebview_ohos": "file:../har/flutter_inappwebview_ohos.har"
   },
-  "devDependencies": {
-    "@ohos/hypium": "1.0.6"
-  },
   "overrides": {
     "@ohos/flutter_ohos": "file:../har/flutter.har",
     "file_picker_ohos": "file:../har/file_picker_ohos.har",

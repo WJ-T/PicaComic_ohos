@@ -11,9 +11,6 @@
     "sqflite": "file:./sqflite",
     "file_picker_ohos": "file:../flutter_file_picker_ohos/ohos"
   },
-  "devDependencies": {
-    "@ohos/hypium": "1.0.6"
-  },
   "overrides": {
     "@ohos/flutter_ohos": "file:./har/flutter.har",
     "sqflite": "file:./sqflite",

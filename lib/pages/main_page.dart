@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pica_comic/base.dart';
@@ -6,6 +8,7 @@ import 'package:pica_comic/foundation/app_page_route.dart';
 import 'package:pica_comic/network/webdav.dart';
 import 'package:pica_comic/utils/app_links.dart';
 import 'package:pica_comic/utils/background_service.dart';
+import 'package:pica_comic/utils/ohos_continuation.dart';
 import 'package:pica_comic/utils/translations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'category_page.dart';
@@ -19,7 +22,9 @@ import 'package:pica_comic/network/update.dart';
 import 'me_page.dart';
 import 'package:pica_comic/network/picacg_network/methods.dart';
 import 'package:pica_comic/utils/android_first_use_manager.dart';
+import 'package:pica_comic/foundation/platform_utils.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
+import 'reader/comic_reading_page.dart';
 
 bool _haveClipboardDialog = false;
 
@@ -70,6 +75,40 @@ class MainPageState extends State<MainPage> {
 
   late final NaviObserver _observer;
   int _currentIndex = 0;
+  bool _handlingContinuation = false;
+  bool _startupTasksStarted = false;
+
+  Future<void> _handleContinuationPayload(Map<String, dynamic> payload) async {
+    if (_handlingContinuation || !mounted) {
+      return;
+    }
+    final page = buildReaderContinuationPage(payload);
+    if (page == null) {
+      return;
+    }
+    _handlingContinuation = true;
+    try {
+      for (int i = 0; i < 30; i++) {
+        final navigator = App.navigatorKey.currentState;
+        if (navigator != null && App.globalContext != null && mounted) {
+          await Future.delayed(const Duration(milliseconds: 200));
+          if (!mounted) {
+            return;
+          }
+          await navigator.push(
+            AppPageRoute(
+              builder: (_) => page,
+              settings: const RouteSettings(name: '/ComicReadingPage'),
+            ),
+          );
+          return;
+        }
+        await Future.delayed(const Duration(milliseconds: 200));
+      }
+    } finally {
+      _handlingContinuation = false;
+    }
+  }
 
   // Venera-style state management
   void updateCurrentIndex(int index) {
@@ -227,34 +266,70 @@ class MainPageState extends State<MainPage> {
     }
   }
 
-  @override
-  void initState() {
-    _navigatorKey = GlobalKey();
-    App.mainNavigatorKey = _navigatorKey;
-    _observer = NaviObserver();
+  void _runStartupSideEffects({required bool suppressDialogs}) {
+    if (_startupTasksStarted) {
+      return;
+    }
+    _startupTasksStarted = true;
 
-    // Initialize with the initial page setting, not the current page state
-    _currentIndex = int.parse(appdata.settings[23]);
-
-    // Keep all original functionality
     _login();
     notifications.requestPermission();
     notifications.cancelAll();
-    _checkUpdates();
-    _checkDownload();
+
+    if (!suppressDialogs) {
+      _checkUpdates();
+      _checkDownload();
+    }
 
     if (appdata.firstUse[3] == "0") {
       appdata.firstUse[3] = "1";
       appdata.writeData();
 
-      // 在Android平台上同时更新AndroidFirstUseManager
       if (App.isAndroid) {
         AndroidFirstUseManager.instance.setFirstUse3("1");
       }
     }
 
     Future.delayed(const Duration(milliseconds: 300), () => Webdav.syncData())
-        .then((v) => checkClipboard());
+        .then((v) {
+      if (!suppressDialogs) {
+        checkClipboard();
+      }
+    });
+  }
+
+  Future<void> _bootstrapOhosContinuation() async {
+    await OhosContinuationService.instance.initialize();
+    if (!mounted) {
+      return;
+    }
+    _runStartupSideEffects(
+      suppressDialogs: OhosContinuationService.instance.launchedFromContinuation,
+    );
+    if (OhosContinuationService.instance.hasPendingPayload) {
+      await OhosContinuationService.instance.dispatchPendingPayload();
+    }
+  }
+
+  @override
+  void initState() {
+    _navigatorKey = GlobalKey();
+    App.mainNavigatorKey = _navigatorKey;
+    _observer = NaviObserver();
+    if (PlatformUtils.isOhos && kEnableOhosContinuation) {
+      OhosContinuationService.instance.setHandler(_handleContinuationPayload);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        unawaited(_bootstrapOhosContinuation());
+      });
+    } else {
+      _runStartupSideEffects(suppressDialogs: false);
+    }
+
+    // Initialize with the initial page setting, not the current page state
+    _currentIndex = int.parse(appdata.settings[23]);
 
     super.initState();
   }

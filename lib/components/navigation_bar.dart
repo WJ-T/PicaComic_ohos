@@ -495,6 +495,7 @@ class NaviPaneState extends State<NaviPane>
                 enabled: currentPage == index,
                 entry: widget.paneItems[index],
                 showTitle: value == 3,
+                useLiquidSelection: enableLiquidGlassBottomBar,
                 onTap: () {
                   updatePage(index);
                 },
@@ -524,6 +525,7 @@ class _SideNaviWidget extends StatelessWidget {
     required this.entry,
     required this.onTap,
     required this.showTitle,
+    required this.useLiquidSelection,
     super.key,
   });
 
@@ -535,14 +537,52 @@ class _SideNaviWidget extends StatelessWidget {
 
   final bool showTitle;
 
+  final bool useLiquidSelection;
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final icon = Icon(enabled ? entry.activeIcon : entry.icon);
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: onTap,
-      child: AnimatedContainer(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeColor = useLiquidSelection && enabled
+        ? colorScheme.primary
+        : null;
+    final icon = Icon(
+      enabled ? entry.activeIcon : entry.icon,
+      color: activeColor,
+    );
+    final label = Text(
+      entry.label,
+      style: activeColor == null ? null : TextStyle(color: activeColor),
+    );
+
+    Widget child = showTitle
+        ? Row(
+            children: [icon, const SizedBox(width: 12), label],
+          )
+        : Align(alignment: Alignment.centerLeft, child: icon);
+
+    Widget surface;
+    if (enabled && useLiquidSelection) {
+      surface = GlassContainer(
+        width: double.infinity,
+        height: 38,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        useOwnLayer: true,
+        quality: GlassQuality.standard,
+        shape: const LiquidRoundedSuperellipse(borderRadius: 12),
+        settings: LiquidGlassSettings(
+          blur: 20,
+          glassColor: isDark
+              ? colorScheme.primary.withValues(alpha: 0.22)
+              : Colors.white.withValues(alpha: 0.16),
+          ambientStrength: isDark ? 0.34 : 0.48,
+          saturation: 1.14,
+          thickness: 16,
+        ),
+        child: child,
+      );
+    } else {
+      surface = AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 12),
         height: 38,
@@ -550,12 +590,14 @@ class _SideNaviWidget extends StatelessWidget {
           color: enabled ? colorScheme.primaryContainer : null,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: showTitle
-            ? Row(
-                children: [icon, const SizedBox(width: 12), Text(entry.label)],
-              )
-            : Align(alignment: Alignment.centerLeft, child: icon),
-      ),
+        child: child,
+      );
+    }
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: surface,
     ).paddingVertical(4);
   }
 }

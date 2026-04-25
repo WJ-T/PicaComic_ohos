@@ -13,13 +13,16 @@ import 'package:pica_comic/components/window_frame.dart';
 import 'package:pica_comic/foundation/app.dart';
 import 'package:pica_comic/foundation/app_page_route.dart';
 import 'package:pica_comic/foundation/log.dart';
+import 'package:pica_comic/foundation/platform_utils.dart';
 import 'package:pica_comic/init.dart';
 import 'package:pica_comic/network/http_client.dart';
 import 'package:pica_comic/pages/auth_page.dart';
 import 'package:pica_comic/pages/main_page.dart';
+import 'package:pica_comic/pages/reader/comic_reading_page.dart';
 import 'package:pica_comic/pages/welcome_page.dart';
 import 'package:pica_comic/utils/block_screenshot.dart';
 import 'package:pica_comic/utils/mouse_listener.dart';
+import 'package:pica_comic/utils/ohos_continuation.dart';
 import 'package:pica_comic/utils/android_first_use_manager.dart';
 import 'package:pica_comic/utils/tags_translation.dart';
 import 'package:window_manager/window_manager.dart';
@@ -34,6 +37,9 @@ void main(List<String> args) {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
     await init();
+    if (PlatformUtils.isOhos && kEnableOhosContinuation) {
+      await OhosContinuationService.instance.preloadInitialPayload();
+    }
     FlutterError.onError = (details) {
       LogManager.addLog(LogLevel.error, "Unhandled Exception",
           "${details.exception}\n${details.stack}");
@@ -86,6 +92,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   DateTime time = DateTime.fromMillisecondsSinceEpoch(0);
+  Map<String, dynamic>? _startupContinuationPayload;
 
   bool forceRebuild = false;
 
@@ -160,6 +167,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   void initState() {
+    if (PlatformUtils.isOhos &&
+        kEnableOhosContinuation &&
+        appdata.firstUse.length > 3 &&
+        appdata.firstUse[3] == "1" &&
+        appdata.settings[13] != "1") {
+      _startupContinuationPayload =
+          OhosContinuationService.instance.takeStartupPayload();
+    }
     MyApp.updater = () => setState(() => forceRebuild = true);
     time = DateTime.now();
     TagsTranslation.readData();
@@ -201,6 +216,58 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       PaintingBinding.instance.imageCache.maximumSizeBytes = 200 * 1024 * 1024;
     }
     super.initState();
+  }
+
+  Widget _buildRootPage() {
+    return FutureBuilder<bool>(
+      future: _checkFirstUse(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        } else if (snapshot.hasError) {
+          LogManager.addLog(LogLevel.error, "MyApp.onGenerateRoute",
+              "Error checking firstUse: ${snapshot.error}");
+          return const WelcomePage();
+        } else {
+          bool isFirstUse = snapshot.data ?? true;
+          return isFirstUse
+              ? const WelcomePage()
+              : (appdata.settings[13] == "1"
+                  ? const AuthPage()
+                  : const MainPage());
+        }
+      },
+    );
+  }
+
+  List<Route<dynamic>> _buildInitialRoutes(String initialRouteName) {
+    final routes = <Route<dynamic>>[
+      AppPageRoute(
+        builder: (context) => _buildRootPage(),
+        settings: const RouteSettings(name: '/'),
+        isRootRoute: true,
+      ),
+    ];
+
+    final payload = _startupContinuationPayload;
+    if (payload != null) {
+      final page = buildReaderContinuationPage(payload);
+      if (page != null) {
+        routes.add(
+          AppPageRoute(
+            builder: (context) => page,
+            settings: const RouteSettings(name: '/ComicReadingPage'),
+          ),
+        );
+      }
+      _startupContinuationPayload = null;
+    }
+
+    return routes;
   }
 
   @override
@@ -361,36 +428,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                   ? fluent.ThemeMode.light
                   : fluent.ThemeMode.system,
           scrollBehavior: const _CustomScrollBehavior(),
+          onGenerateInitialRoutes: _buildInitialRoutes,
           onGenerateRoute: (settings) => AppPageRoute(
-            builder: (context) {
-              // 使用FutureBuilder来异步检查firstUse[3]的值
-              return FutureBuilder<bool>(
-                future: _checkFirstUse(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    // 显示加载页面
-                    return const Scaffold(
-                      body: Center(
-                        child: CircularProgressIndicator(),
-                      ),
-                    );
-                  } else if (snapshot.hasError) {
-                    // 发生错误，显示欢迎页面
-                    LogManager.addLog(LogLevel.error, "MyApp.onGenerateRoute",
-                        "Error checking firstUse: ${snapshot.error}");
-                    return const WelcomePage();
-                  } else {
-                    // 根据firstUse[3]的值决定显示哪个页面
-                    bool isFirstUse = snapshot.data ?? true;
-                    return isFirstUse
-                        ? const WelcomePage()
-                        : (appdata.settings[13] == "1"
-                            ? const AuthPage()
-                            : const MainPage());
-                  }
-                },
-              );
-            },
+            builder: (context) => _buildRootPage(),
           ),
           localizationsDelegates: const [
             fluent.FluentLocalizations.delegate,
@@ -481,36 +521,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             : appdata.appSettings.darkMode == 1
                 ? ThemeMode.light
                 : ThemeMode.system,
+        onGenerateInitialRoutes: _buildInitialRoutes,
         onGenerateRoute: (settings) => AppPageRoute(
-          builder: (context) {
-            // 使用FutureBuilder来异步检查firstUse[3]的值
-            return FutureBuilder<bool>(
-              future: _checkFirstUse(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  // 显示加载页面
-                  return const Scaffold(
-                    body: Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
-                } else if (snapshot.hasError) {
-                  // 发生错误，显示欢迎页面
-                  LogManager.addLog(LogLevel.error, "MyApp.onGenerateRoute",
-                      "Error checking firstUse: ${snapshot.error}");
-                  return const WelcomePage();
-                } else {
-                  // 根据firstUse[3]的值决定显示哪个页面
-                  bool isFirstUse = snapshot.data ?? true;
-                  return isFirstUse
-                      ? const WelcomePage()
-                      : (appdata.settings[13] == "1"
-                          ? const AuthPage()
-                          : const MainPage());
-                }
-              },
-            );
-          },
+          builder: (context) => _buildRootPage(),
         ),
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,

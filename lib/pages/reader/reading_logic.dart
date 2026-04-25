@@ -149,6 +149,8 @@ class ComicReadingPageLogic extends StateController {
 
   final _indexChangeCallbacks = <void Function(int)>[];
 
+  void Function(int)? continuationIndexCallback;
+
   void addIndexChangeCallback(void Function(int) callback){
     _indexChangeCallbacks.add(callback);
   }
