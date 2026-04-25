@@ -978,10 +978,12 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
               trailing: Switch(
                 value: appdata.settings.length > 103 ? appdata.settings[103] == "1" : false,
                 onChanged: (b) {
-                  while (appdata.settings.length <= 103) {
-                    appdata.settings.add("0");
-                  }
-                  appdata.settings[103] = b ? "1" : "0";
+                  setState(() {
+                    while (appdata.settings.length <= 103) {
+                      appdata.settings.add("0");
+                    }
+                    appdata.settings[103] = b ? "1" : "0";
+                  });
                   appdata.updateSettings();
                   MyApp.updater?.call();
                 },

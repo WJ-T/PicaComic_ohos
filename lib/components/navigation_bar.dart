@@ -260,6 +260,8 @@ class NaviPaneState extends State<NaviPane>
       );
     }
     final mq = MediaQuery.of(context);
+    final enableFloatingGlassSideDock =
+        enableLiquidGlassBottomBar && mq.size.width > changePoint;
     final sideInsets =
         (App.isMobile && mq.orientation == Orientation.landscape)
             ? EdgeInsets.only(
@@ -297,29 +299,67 @@ class NaviPaneState extends State<NaviPane>
           animation: controller,
           builder: (context, child) {
             final value = controller.value;
-             Widget content = Stack(
+            final showFloatingGlassSideDock =
+                enableFloatingGlassSideDock &&
+                widget.observer.routes.length <= 1;
+            final leftOffset =
+                _kFoldedSideBarWidth * ((value - 1).clamp(0, 1)) +
+                    (_kSideBarWidth - _kFoldedSideBarWidth) *
+                        ((value - 2).clamp(0, 1));
+            Widget content = Stack(
               children: [
-                Positioned(
-                  left: _kFoldedSideBarWidth * ((value - 2.0).clamp(-1.0, 0.0)),
-                  top: 0,
-                  bottom: 0,
-                  child: buildLeft(),
-                ),
+                if (!enableFloatingGlassSideDock)
+                  Positioned(
+                    left:
+                        _kFoldedSideBarWidth * ((value - 2.0).clamp(-1.0, 0.0)),
+                    top: 0,
+                    bottom: 0,
+                    child: buildLeft(
+                      useLiquidSelection: false,
+                    ),
+                  ),
                 Positioned.fill(
-                  left: _kFoldedSideBarWidth * ((value - 1).clamp(0, 1)) +
-                      (_kSideBarWidth - _kFoldedSideBarWidth) *
-                          ((value - 2).clamp(0, 1)),
+                  left: enableFloatingGlassSideDock ? 0 : leftOffset,
                   child: buildMainView(),
                 ),
+                if (enableFloatingGlassSideDock)
+                  AnimatedPositioned(
+                    duration: _fastAnimationDuration,
+                    curve: Curves.easeOutCubic,
+                    left: showFloatingGlassSideDock
+                        ? math.max(
+                            MediaQuery.of(context).viewPadding.left,
+                            16.0,
+                          )
+                        : math.max(
+                            MediaQuery.of(context).viewPadding.left,
+                            4.0,
+                          ),
+                    bottom: math.max(
+                      MediaQuery.of(context).viewPadding.bottom,
+                      16.0,
+                    ),
+                    child: IgnorePointer(
+                      ignoring: !showFloatingGlassSideDock,
+                      child: AnimatedOpacity(
+                        duration: _fastAnimationDuration,
+                        curve: Curves.easeOut,
+                        opacity: showFloatingGlassSideDock ? 1 : 0,
+                        child: RepaintBoundary(
+                          child: buildFloatingLeftDock(showTitle: value == 3),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             );
-                      if (sideInsets != EdgeInsets.zero) {
-            content = Padding(
-              padding: sideInsets,
-              child: content,
-            );
-          }
-          return content;
+            if (sideInsets != EdgeInsets.zero) {
+              content = Padding(
+                padding: sideInsets,
+                child: content,
+              );
+            }
+            return content;
           },
         ),
       ),
@@ -468,7 +508,7 @@ class NaviPaneState extends State<NaviPane>
     );
   }
 
-  Widget buildLeft() {
+  Widget buildLeft({required bool useLiquidSelection}) {
     final value = controller.value;
     const paddingHorizontal = 12.0;
     return Material(
@@ -495,7 +535,7 @@ class NaviPaneState extends State<NaviPane>
                 enabled: currentPage == index,
                 entry: widget.paneItems[index],
                 showTitle: value == 3,
-                useLiquidSelection: enableLiquidGlassBottomBar,
+                useLiquidSelection: useLiquidSelection,
                 onTap: () {
                   updatePage(index);
                 },
@@ -514,6 +554,91 @@ class NaviPaneState extends State<NaviPane>
             const SizedBox(height: 16),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget buildFloatingLeftDock({required bool showTitle}) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final outerGlassColor = isDark
+        ? const Color.fromRGBO(28, 28, 32, 0.58)
+        : const Color.fromRGBO(255, 255, 255, 0.16);
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: showTitle ? 228 : 72,
+      ),
+      child: GlassContainer(
+        useOwnLayer: true,
+        quality: GlassQuality.standard,
+        clipBehavior: Clip.antiAlias,
+        padding: EdgeInsets.fromLTRB(12, 14, 12, showTitle ? 14 : 12),
+        shape: const LiquidRoundedSuperellipse(borderRadius: 36),
+        settings: LiquidGlassSettings(
+          blur: 28,
+          glassColor: outerGlassColor,
+          ambientStrength: isDark ? 0.36 : 0.52,
+          saturation: 1.16,
+          thickness: 18,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ...List<Widget>.generate(
+              widget.paneItems.length,
+              (index) => _SideNaviWidget(
+                enabled: currentPage == index,
+                entry: widget.paneItems[index],
+                showTitle: showTitle,
+                useLiquidSelection: true,
+                onTap: () {
+                  updatePage(index);
+                },
+                key: ValueKey('dock-item-$index'),
+              ),
+            ),
+            if (widget.paneActions.isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Divider(
+                  height: 1,
+                  thickness: 1,
+                  color:
+                      theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
+                ),
+              ),
+              ..._buildFloatingDockActions(showTitle),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildFloatingDockActions(bool showTitle) {
+    final actions = <PaneActionEntry>[
+      if (widget.paneActions.length == 1)
+        PaneActionEntry(
+          label: "搜索".tl,
+          icon: Icons.search,
+          onTap: () {
+            final navContext = widget.navigatorKey.currentContext;
+            if (navContext == null) {
+              return;
+            }
+            App.to(navContext, () => PreSearchPage());
+          },
+        ),
+      ...widget.paneActions,
+    ];
+
+    return List<Widget>.generate(
+      actions.length,
+      (index) => _PaneActionWidget(
+        entry: actions[index],
+        showTitle: showTitle,
+        key: ValueKey('dock-action-$index'),
       ),
     );
   }
@@ -539,10 +664,18 @@ class _SideNaviWidget extends StatelessWidget {
 
   final bool useLiquidSelection;
 
+  double _itemHeight() {
+    if (useLiquidSelection) {
+      return showTitle ? 42 : 40;
+    }
+    return 38;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final itemHeight = _itemHeight();
     final activeColor = useLiquidSelection && enabled
         ? colorScheme.primary
         : null;
@@ -565,19 +698,19 @@ class _SideNaviWidget extends StatelessWidget {
     if (enabled && useLiquidSelection) {
       surface = GlassContainer(
         width: double.infinity,
-        height: 38,
+        height: itemHeight,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         useOwnLayer: true,
         quality: GlassQuality.standard,
         shape: const LiquidRoundedSuperellipse(borderRadius: 12),
         settings: LiquidGlassSettings(
-          blur: 20,
+          blur: 0,
           glassColor: isDark
-              ? colorScheme.primary.withValues(alpha: 0.22)
-              : Colors.white.withValues(alpha: 0.16),
-          ambientStrength: isDark ? 0.34 : 0.48,
-          saturation: 1.14,
-          thickness: 16,
+              ? colorScheme.primary.withValues(alpha: 0.28)
+              : colorScheme.primary.withValues(alpha: 0.20),
+          ambientStrength: 0.48,
+          saturation: 1.18,
+          thickness: 28,
         ),
         child: child,
       );
@@ -585,7 +718,7 @@ class _SideNaviWidget extends StatelessWidget {
       surface = AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 12),
-        height: 38,
+        height: itemHeight,
         decoration: BoxDecoration(
           color: enabled ? colorScheme.primaryContainer : null,
           borderRadius: BorderRadius.circular(12),
@@ -616,13 +749,14 @@ class _PaneActionWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final icon = Icon(entry.icon);
+    final itemHeight = showTitle ? 42.0 : 40.0;
     return InkWell(
       onTap: entry.onTap,
       borderRadius: BorderRadius.circular(12),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 12),
-        height: 38,
+        height: itemHeight,
         child: showTitle
             ? Row(
                 children: [icon, const SizedBox(width: 12), Text(entry.label)],
