@@ -293,6 +293,7 @@ class DownloadManager with _DownloadDb implements Listenable {
     var task = downloading.removeFirst();
     _addToDb(await task.toDownloadedItem(), task.directory!);
     await _saveInfo();
+    task.saveChapterComments();
     StateController.findOrNull<DownloadPageLogic>()?.refresh();
     StateController.findOrNull(tag: "me_page_downloads")?.update();
     if (downloading.isNotEmpty) {
