@@ -35,10 +35,13 @@ class _ExplorePageState extends State<ExplorePage>
   void initState() {
     super.initState();
     pages = appdata.appSettings.explorePages;
-    var all = ComicSource.sources.map((e) => e.explorePages).expand((e) => e.map((e) => e.title)).toList();
+    var all = ComicSource.sources
+        .map((e) => e.explorePages)
+        .expand((e) => e.map((e) => e.title))
+        .toList();
     pages = pages.where((e) => all.contains(e)).toList();
-    if(pages.isEmpty && appdata.appSettings.explorePages.isNotEmpty) {
-      if(appdata.appSettings.explorePages.first.isNum) {
+    if (pages.isEmpty && appdata.appSettings.explorePages.isNotEmpty) {
+      if (appdata.appSettings.explorePages.first.isNum) {
         // is odd data, update
         appdata.appSettings.explorePages = all;
         pages = all;
@@ -54,7 +57,8 @@ class _ExplorePageState extends State<ExplorePage>
     controller.addListener(() {
       if (controller.indexIsChanging) {
         // 保存当前标签索引到PageStorage
-        PageStorage.of(context).writeState(context, controller.index, identifier: 'explore_tab_index');
+        PageStorage.of(context).writeState(context, controller.index,
+            identifier: 'explore_tab_index');
       }
     });
   }
@@ -64,7 +68,8 @@ class _ExplorePageState extends State<ExplorePage>
     super.didChangeDependencies();
 
     // 从PageStorage恢复之前保存的标签索引
-    final savedIndex = PageStorage.of(context).readState(context, identifier: 'explore_tab_index') as int?;
+    final savedIndex = PageStorage.of(context)
+        .readState(context, identifier: 'explore_tab_index') as int?;
     if (savedIndex != null && savedIndex >= 0 && savedIndex < pages.length) {
       controller.index = savedIndex;
     }
@@ -92,8 +97,7 @@ class _ExplorePageState extends State<ExplorePage>
   Map<String, String> _explorePages() {
     return {
       for (var source in ComicSource.sources)
-        for (var page in source.explorePages)
-          page.title: page.title.tl
+        for (var page in source.explorePages) page.title: page.title.tl
     };
   }
 
@@ -137,6 +141,12 @@ class _ExplorePageState extends State<ExplorePage>
     if (pages.isEmpty) {
       return buildEmpty();
     }
+
+    final naviPane = context.findAncestorStateOfType<NaviPaneState>();
+    final fabBottom = 16.0 +
+        ((naviPane?.enableLiquidGlassBottomBar ?? false)
+            ? naviPane!.liquidGlassBottomBarHeight
+            : 0.0);
 
     Widget tabBar = Material(
       child: AppTabBar(
@@ -192,9 +202,9 @@ class _ExplorePageState extends State<ExplorePage>
                     controller: controller,
                     children: pages
                         .map((e) => _SingleExplorePage(
-                          e,
-                          key: PageStorageKey(e), // 使用PageStorageKey确保状态保存
-                        ))
+                              e,
+                              key: PageStorageKey(e), // 使用PageStorageKey确保状态保存
+                            ))
                         .toList(),
                   ),
                 ),
@@ -204,7 +214,7 @@ class _ExplorePageState extends State<ExplorePage>
         )),
         Positioned(
           right: 16,
-          bottom: 16,
+          bottom: fabBottom,
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 150),
             reverseDuration: const Duration(milliseconds: 150),

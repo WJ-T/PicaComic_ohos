@@ -106,6 +106,12 @@ class NaviPaneState extends State<NaviPane>
   double get bottomBarHeight =>
       _kBottomBarHeight + MediaQuery.of(context).padding.bottom;
 
+  double get liquidGlassBottomBarHeight {
+    final bottomPadding =
+        math.max(MediaQuery.of(context).viewPadding.bottom, 10.0);
+    return 56 + 14 * 2 + bottomPadding;
+  }
+
   void onNavigatorStateChange() {
     if (SchedulerBinding.instance.schedulerPhase ==
         SchedulerPhase.persistentCallbacks) {
