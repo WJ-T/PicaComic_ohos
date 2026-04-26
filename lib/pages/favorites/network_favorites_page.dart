@@ -109,7 +109,7 @@ class _NormalFavoritePageState extends State<_NormalFavoritePage> {
         if (widget.data.key == 'nhentai')
           Positioned(
             right: 16,
-            bottom: MediaQuery.of(context).padding.bottom + 16,
+            bottom: _favoriteFloatingButtonBottom(context),
             child: Tooltip(
               message: '随机'.tl,
               child: FloatingActionButton(

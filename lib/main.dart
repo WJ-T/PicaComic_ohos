@@ -195,6 +195,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
     listenMouseSideButtonToBack();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    if (App.isMobile) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
+    }
     WidgetsBinding.instance.addObserver(this);
     notifications.init();
 

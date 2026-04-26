@@ -76,6 +76,17 @@ part 'reading_data.dart';
 
 part 'continuation.dart';
 
+void _restoreAppOrientations() {
+  if (App.isMobile) {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+  } else {
+    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+  }
+}
+
 ///阅读器
 class ComicReadingPage extends StatelessWidget {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -233,6 +244,8 @@ class ComicReadingPage extends StatelessWidget {
           DeviceOrientation.portraitUp,
           DeviceOrientation.portraitDown
         ]);
+      } else if (App.isMobile) {
+        SystemChrome.setPreferredOrientations(DeviceOrientation.values);
       }
       //进入阅读器时清除内存中的缓存, 并且增大限制
       BaseImageProvider.clearCache();
@@ -251,7 +264,7 @@ class ComicReadingPage extends StatelessWidget {
       BaseImageProvider.setCacheSizeLimit(50 * 1024 * 1024);
       logic.clearPhotoViewControllers();
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+      _restoreAppOrientations();
       if (logic.listenVolume != null) {
         logic.listenVolume!.stop();
       }
@@ -285,9 +298,6 @@ class ComicReadingPage extends StatelessWidget {
           BaseComicPage.tagsStack.last.updateHistory(history);
         }
       });
-      if (appdata.settings[76] != "0") {
-        SystemChrome.setPreferredOrientations(DeviceOrientation.values);
-      }
       if (useDarkBackground) {
       }
     }, builder: (logic) {

@@ -742,7 +742,7 @@ class _LocalFavoritesPageState extends State<_LocalFavoritesPage> {
         Positioned.fill(child: body),
         Positioned(
           right: 16,
-          bottom: MediaQuery.of(context).padding.bottom + 16,
+          bottom: _favoriteFloatingButtonBottom(context),
           child: Tooltip(
             message: '随机'.tl,
             child: FloatingActionButton(
