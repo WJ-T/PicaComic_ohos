@@ -260,7 +260,7 @@ class NaviPaneState extends State<NaviPane>
       );
     }
     final mq = MediaQuery.of(context);
-    final enableFloatingGlassSideDock =
+    final useWideLiquidGlassBottomBar =
         enableLiquidGlassBottomBar && mq.size.width > changePoint;
     final sideInsets = (App.isMobile && mq.orientation == Orientation.landscape)
         ? EdgeInsets.only(
@@ -273,7 +273,7 @@ class NaviPaneState extends State<NaviPane>
     bool rootCanPop = Navigator.of(context).canPop();
     return PopScope(
       canPop: !internalCanPop && !rootCanPop,
-      onPopInvoked: (didPop) async {
+      onPopInvokedWithResult: (didPop, result) async {
         if (didPop) {
           return;
         }
@@ -296,18 +296,13 @@ class NaviPaneState extends State<NaviPane>
           animation: controller,
           builder: (context, child) {
             final value = controller.value;
-            final showFloatingGlassSideDock = enableFloatingGlassSideDock &&
-                widget.observer.routes.length <= 1;
-            final floatingDockLeft =
-                math.max(MediaQuery.of(context).viewPadding.left, 16.0);
-            final floatingDockHiddenOffset = value == 3 ? 72.0 : 56.0;
             final leftOffset =
                 _kFoldedSideBarWidth * ((value - 1).clamp(0, 1)) +
                     (_kSideBarWidth - _kFoldedSideBarWidth) *
                         ((value - 2).clamp(0, 1));
             Widget content = Stack(
               children: [
-                if (!enableFloatingGlassSideDock)
+                if (!useWideLiquidGlassBottomBar)
                   Positioned(
                     left:
                         _kFoldedSideBarWidth * ((value - 2.0).clamp(-1.0, 0.0)),
@@ -318,32 +313,9 @@ class NaviPaneState extends State<NaviPane>
                     ),
                   ),
                 Positioned.fill(
-                  left: enableFloatingGlassSideDock ? 0 : leftOffset,
+                  left: useWideLiquidGlassBottomBar ? 0 : leftOffset,
                   child: buildMainView(),
                 ),
-                if (enableFloatingGlassSideDock)
-                  AnimatedPositioned(
-                    duration: _fastAnimationDuration,
-                    curve: Curves.easeOutCubic,
-                    left: showFloatingGlassSideDock
-                        ? floatingDockLeft
-                        : floatingDockLeft - floatingDockHiddenOffset,
-                    bottom: math.max(
-                      MediaQuery.of(context).viewPadding.bottom,
-                      16.0,
-                    ),
-                    child: IgnorePointer(
-                      ignoring: !showFloatingGlassSideDock,
-                      child: AnimatedOpacity(
-                        duration: _fastAnimationDuration,
-                        curve: Curves.easeOut,
-                        opacity: showFloatingGlassSideDock ? 1 : 0,
-                        child: RepaintBoundary(
-                          child: buildFloatingLeftDock(showTitle: value == 3),
-                        ),
-                      ),
-                    ),
-                  ),
               ],
             );
             if (sideInsets != EdgeInsets.zero) {
@@ -387,7 +359,7 @@ class NaviPaneState extends State<NaviPane>
   Widget buildTop() {
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withOpacity(0.86),
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.86),
       ),
       height: _kTopBarHeight,
       width: double.infinity,
@@ -417,6 +389,24 @@ class NaviPaneState extends State<NaviPane>
       final theme = Theme.of(context);
       final primary = theme.colorScheme.primary;
       final isDark = theme.brightness == Brightness.dark;
+      final isWide = MediaQuery.of(context).size.width > changePoint;
+      final wideActions = isWide ? _wideBottomActions() : <PaneActionEntry>[];
+      final tabs = [
+        ...widget.paneItems.map(
+          (e) => GlassBottomBarTab(
+            label: e.label,
+            icon: Icon(e.icon),
+            activeIcon: Icon(e.activeIcon),
+          ),
+        ),
+        ...wideActions.map(
+          (e) => GlassBottomBarTab(
+            label: e.label,
+            icon: Icon(e.icon),
+            activeIcon: Icon(e.icon),
+          ),
+        ),
+      ];
       final bottomPadding =
           math.max(MediaQuery.of(context).viewPadding.bottom, 10.0);
       final baseGlassColor = isDark
@@ -430,7 +420,7 @@ class NaviPaneState extends State<NaviPane>
         child: Align(
           alignment: Alignment.bottomCenter,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 488),
+            constraints: BoxConstraints(maxWidth: isWide ? 720 : 488),
             child: GlassBottomBar(
               quality: GlassQuality.premium,
               selectedIconColor: primary,
@@ -455,16 +445,14 @@ class NaviPaneState extends State<NaviPane>
               verticalPadding: 14,
               barHeight: 56,
               selectedIndex: currentPage,
-              onTabSelected: updatePage,
-              tabs: widget.paneItems
-                  .map(
-                    (e) => GlassBottomBarTab(
-                      label: e.label,
-                      icon: Icon(e.icon),
-                      activeIcon: Icon(e.activeIcon),
-                    ),
-                  )
-                  .toList(),
+              onTabSelected: (index) {
+                if (index < widget.paneItems.length) {
+                  updatePage(index);
+                  return;
+                }
+                wideActions[index - widget.paneItems.length].onTap();
+              },
+              tabs: tabs,
             ),
           ),
         ),
@@ -499,6 +487,26 @@ class NaviPaneState extends State<NaviPane>
         ),
       ),
     );
+  }
+
+  List<PaneActionEntry> _wideBottomActions() {
+    final hasSearchAction =
+        widget.paneActions.any((action) => action.icon == Icons.search);
+    return [
+      if (!hasSearchAction)
+        PaneActionEntry(
+          label: "搜索".tl,
+          icon: Icons.search,
+          onTap: () {
+            final navContext = widget.navigatorKey.currentContext;
+            if (navContext == null) {
+              return;
+            }
+            App.to(navContext, () => PreSearchPage());
+          },
+        ),
+      ...widget.paneActions,
+    ];
   }
 
   Widget buildLeft({required bool useLiquidSelection}) {
@@ -546,173 +554,6 @@ class NaviPaneState extends State<NaviPane>
             ),
             const SizedBox(height: 16),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget buildFloatingLeftDock({required bool showTitle}) {
-    final actions = <PaneActionEntry>[
-      if (widget.paneActions.length == 1)
-        PaneActionEntry(
-          label: "搜索".tl,
-          icon: Icons.search,
-          onTap: () {
-            final navContext = widget.navigatorKey.currentContext;
-            if (navContext == null) {
-              return;
-            }
-            App.to(navContext, () => PreSearchPage());
-          },
-        ),
-      ...widget.paneActions,
-    ];
-
-    return _FloatingGlassSideBarDock(
-      entries: widget.paneItems,
-      actions: actions,
-      currentPage: currentPage,
-      showTitle: showTitle,
-      onSelect: updatePage,
-    );
-  }
-}
-
-class _FloatingGlassSideBarDock extends StatelessWidget {
-  const _FloatingGlassSideBarDock({
-    required this.entries,
-    required this.actions,
-    required this.currentPage,
-    required this.showTitle,
-    required this.onSelect,
-  });
-
-  final List<PaneItemEntry> entries;
-  final List<PaneActionEntry> actions;
-  final int currentPage;
-  final bool showTitle;
-  final ValueChanged<int> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final unselectedColor = theme.colorScheme.onSurface.withValues(alpha: 0.72);
-    const width = 72.0;
-    const itemExtent = 48.0;
-    const contentVerticalPadding = 20.0;
-    final dividerHeight = actions.isEmpty ? 0.0 : 17.0;
-    final totalHeight = contentVerticalPadding +
-        entries.length * itemExtent +
-        dividerHeight +
-        actions.length * itemExtent;
-
-    Widget buildIconButton({
-      required Widget icon,
-      required bool selected,
-      required VoidCallback onTap,
-    }) {
-      final color = selected ? theme.colorScheme.primary : unselectedColor;
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: GlassButton.custom(
-          onTap: onTap,
-          width: 48,
-          height: 44,
-          quality: GlassQuality.premium,
-          interactionScale: 1.12,
-          glowRadius: selected ? 1.1 : 0.8,
-          glowColor: theme.colorScheme.primary.withValues(
-            alpha: selected ? 0.18 : 0.08,
-          ),
-          shape: const LiquidRoundedSuperellipse(borderRadius: 22),
-          settings: LiquidGlassSettings(
-            blur: 0,
-            glassColor: selected
-                ? theme.colorScheme.primary.withValues(alpha: 0.18)
-                : Colors.transparent,
-            saturation: 1.18,
-            ambientStrength: selected ? 0.48 : 0.30,
-            thickness: selected ? 28 : 14,
-          ),
-          style:
-              selected ? GlassButtonStyle.filled : GlassButtonStyle.transparent,
-          child: IconTheme(
-            data: IconThemeData(
-              color: color,
-              size: 22,
-            ),
-            child: icon,
-          ),
-        ),
-      );
-    }
-
-    return SizedBox(
-      width: width,
-      height: totalHeight,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(36),
-        child: MediaQuery.removePadding(
-          context: context,
-          removeLeft: true,
-          removeTop: true,
-          removeRight: true,
-          removeBottom: true,
-          child: GlassSideBar(
-            width: width,
-            padding: EdgeInsets.zero,
-            backgroundColor: Colors.transparent,
-            border: Border.all(color: Colors.transparent, width: 0),
-            glassSettings: LiquidGlassSettings(
-              blur: 28,
-              glassColor: isDark
-                  ? const Color.fromRGBO(28, 28, 32, 0.58)
-                  : const Color.fromRGBO(255, 255, 255, 0.16),
-              ambientStrength: isDark ? 0.36 : 0.52,
-              saturation: 1.16,
-              thickness: 18,
-            ),
-            quality: GlassQuality.premium,
-            header: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ...List.generate(entries.length, (index) {
-                    final entry = entries[index];
-                    final selected = currentPage == index;
-                    return buildIconButton(
-                      icon: Icon(selected ? entry.activeIcon : entry.icon),
-                      selected: selected,
-                      onTap: () => onSelect(index),
-                    );
-                  }),
-                  if (actions.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-                      child: Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: theme.colorScheme.outlineVariant.withValues(
-                          alpha: 0.35,
-                        ),
-                      ),
-                    ),
-                  ...List.generate(actions.length, (index) {
-                    final action = actions[index];
-                    return buildIconButton(
-                      icon: Icon(action.icon),
-                      selected: false,
-                      onTap: action.onTap,
-                    );
-                  }),
-                ],
-              ),
-            ),
-            footer: null,
-            children: const [],
-          ),
         ),
       ),
     );
@@ -1111,8 +952,7 @@ class _NaviMainViewState extends State<_NaviMainView> {
       return state.buildMainViewContent();
     }
     var shouldShowAppBar = state.controller.value < 2;
-    var useLiquidGlassBottomBar =
-        shouldShowAppBar && state.enableLiquidGlassBottomBar;
+    var useLiquidGlassBottomBar = state.enableLiquidGlassBottomBar;
     return Scaffold(
       extendBody: useLiquidGlassBottomBar,
       appBar: shouldShowAppBar
@@ -1122,7 +962,7 @@ class _NaviMainViewState extends State<_NaviMainView> {
               toolbarHeight: NaviPaneState._kTopBarHeight,
               titleSpacing: 16,
               backgroundColor:
-                  Theme.of(context).colorScheme.surface.withOpacity(0.86),
+                  Theme.of(context).colorScheme.surface.withValues(alpha: 0.86),
               title: Text(
                 state.widget.paneItems[state.currentPage].label,
                 style: const TextStyle(
@@ -1150,7 +990,7 @@ class _NaviMainViewState extends State<_NaviMainView> {
           ? (useLiquidGlassBottomBar
               ? state.buildBottom()
               : SafeArea(top: false, bottom: true, child: state.buildBottom()))
-          : null,
+          : (useLiquidGlassBottomBar ? state.buildBottom() : null),
     );
   }
 }
