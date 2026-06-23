@@ -78,7 +78,7 @@ part 'reading_data.dart';
 part 'continuation.dart';
 
 void _restoreAppOrientations() {
-  if (App.isMobile) {
+  if (App.isAndroid || App.isIOS) {
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
