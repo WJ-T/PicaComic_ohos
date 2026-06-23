@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
+import 'package:liquid_glass_widgets/widgets/interactive/glass_button.dart';
 import 'package:pica_comic/base.dart';
 import 'package:pica_comic/foundation/comic_source/comic_source.dart';
 import 'package:pica_comic/components/components.dart';
@@ -121,11 +123,32 @@ class _ExplorePageState extends State<ExplorePage>
 
   Widget buildFAB() => Material(
         color: Colors.transparent,
-        child: FloatingActionButton(
-          key: const Key("FAB"),
-          onPressed: refresh,
-          child: const Icon(Icons.refresh),
-        ),
+        child: enableLiquidGlassUi
+            ? GlassButton(
+                key: const Key("FAB"),
+                icon: const Icon(Icons.refresh),
+                onTap: refresh,
+                settings: LiquidGlassSettings(
+                  blur: 16,
+                  glassColor: Theme.of(context).brightness == Brightness.dark
+                      ? Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest
+                          .withValues(alpha: 0.26)
+                      : Colors.white.withValues(alpha: 0.18),
+                  ambientStrength:
+                      Theme.of(context).brightness == Brightness.dark
+                          ? 0.34
+                          : 0.48,
+                  saturation: 1.14,
+                  thickness: 18,
+                ),
+              )
+            : FloatingActionButton(
+                key: const Key("FAB"),
+                onPressed: refresh,
+                child: const Icon(Icons.refresh),
+              ),
       );
 
   Tab buildTab(String i) {
@@ -142,11 +165,7 @@ class _ExplorePageState extends State<ExplorePage>
       return buildEmpty();
     }
 
-    final naviPane = context.findAncestorStateOfType<NaviPaneState>();
-    final fabBottom = 16.0 +
-        ((naviPane?.enableLiquidGlassBottomBar ?? false)
-            ? naviPane!.liquidGlassBottomBarHeight
-            : 0.0);
+    final bottomInset = bottomOverlayInsetOf(context);
 
     Widget tabBar = Material(
       child: AppTabBar(
@@ -214,7 +233,7 @@ class _ExplorePageState extends State<ExplorePage>
         )),
         Positioned(
           right: 16,
-          bottom: fabBottom,
+          bottom: 16 + bottomInset,
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 150),
             reverseDuration: const Duration(milliseconds: 150),
@@ -333,7 +352,12 @@ class _SingleExplorePageState extends StateWithController<_SingleExplorePage> {
 
   Widget buildPage() {
     return SmoothCustomScrollView(
-      slivers: _buildPage().toList(),
+      slivers: [
+        ..._buildPage(),
+        SliverToBoxAdapter(
+          child: SizedBox(height: bottomOverlayInsetOf(context)),
+        ),
+      ],
     );
   }
 
@@ -428,7 +452,10 @@ class _MixedExplorePageState
     return SmoothCustomScrollView(
       slivers: [
         ...buildSlivers(context, data),
-        if (haveNextPage) const ListLoadingIndicator().toSliver()
+        if (haveNextPage) const ListLoadingIndicator().toSliver(),
+        SliverToBoxAdapter(
+          child: SizedBox(height: bottomOverlayInsetOf(context)),
+        ),
       ],
     );
   }

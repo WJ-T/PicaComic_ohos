@@ -4,15 +4,24 @@ import 'package:pica_comic/components/components.dart';
 import 'package:pica_comic/foundation/app.dart';
 import 'package:pica_comic/foundation/comic_source/comic_source.dart';
 import 'package:pica_comic/network/base_comic.dart';
+import 'package:pica_comic/network/res.dart';
 import 'package:pica_comic/pages/comic_page.dart';
 import 'package:pica_comic/pages/search_result_page.dart';
-import 'package:pica_comic/utils/extensions.dart';
+//import 'package:pica_comic/utils/extensions.dart';
 import 'package:pica_comic/utils/translations.dart';
 
+import '../network/res.dart';
+
 class AggregatedSearchPage extends StatefulWidget {
-  const AggregatedSearchPage({super.key, required this.keyword});
+   const AggregatedSearchPage({
+    super.key,
+    required this.keyword,
+    this.displayMode = 1,
+  });
 
   final String keyword;
+  /// 1: separate display (分开展示), 2: merged display (合并展示)
+  final int displayMode;
 
   @override
   State<AggregatedSearchPage> createState() => _AggregatedSearchPageState();
@@ -51,21 +60,69 @@ class _AggregatedSearchPageState extends State<AggregatedSearchPage> {
 
   @override
   Widget build(BuildContext context) {
+        if (widget.displayMode == 2) {
+      return Scaffold(
+        appBar: AppBar(
+          title: TextField(
+            controller: searchController,
+            decoration: InputDecoration(
+              hintText: "搜索".tl,
+              border: InputBorder.none,
+            ),
+            onSubmitted: onSearch,
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: () => onSearch(searchController.text),
+            ),
+          ],
+        ),
+        body: _MergedSearchComicList(
+          key: ValueKey(_keyword),
+          keyword: _keyword,
+          header: const SliverToBoxAdapter(),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: TextField(
-          controller: searchController,
-          decoration: InputDecoration(
-            hintText: "搜索".tl,
-            border: InputBorder.none,
-          ),
-          onSubmitted: onSearch,
-        ),
+        title: enableLiquidGlassUi
+            ? GlassSurface(
+                height: 42,
+                borderRadius: 20,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Center(
+                  child: TextField(
+                    controller: searchController,
+                    decoration: InputDecoration(
+                      hintText: "搜索".tl,
+                      border: InputBorder.none,
+                    ),
+                    onSubmitted: onSearch,
+                  ),
+                ),
+              )
+            : TextField(
+                controller: searchController,
+                decoration: InputDecoration(
+                  hintText: "搜索".tl,
+                  border: InputBorder.none,
+                ),
+                onSubmitted: onSearch,
+              ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () => onSearch(searchController.text),
-          ),
+          enableLiquidGlassUi
+              ? GlassIconActionButton(
+                  icon: Icons.search,
+                  tooltip: "搜索".tl,
+                  onTap: () => onSearch(searchController.text),
+                )
+              : IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: () => onSearch(searchController.text),
+                ),
         ],
       ),
       body: CustomScrollView(
@@ -89,6 +146,93 @@ class _AggregatedSearchPageState extends State<AggregatedSearchPage> {
     );
   }
 }
+
+class _MergedSearchComicList extends ComicsPage<BaseComic> {
+    _MergedSearchComicList({
+    super.key,
+    required this.keyword,
+    required this.header,
+  });
+
+  final String keyword;
+
+  @override
+  final Widget header;
+
+  @override
+  String get sourceKey => "__aggregated__";
+
+  @override
+  String? get title => null;
+
+ @override
+   String? get tag => "aggregated_merged";
+
+  @override
+    final Map<String, String> _comicSources = {};
+
+  @override
+  Future<Res<List<BaseComic>>> getComics(int i) async {
+    final sources = ComicSource.sources
+        .where((e) =>
+            e.searchPageData != null && e.searchPageData!.loadPage != null)
+        .toList();
+
+    // Fetch all sources in parallel
+    final results = await Future.wait(sources.map((source) async {
+      final options = (source.searchPageData!.searchOptions ?? [])
+          .map((e) => e.defaultValue)
+          .toList();
+      final res = await source.searchPageData!.loadPage!(keyword, i, options);
+         return (source: source, res: res);
+    }));
+
+    // Collect non-error results with their source keys
+    final sourceResults = <({ComicSource source, List<BaseComic> comics})>[];
+    for (final r in results) {
+      if (!r.res.error) {
+        sourceResults.add((source: r.source, comics: r.res.data));
+      }
+    }
+
+    final merged = <BaseComic>[];
+    final ids = <String>{};
+    dynamic firstSubData;
+
+    // Round-robin interleave: take one from each source in turn
+    final indices = List.filled(sourceResults.length, 0);
+    bool hasMore = true;
+    while (hasMore) {
+      hasMore = false;
+      for (var j = 0; j < sourceResults.length; j++) {
+        final entry = sourceResults[j];
+        if (indices[j] < entry.comics.length) {
+          hasMore = true;
+          final comic = entry.comics[indices[j]];
+          indices[j]++;
+          if (ids.add(comic.id)) {
+            _comicSources[comic.id] = entry.source.key;
+            merged.add(comic);
+          }
+        }
+      }
+    }
+
+    return Res<List<BaseComic>>(merged, subData: firstSubData);
+  }
+
+
+  @override
+  Widget buildItem(BuildContext context, BaseComic item) {
+    return buildComicTile(
+      context,
+      item,
+      _comicSources[item.id] ?? sourceKey,
+      addonMenuOptions: addonMenuOptions,
+     badge: ComicSource.find(_comicSources[item.id] ?? sourceKey)?.name,
+    );
+  }
+  }
 
 class _SearchResultItem extends StatefulWidget {
   const _SearchResultItem({
@@ -176,130 +320,161 @@ class _SearchResultItemState extends State<_SearchResultItem>
   }
 
   Widget buildComic(BaseComic c) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      margin: EdgeInsets.zero,
-      child: InkWell(
-        onTap: () {
-          App.mainNavigatorKey!.currentContext!.to(
-            () => ComicPage(
-              sourceKey: widget.source.key,
-              id: c.id,
-              cover: c.cover,
+    final content = SizedBox(
+      width: _comicWidth,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: IgnorePointer(
+              child: buildComicTile(
+                context,
+                c,
+                widget.source.key,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text(
+              c.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+    final child = enableLiquidGlassUi
+        ? GlassSurface(
+            borderRadius: 16,
+            onTap: () {
+              App.mainNavigatorKey!.currentContext!.to(
+                () => ComicPage(
+                  sourceKey: widget.source.key,
+                  id: c.id,
+                  cover: c.cover,
+                ),
+              );
+            },
+            child: content,
+          )
+        : Card(
+            clipBehavior: Clip.antiAlias,
+            margin: EdgeInsets.zero,
+            child: InkWell(
+              onTap: () {
+                App.mainNavigatorKey!.currentContext!.to(
+                  () => ComicPage(
+                    sourceKey: widget.source.key,
+                    id: c.id,
+                    cover: c.cover,
+                  ),
+                );
+              },
+              child: content,
             ),
           );
-        },
-        child: SizedBox(
-          width: _comicWidth,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: IgnorePointer(
-                  child: buildComicTile(
-                    context,
-                    c,
-                    widget.source.key,
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  c.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ).paddingLeft(_kLeftPadding).paddingBottom(2);
+    return child.paddingLeft(_kLeftPadding).paddingBottom(2);
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () {
-          App.mainNavigatorKey!.currentContext!.to(
-            () => SearchResultPage(
-              keyword: widget.keyword,
-              sourceKey: widget.source.key,
-            ),
-          );
-        },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ListTile(
-              title: Text(widget.source.name.tl),
-            ),
-            if (isLoading)
-            SizedBox(
-              height: _kComicHeight,
-              width: double.infinity,
-              child: Shimmer(
-                child: LayoutBuilder(builder: (context, constrains) {
-                  var itemWidth = _comicWidth + _kLeftPadding;
-                  var items = (constrains.maxWidth / itemWidth).ceil();
-                  return Stack(
-                    children: [
-                      Positioned(
-                        left: 0,
-                        top: 0,
-                        bottom: 0,
-                        child: Row(
-                          children: List.generate(
-                            items,
-                            (index) => buildPlaceHolder(),
-                          ),
-                        ),
-                      )
-                    ],
-                  );
-                }),
-              ),
-            )
-          else if (error != null || comics == null || comics!.isEmpty)
-            SizedBox(
-              height: _kComicHeight,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ListTile(
+          title: Text(widget.source.name.tl),
+        ),
+        if (isLoading)
+          SizedBox(
+            height: _kComicHeight,
+            width: double.infinity,
+            child: Shimmer(
+              child: LayoutBuilder(builder: (context, constrains) {
+                var itemWidth = _comicWidth + _kLeftPadding;
+                var items = (constrains.maxWidth / itemWidth).ceil();
+                return Stack(
                   children: [
-                    const Icon(Icons.error_outline),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        error ?? "No search results found".tl,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    Positioned(
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      child: Row(
+                        children: List.generate(
+                          items,
+                          (index) => buildPlaceHolder(),
+                        ),
                       ),
                     )
                   ],
-                ),
-              ),
-            )
-          else
-            SizedBox(
-              height: _kComicHeight,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
+                );
+              }),
+            ),
+          )
+        else if (error != null || comics == null || comics!.isEmpty)
+          SizedBox(
+            height: _kComicHeight,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
                 children: [
-                  for (var c in comics!) buildComic(c),
+                  const Icon(Icons.error_outline),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      error ?? "No search results found".tl,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  )
                 ],
               ),
             ),
-          ],
-        ),
-      ),
+          )
+        else
+          SizedBox(
+            height: _kComicHeight,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (var c in comics!) buildComic(c),
+              ],
+            ),
+          ),
+      ],
     );
+    return enableLiquidGlassUi
+        ? GlassSurface(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            borderRadius: 20,
+            onTap: () {
+              App.mainNavigatorKey!.currentContext!.to(
+                () => SearchResultPage(
+                  keyword: widget.keyword,
+                  sourceKey: widget.source.key,
+                ),
+              );
+            },
+            child: content,
+          )
+        : Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () {
+                App.mainNavigatorKey!.currentContext!.to(
+                  () => SearchResultPage(
+                    keyword: widget.keyword,
+                    sourceKey: widget.source.key,
+                  ),
+                );
+              },
+              child: content,
+            ),
+          );
   }
 
   @override

@@ -37,7 +37,6 @@ import 'package:pica_comic/utils/io_tools.dart';
 import 'package:pica_comic/utils/io.dart';
 import 'package:pica_comic/utils/tags_translation.dart';
 import 'package:pica_comic/utils/translations.dart';
-
 import '../base.dart';
 import '../foundation/ui_mode.dart';
 import '../pages/favorites/network_to_local.dart';
@@ -50,6 +49,7 @@ part 'comic_tile.dart';
 part 'comics_list.dart';
 part 'consts.dart';
 part 'flyout.dart';
+part 'glass.dart';
 part 'layout.dart';
 part 'loading.dart';
 part 'menu.dart';

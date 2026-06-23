@@ -407,7 +407,8 @@ class JmNetwork {
                   comic["category_sub"]["id"], comic["category_sub"]["title"]));
             }
             comics.add(JmComicBrief(comic["id"], comic["author"], comic["name"],
-                comic["description"] ?? "", categories));
+                comic["description"] ?? "", categories,
+                pages: null));
           } catch (e) {
             continue;
           }
@@ -457,7 +458,8 @@ class JmNetwork {
         }
         try {
           list.comics.add(JmComicBrief(comic["id"], comic["author"],
-              comic["name"], comic["description"] ?? "", categories));
+              comic["name"], comic["description"] ?? "", categories,
+              pages: null));
         } catch (e) {
           //忽略
         }
@@ -499,7 +501,8 @@ class JmNetwork {
         }
         try {
           list.comics.add(JmComicBrief(comic["id"], comic["author"],
-              comic["name"], comic["description"] ?? "", categories));
+              comic["name"], comic["description"] ?? "", categories,
+              pages: null));
         } catch (e) {
           //忽视
         }
@@ -538,7 +541,8 @@ class JmNetwork {
                 comic["category_sub"]["id"], comic["category_sub"]["title"]));
           }
           comics.add(JmComicBrief(comic["id"], comic["author"], comic["name"],
-              comic["description"] ?? "", categories));
+              comic["description"] ?? "", categories,
+              pages: null));
         } catch (e) {
           continue;
         }
@@ -601,7 +605,8 @@ class JmNetwork {
                 comic["category_sub"]["id"], comic["category_sub"]["title"]));
           }
           comics.add(JmComicBrief(comic["id"], comic["author"], comic["name"],
-              comic["description"] ?? "", categories));
+              comic["description"] ?? "", categories,
+              pages: null));
         } catch (e) {
           continue;
         }
@@ -675,7 +680,8 @@ class JmNetwork {
                 comic["category_sub"]["id"], comic["category_sub"]["title"]));
           }
           comics.add(JmComicBrief(comic["id"], comic["author"], comic["name"],
-              comic["description"] ?? "", categories));
+             comic["description"] ?? "", categories,
+              pages: null));
         } catch (e) {
           continue;
         }
@@ -737,7 +743,8 @@ class JmNetwork {
       var related = <JmComicBrief>[];
       for (var c in res.data["related_list"] ?? []) {
         related.add(JmComicBrief(c["id"], c["author"] ?? "Unknown",
-            c["name"] ?? "Unknown", c["description"] ?? "None", []));
+             c["name"] ?? "Unknown", c["description"] ?? "None", [],
+            pages: null));
       }
       return Res(JmComicInfo(
           res.data["name"] ?? "未知",
@@ -847,7 +854,8 @@ class JmNetwork {
               comic["category_sub"]["id"], comic["category_sub"]["title"]));
         }
         comics.add(JmComicBrief(comic["id"], comic["author"], comic["name"],
-            comic["description"] ?? "", categories));
+            comic["description"] ?? "", categories,
+            pages: null));
       }
       Object total = res.data["total"];
       if (total is String) {
@@ -1054,7 +1062,8 @@ class JmNetwork {
               comic["category_sub"]["id"], comic["category_sub"]["title"]));
         }
         comics.add(JmComicBrief(comic["id"], comic["author"], comic["name"],
-            comic["description"] ?? "", categories));
+            comic["description"] ?? "", categories,
+            pages: null));
       }
       return Res(comics);
     } catch (e, s) {

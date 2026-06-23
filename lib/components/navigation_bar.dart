@@ -64,6 +64,14 @@ class NaviPane extends StatefulWidget {
 
 typedef NaviItemTapListener = void Function(int);
 
+double bottomOverlayInsetOf(BuildContext context) {
+  final state = context.findAncestorStateOfType<NaviPaneState>();
+  if (state == null || !state.shouldUseLiquidGlassBottomNavigation) {
+    return 0;
+  }
+  return state.liquidGlassBottomBarHeight;
+}
+
 class NaviPaneState extends State<NaviPane>
     with SingleTickerProviderStateMixin {
   late int _currentPage = widget.initialPage;
@@ -98,10 +106,17 @@ class NaviPaneState extends State<NaviPane>
 
   static const _kTopBarHeight = 48.0;
 
+  static const _kDesktopSidebarHysteresis = 48.0;
+
   bool get enableLiquidGlassBottomBar =>
-      PlatformUtils.isOhos &&
       appdata.settings.length > 103 &&
       appdata.settings[103] == "1";
+
+  bool get shouldUseBottomNavigationLayout =>
+      MediaQuery.of(context).size.width <= changePoint;
+
+  bool get shouldUseLiquidGlassBottomNavigation =>
+      enableLiquidGlassBottomBar && shouldUseBottomNavigationLayout;
 
   double get bottomBarHeight =>
       _kBottomBarHeight + MediaQuery.of(context).padding.bottom;
@@ -111,6 +126,11 @@ class NaviPaneState extends State<NaviPane>
         math.max(MediaQuery.of(context).viewPadding.bottom, 10.0);
     return 56 + 14 * 2 + bottomPadding;
   }
+
+  double get visibleSideBarWidth =>
+      _kFoldedSideBarWidth * ((controller.value - 1.0).clamp(0.0, 1.0)) +
+      (_kSideBarWidth - _kFoldedSideBarWidth) *
+          ((controller.value - 2.0).clamp(0.0, 1.0));
 
   void onNavigatorStateChange() {
     if (SchedulerBinding.instance.schedulerPhase ==
@@ -159,23 +179,37 @@ class NaviPaneState extends State<NaviPane>
     super.dispose();
   }
 
+  bool _hasResolvedLayoutTarget = false;
+
   double targetFormContext(BuildContext context) {
-    var width = MediaQuery.of(context).size.width;
-    double target = 0;
-    if (width > changePoint) {
-      target = 2;
+    final width = MediaQuery.of(context).size.width;
+    if (width <= changePoint) {
+      return 0;
     }
-    if (width > changePoint2) {
-      target = 3;
+
+    if (!_hasResolvedLayoutTarget) {
+      return width > changePoint2 ? 3 : 2;
     }
-    return target;
+
+    final currentTarget = animationTarget ?? controller.value;
+    final prefersExpandedSidebar = currentTarget >= 2.5;
+    if (prefersExpandedSidebar) {
+      return width < changePoint2 - _kDesktopSidebarHysteresis ? 2 : 3;
+    }
+    return width > changePoint2 + _kDesktopSidebarHysteresis ? 3 : 2;
   }
 
   double? animationTarget;
 
+  bool _isCompactLayoutTarget(double target) => target < 2;
+
   void onRebuild(BuildContext context) {
     double target = targetFormContext(context);
     if (controller.value != target || animationTarget != target) {
+      final currentTarget = animationTarget ?? controller.value;
+      final crossesLayoutMode =
+          _isCompactLayoutTarget(currentTarget) !=
+          _isCompactLayoutTarget(target);
       if (controller.isAnimating) {
         if (animationTarget == target) {
           return;
@@ -183,8 +217,13 @@ class NaviPaneState extends State<NaviPane>
           controller.stop();
         }
       }
-      controller.animateTo(target);
+      if (crossesLayoutMode) {
+        controller.value = target;
+      } else {
+        controller.animateTo(target, curve: Curves.easeOutCubic);
+      }
       animationTarget = target;
+      _hasResolvedLayoutTarget = true;
     }
   }
 
@@ -266,8 +305,6 @@ class NaviPaneState extends State<NaviPane>
       );
     }
     final mq = MediaQuery.of(context);
-    final useWideLiquidGlassBottomBar =
-        enableLiquidGlassBottomBar && mq.size.width > changePoint;
     final sideInsets = (App.isMobile && mq.orientation == Orientation.landscape)
         ? EdgeInsets.only(
             left: math.max(mq.viewPadding.left, mq.systemGestureInsets.left),
@@ -300,27 +337,23 @@ class NaviPaneState extends State<NaviPane>
         popGesture: App.isIOS && context.width >= changePoint,
         child: AnimatedBuilder(
           animation: controller,
-          builder: (context, child) {
+          builder: (context, _) {
             final value = controller.value;
-            final leftOffset =
-                _kFoldedSideBarWidth * ((value - 1).clamp(0, 1)) +
-                    (_kSideBarWidth - _kFoldedSideBarWidth) *
-                        ((value - 2).clamp(0, 1));
             Widget content = Stack(
               children: [
-                if (!useWideLiquidGlassBottomBar)
-                  Positioned(
-                    left:
-                        _kFoldedSideBarWidth * ((value - 2.0).clamp(-1.0, 0.0)),
-                    top: 0,
-                    bottom: 0,
+                Positioned.fill(
+                  child: buildMainView(),
+                ),
+                Positioned(
+                  left:
+                      _kFoldedSideBarWidth * ((value - 2.0).clamp(-1.0, 0.0)),
+                  top: 0,
+                  bottom: 0,
+                  child: RepaintBoundary(
                     child: buildLeft(
-                      useLiquidSelection: false,
+                      useLiquidSelection: enableLiquidGlassBottomBar,
                     ),
                   ),
-                Positioned.fill(
-                  left: useWideLiquidGlassBottomBar ? 0 : leftOffset,
-                  child: buildMainView(),
                 ),
               ],
             );
@@ -338,24 +371,47 @@ class NaviPaneState extends State<NaviPane>
   }
 
   Widget buildMainView() {
+    final theme = Theme.of(context);
     return HeroControllerScope(
       controller: MaterialApp.createMaterialHeroController(),
       child: NavigatorPopHandler(
         onPopWithResult: (result) {
           widget.navigatorKey.currentState?.maybePop(result);
         },
-        child: Navigator(
-          observers: [widget.observer],
-          key: widget.navigatorKey,
-          onGenerateRoute: (settings) => AppPageRoute(
-            preventRebuild: false,
-            builder: (context) {
-              return _NaviMainView(state: this);
-            },
+        child: RouteDisplayInsets(
+          padding: EdgeInsets.only(left: visibleSideBarWidth),
+          child: Theme(
+            data: theme.copyWith(
+              pageTransitionsTheme: _buildInsetPageTransitionsTheme(theme),
+            ),
+            child: Navigator(
+              observers: [widget.observer],
+              key: widget.navigatorKey,
+              onGenerateRoute: (settings) => AppPageRoute(
+                preventRebuild: false,
+                builder: (context) {
+                  return _NaviMainView(state: this);
+                },
+              ),
+            ),
           ),
         ),
       ),
     );
+  }
+
+  PageTransitionsTheme _buildInsetPageTransitionsTheme(ThemeData baseTheme) {
+    final builders = <TargetPlatform, PageTransitionsBuilder>{};
+    for (final platform in TargetPlatform.values) {
+      builders[platform] = _InsetPageTransitionsBuilder(
+        baseBuilder:
+            baseTheme.pageTransitionsTheme.builders[platform] ??
+            const ZoomPageTransitionsBuilder(),
+        insetBuilder: () =>
+            shouldUseBottomNavigationLayout ? 0 : visibleSideBarWidth,
+      );
+    }
+    return PageTransitionsTheme(builders: builders);
   }
 
   Widget buildMainViewContent() {
@@ -363,13 +419,11 @@ class NaviPaneState extends State<NaviPane>
   }
 
   Widget buildTop() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.86),
-      ),
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final content = SizedBox(
       height: _kTopBarHeight,
       width: double.infinity,
-      padding: const EdgeInsets.only(left: 16, right: 16),
       child: Row(
         children: [
           Text(
@@ -378,15 +432,43 @@ class NaviPaneState extends State<NaviPane>
           ),
           const Spacer(),
           for (var action in widget.paneActions)
-            Tooltip(
-              message: action.label,
-              child: IconButton(
-                icon: Icon(action.icon),
-                onPressed: action.onTap,
-              ),
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: _GlassPaneActionButton(entry: action),
             ),
         ],
       ),
+    );
+
+    if (enableLiquidGlassBottomBar) {
+      return GlassContainer(
+        height: _kTopBarHeight,
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        useOwnLayer: true,
+        quality: GlassQuality.minimal,
+        shape: const LiquidRoundedSuperellipse(borderRadius: 24),
+        settings: LiquidGlassSettings(
+          blur: 18,
+          glassColor: isDark
+              ? scheme.surfaceContainerHighest.withValues(alpha: 0.28)
+              : Colors.white.withValues(alpha: 0.18),
+          ambientStrength: isDark ? 0.34 : 0.46,
+          saturation: 1.14,
+          thickness: 18,
+        ),
+        child: content,
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.86),
+      ),
+      height: _kTopBarHeight,
+      width: double.infinity,
+      padding: const EdgeInsets.only(left: 16, right: 16),
+      child: content,
     );
   }
 
@@ -395,8 +477,6 @@ class NaviPaneState extends State<NaviPane>
       final theme = Theme.of(context);
       final primary = theme.colorScheme.primary;
       final isDark = theme.brightness == Brightness.dark;
-      final isWide = MediaQuery.of(context).size.width > changePoint;
-      final wideActions = isWide ? _wideBottomActions() : <PaneActionEntry>[];
       final tabs = [
         ...widget.paneItems.map(
           (e) => GlassBottomBarTab(
@@ -405,58 +485,44 @@ class NaviPaneState extends State<NaviPane>
             activeIcon: Icon(e.activeIcon),
           ),
         ),
-        ...wideActions.map(
-          (e) => GlassBottomBarTab(
-            label: e.label,
-            icon: Icon(e.icon),
-            activeIcon: Icon(e.icon),
-          ),
-        ),
       ];
       final bottomPadding =
           math.max(MediaQuery.of(context).viewPadding.bottom, 10.0);
       final baseGlassColor = isDark
-          ? const Color.fromRGBO(28, 28, 32, 0.58)
-          : const Color.fromRGBO(255, 255, 255, 0.16);
-      final indicatorGlassColor = primary.withValues(
-        alpha: isDark ? 0.28 : 0.20,
-      );
+          ? const Color.fromRGBO(255, 255, 255, 0.10)
+          : const Color.fromRGBO(255, 255, 255, 0.08);
       return Padding(
         padding: EdgeInsets.fromLTRB(12, 0, 12, bottomPadding),
         child: Align(
           alignment: Alignment.bottomCenter,
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: isWide ? 720 : 488),
+            constraints: const BoxConstraints(maxWidth: 488),
             child: GlassBottomBar(
-              quality: GlassQuality.premium,
+              quality: GlassQuality.minimal,
+              interactionBehavior: GlassInteractionBehavior.full,
               selectedIconColor: primary,
               unselectedIconColor:
-                  theme.colorScheme.onSurface.withValues(alpha: 0.72),
-              indicatorColor: primary.withValues(alpha: 0.10),
-              magnification: 1.18,
-              indicatorSettings: LiquidGlassSettings(
-                blur: 0,
-                glassColor: indicatorGlassColor,
-                saturation: 1.18,
-                ambientStrength: 0.48,
-                thickness: 28,
-              ),
-              glassSettings: LiquidGlassSettings(
-                blur: 28,
+                  theme.colorScheme.onSurface.withValues(alpha: 0.76),
+              iconSize: 28,
+              labelFontSize: 10,
+              iconLabelSpacing: 0,
+              settings: LiquidGlassSettings(
+                blur: 3,
                 glassColor: baseGlassColor,
-                ambientStrength: isDark ? 0.36 : 0.52,
-                saturation: 1.16,
-                thickness: 18,
+                ambientStrength: 0,
+                saturation: 1.2,
+                thickness: 30,
+                chromaticAberration: .01,
+                lightAngle: GlassDefaults.lightAngle,
+                lightIntensity: .5,
+                refractiveIndex: 1.2,
+                specularSharpness: GlassSpecularSharpness.medium,
               ),
-              verticalPadding: 14,
-              barHeight: 56,
+              verticalPadding: 12,
+              barHeight: 60,
               selectedIndex: currentPage,
               onTabSelected: (index) {
-                if (index < widget.paneItems.length) {
-                  updatePage(index);
-                  return;
-                }
-                wideActions[index - widget.paneItems.length].onTap();
+                updatePage(index);
               },
               tabs: tabs,
             ),
@@ -631,51 +697,45 @@ class _SideNaviWidgetState extends State<_SideNaviWidget> {
       final scaledChild = AnimatedScale(
         duration: _fastAnimationDuration,
         curve: Curves.easeOutCubic,
-        scale: _pressed ? 1.18 : 1.0,
+        scale: _pressed ? 1.08 : 1.0,
         child: child,
       );
 
-      Widget surface;
-      if (_pressed) {
-        surface = GlassContainer(
-          width: double.infinity,
-          height: itemHeight,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          useOwnLayer: true,
-          quality: GlassQuality.standard,
-          shape: const LiquidRoundedSuperellipse(borderRadius: 20),
-          settings: LiquidGlassSettings(
-            blur: 0,
-            glassColor: pressedGlassColor,
-            saturation: 1.18,
-            ambientStrength: 0.48,
-            thickness: 28,
+      return GlassButton.custom(
+        onTap: widget.onTap,
+        width: double.infinity,
+        height: itemHeight,
+        shape: const LiquidRoundedSuperellipse(borderRadius: 20),
+        settings: LiquidGlassSettings(
+          blur: 0,
+          glassColor: _pressed
+              ? pressedGlassColor
+              : (widget.enabled
+                  ? colorScheme.primary.withValues(alpha: isDark ? 0.18 : 0.12)
+                  : (isDark
+                      ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.18)
+                      : Colors.white.withValues(alpha: 0.12))),
+          saturation: 1.18,
+          ambientStrength: widget.enabled ? 0.50 : 0.38,
+          thickness: widget.enabled ? 24 : 18,
+        ),
+        child: Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (_) => setState(() => _pressed = true),
+          onPointerUp: (_) => setState(() => _pressed = false),
+          onPointerCancel: (_) => setState(() => _pressed = false),
+          child: AnimatedContainer(
+            duration: _fastAnimationDuration,
+            width: double.infinity,
+            height: itemHeight,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: widget.enabled ? restingIndicatorColor : Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: scaledChild,
           ),
-          child: scaledChild,
-        );
-      } else {
-        surface = AnimatedContainer(
-          duration: _fastAnimationDuration,
-          width: double.infinity,
-          height: itemHeight,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: widget.enabled ? restingIndicatorColor : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: scaledChild,
-        );
-      }
-
-      return GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapDown: (_) => setState(() => _pressed = true),
-        onTapUp: (_) {
-          setState(() => _pressed = false);
-          widget.onTap();
-        },
-        onTapCancel: () => setState(() => _pressed = false),
-        child: surface,
+        ),
       ).paddingVertical(4);
     }
 
@@ -713,6 +773,42 @@ class _PaneActionWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final icon = Icon(entry.icon);
     final itemHeight = showTitle ? 42.0 : 40.0;
+    final enableLiquidGlassUi =
+        appdata.settings.length > 103 && appdata.settings[103] == "1";
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final child = showTitle
+        ? Row(
+            children: [icon, const SizedBox(width: 12), Text(entry.label)],
+          )
+        : Align(alignment: Alignment.centerLeft, child: icon);
+
+    if (enableLiquidGlassUi) {
+      return GlassButton.custom(
+        onTap: entry.onTap,
+        width: double.infinity,
+        height: itemHeight,
+        shape: const LiquidRoundedSuperellipse(borderRadius: 18),
+        settings: LiquidGlassSettings(
+          blur: 0,
+          glassColor: isDark
+              ? scheme.surfaceContainerHighest.withValues(alpha: 0.20)
+              : Colors.white.withValues(alpha: 0.14),
+          ambientStrength: isDark ? 0.34 : 0.46,
+          saturation: 1.12,
+          thickness: 18,
+        ),
+        child: SizedBox(
+          height: itemHeight,
+          width: double.infinity,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: child,
+          ),
+        ),
+      ).paddingVertical(4);
+    }
+
     return InkWell(
       onTap: entry.onTap,
       borderRadius: BorderRadius.circular(12),
@@ -720,13 +816,59 @@ class _PaneActionWidget extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 12),
         height: itemHeight,
-        child: showTitle
-            ? Row(
-                children: [icon, const SizedBox(width: 12), Text(entry.label)],
-              )
-            : Align(alignment: Alignment.centerLeft, child: icon),
+        child: child,
       ),
     ).paddingVertical(4);
+  }
+}
+
+class _GlassPaneActionButton extends StatelessWidget {
+  const _GlassPaneActionButton({
+    required this.entry,
+  });
+
+  final PaneActionEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final enableLiquidGlassUi =
+        appdata.settings.length > 103 && appdata.settings[103] == "1";
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (!enableLiquidGlassUi) {
+      return Tooltip(
+        message: entry.label,
+        child: IconButton(
+          icon: Icon(entry.icon),
+          onPressed: entry.onTap,
+        ),
+      );
+    }
+
+    return Tooltip(
+      message: entry.label,
+      child: GlassButton.custom(
+        onTap: entry.onTap,
+        width: 40,
+        height: 40,
+        shape: const LiquidRoundedSuperellipse(borderRadius: 18),
+        settings: LiquidGlassSettings(
+          blur: 0,
+          glassColor: isDark
+              ? scheme.surfaceContainerHighest.withValues(alpha: 0.24)
+              : Colors.white.withValues(alpha: 0.16),
+          ambientStrength: isDark ? 0.34 : 0.46,
+          saturation: 1.12,
+          thickness: 18,
+        ),
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: Icon(entry.icon),
+        ),
+      ),
+    );
   }
 }
 
@@ -830,6 +972,40 @@ class _SingleBottomNaviWidgetState extends State<_SingleBottomNaviWidget>
           ),
         ),
       ),
+    );
+  }
+}
+
+class _InsetPageTransitionsBuilder extends PageTransitionsBuilder {
+  const _InsetPageTransitionsBuilder({
+    required this.baseBuilder,
+    required this.insetBuilder,
+  });
+
+  final PageTransitionsBuilder baseBuilder;
+  final double Function() insetBuilder;
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final inset = route.isFirst ? 0.0 : insetBuilder();
+    final insetChild = inset <= 0
+        ? child
+        : Padding(
+            padding: EdgeInsets.only(left: inset),
+            child: child,
+          );
+    return baseBuilder.buildTransitions(
+      route,
+      context,
+      animation,
+      secondaryAnimation,
+      insetChild,
     );
   }
 }
@@ -957,46 +1133,73 @@ class _NaviMainViewState extends State<_NaviMainView> {
     if (App.isFluent) {
       return state.buildMainViewContent();
     }
-    var shouldShowAppBar = state.controller.value < 2;
-    var useLiquidGlassBottomBar = state.enableLiquidGlassBottomBar;
-    return Scaffold(
-      extendBody: useLiquidGlassBottomBar,
-      appBar: shouldShowAppBar
-          ? AppBar(
-              elevation: 0,
-              scrolledUnderElevation: 0,
-              toolbarHeight: NaviPaneState._kTopBarHeight,
-              titleSpacing: 16,
-              backgroundColor:
-                  Theme.of(context).colorScheme.surface.withValues(alpha: 0.86),
-              title: Text(
-                state.widget.paneItems[state.currentPage].label,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              actions: [
-                for (var action in state.widget.paneActions)
-                  Tooltip(
-                    message: action.label,
-                    child: IconButton(
-                      icon: Icon(action.icon),
-                      onPressed: action.onTap,
+    return AnimatedBuilder(
+      animation: state.controller,
+      builder: (context, _) {
+        var shouldShowAppBar = state.controller.value < 2;
+        var useLiquidGlassBottomBar = state.shouldUseLiquidGlassBottomNavigation;
+        final mainContent = AnimatedSwitcher(
+          duration: _fastAnimationDuration,
+          child: state.buildMainViewContent(),
+        );
+        // Calculate left padding to account for the sidebar.
+        // The Navigator now covers the full screen so that its Overlay
+        // (used by GlassMenu) also covers the full screen. The content
+        // must be padded to avoid overlapping with the sidebar.
+        final leftPadding = state.visibleSideBarWidth;
+        return Padding(
+          padding: EdgeInsets.only(left: leftPadding),
+          child: Scaffold(
+          backgroundColor:
+              useLiquidGlassBottomBar ? Colors.transparent : null,
+          extendBody: useLiquidGlassBottomBar,
+          appBar: shouldShowAppBar
+              ? AppBar(
+                  elevation: 0,
+                  scrolledUnderElevation: 0,
+                  toolbarHeight: NaviPaneState._kTopBarHeight,
+                  titleSpacing: 16,
+                  backgroundColor:
+                      Theme.of(context).colorScheme.surface.withValues(
+                            alpha: useLiquidGlassBottomBar ? 0.96 : 0.86,
+                          ),
+                  title: Text(
+                    state.widget.paneItems[state.currentPage].label,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-              ],
-            )
-          : null,
-      body: AnimatedSwitcher(
-        duration: _fastAnimationDuration,
-        child: state.buildMainViewContent(),
-      ),
-      bottomNavigationBar: shouldShowAppBar
-          ? (useLiquidGlassBottomBar
-              ? state.buildBottom()
-              : SafeArea(top: false, bottom: true, child: state.buildBottom()))
-          : (useLiquidGlassBottomBar ? state.buildBottom() : null),
+                  actions: [
+                    for (var action in state.widget.paneActions)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: _GlassPaneActionButton(
+                          entry: action,
+                        ),
+                      ),
+                    const SizedBox(width: 8),
+                  ],
+                )
+              : null,
+          body: Stack(
+                  children: [
+                    Positioned.fill(child: mainContent),
+                    if (useLiquidGlassBottomBar && shouldShowAppBar)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: state.buildBottom(),
+                      ),
+                  ],
+                ),
+          bottomNavigationBar: shouldShowAppBar && !useLiquidGlassBottomBar
+              ? SafeArea(top: false, bottom: true, child: state.buildBottom())
+              : null,
+          ),
+        );
+      },
     );
   }
 }

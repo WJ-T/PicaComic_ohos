@@ -109,7 +109,9 @@ class _NormalFavoritePageState extends State<_NormalFavoritePage> {
         if (widget.data.key == 'nhentai')
           Positioned(
             right: 16,
-            bottom: _favoriteFloatingButtonBottom(context),
+            bottom: MediaQuery.of(context).padding.bottom +
+                bottomOverlayInsetOf(context) +
+                16,
             child: Tooltip(
               message: '随机'.tl,
               child: FloatingActionButton(
@@ -150,7 +152,8 @@ class _NormalFavoriteComicsPage extends ComicsPage<BaseComic> {
   @override
   Widget? get header {
     final context = App.globalContext!;
-    final shouldShowMenuButton = MediaQuery.of(context).size.width <= _kTwoPanelChangeWidth;
+    final shouldShowMenuButton =
+        MediaQuery.of(context).size.width <= _kTwoPanelChangeWidth;
     final isMobileView = MediaQuery.of(context).size.width <= changePoint;
     return SliverPersistentHeader(
       pinned: true,
@@ -168,12 +171,13 @@ class _NormalFavoriteComicsPage extends ComicsPage<BaseComic> {
           Tooltip(
             message: "刷新".tl,
             child: IconButton(
-              icon: Icon(Icons.refresh, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              icon: Icon(Icons.refresh,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
               onPressed: () {
                 refresh();
-                },
-              ),
+              },
             ),
+          ),
           MenuButton(entries: [
             MenuEntry(
               icon: Icons.sync,
@@ -203,7 +207,8 @@ class _NetworkFavoritesAppBarDelegate extends SliverPersistentHeaderDelegate {
   });
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
     return SizedBox.expand(
       child: Material(
         color: Theme.of(context).colorScheme.surface,
@@ -211,15 +216,16 @@ class _NetworkFavoritesAppBarDelegate extends SliverPersistentHeaderDelegate {
         child: Row(
           children: [
             const SizedBox(width: 8),
-            leading ?? (Navigator.of(context).canPop()
-                ? Tooltip(
-                    message: "返回".tl,
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  )
-                : const SizedBox()),
+            leading ??
+                (Navigator.of(context).canPop()
+                    ? Tooltip(
+                        message: "返回".tl,
+                        child: IconButton(
+                          icon: const Icon(Icons.arrow_back),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      )
+                    : const SizedBox()),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
@@ -305,14 +311,17 @@ class _MultiFolderFavoritesPageState extends State<_MultiFolderFavoritesPage> {
               pinned: true,
               delegate: _NetworkFavoritesAppBarDelegate(
                 title: widget.data.title,
-                topPadding: MediaQuery.of(context).size.width <= changePoint ? 0 : MediaQuery.of(context).padding.top,
-                leading: MediaQuery.of(context).size.width <= _kTwoPanelChangeWidth
-                    ? IconButton(
-                        icon: const Icon(Icons.menu),
-                        color: Theme.of(context).colorScheme.primary,
-                        onPressed: showFolders,
-                      )
-                    : null,
+                topPadding: MediaQuery.of(context).size.width <= changePoint
+                    ? 0
+                    : MediaQuery.of(context).padding.top,
+                leading:
+                    MediaQuery.of(context).size.width <= _kTwoPanelChangeWidth
+                        ? IconButton(
+                            icon: const Icon(Icons.menu),
+                            color: Theme.of(context).colorScheme.primary,
+                            onPressed: showFolders,
+                          )
+                        : null,
                 actions: const [],
               ),
             ),
@@ -333,14 +342,17 @@ class _MultiFolderFavoritesPageState extends State<_MultiFolderFavoritesPage> {
               pinned: true,
               delegate: _NetworkFavoritesAppBarDelegate(
                 title: widget.data.title,
-                topPadding: MediaQuery.of(context).size.width <= changePoint ? 0 : MediaQuery.of(context).padding.top,
-                leading: MediaQuery.of(context).size.width <= _kTwoPanelChangeWidth
-                    ? IconButton(
-                        icon: const Icon(Icons.menu),
-                        color: Theme.of(context).colorScheme.primary,
-                        onPressed: showFolders,
-                      )
-                    : null,
+                topPadding: MediaQuery.of(context).size.width <= changePoint
+                    ? 0
+                    : MediaQuery.of(context).padding.top,
+                leading:
+                    MediaQuery.of(context).size.width <= _kTwoPanelChangeWidth
+                        ? IconButton(
+                            icon: const Icon(Icons.menu),
+                            color: Theme.of(context).colorScheme.primary,
+                            onPressed: showFolders,
+                          )
+                        : null,
                 actions: const [],
               ),
             ),
@@ -372,32 +384,47 @@ class _MultiFolderFavoritesPageState extends State<_MultiFolderFavoritesPage> {
               pinned: true,
               delegate: _NetworkFavoritesAppBarDelegate(
                 title: widget.data.title,
-                topPadding: MediaQuery.of(context).size.width <= changePoint ? 0 : MediaQuery.of(context).padding.top,
-                leading: MediaQuery.of(context).size.width <= _kTwoPanelChangeWidth
-                    ? IconButton(
-                        icon: const Icon(Icons.menu),
-                        color: Theme.of(context).colorScheme.primary,
-                        onPressed: showFolders,
-                      )
-                    : null,
+                topPadding: MediaQuery.of(context).size.width <= changePoint
+                    ? 0
+                    : MediaQuery.of(context).padding.top,
+                leading:
+                    MediaQuery.of(context).size.width <= _kTwoPanelChangeWidth
+                        ? IconButton(
+                            icon: const Icon(Icons.menu),
+                            color: Theme.of(context).colorScheme.primary,
+                            onPressed: showFolders,
+                          )
+                        : null,
                 actions: const [],
               ),
             ),
-          SliverGrid(
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 450,
-              mainAxisExtent: 52,
-            ),
-            delegate: SliverChildBuilderDelegate(
-              (context, i) {
-                if (widget.data.allFavoritesId != null) {
-                  if (i == 0) {
-                    return _FolderTile(
-                        name: "All".tl,
-                        onTap: () =>
-                            openFolder(widget.data.allFavoritesId!, "All".tl));
+            SliverGrid(
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 450,
+                mainAxisExtent: 52,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, i) {
+                  if (widget.data.allFavoritesId != null) {
+                    if (i == 0) {
+                      return _FolderTile(
+                          name: "All".tl,
+                          onTap: () => openFolder(
+                              widget.data.allFavoritesId!, "All".tl));
+                    } else {
+                      i--;
+                      return _FolderTile(
+                        name: folders![keys[i]]!,
+                        onTap: () => openFolder(keys[i], folders![keys[i]]!),
+                        deleteFolder: widget.data.deleteFolder == null
+                            ? null
+                            : () => widget.data.deleteFolder!(keys[i]),
+                        updateState: () => setState(() {
+                          _loading = true;
+                        }),
+                      );
+                    }
                   } else {
-                    i--;
                     return _FolderTile(
                       name: folders![keys[i]]!,
                       onTap: () => openFolder(keys[i], folders![keys[i]]!),
@@ -409,56 +436,44 @@ class _MultiFolderFavoritesPageState extends State<_MultiFolderFavoritesPage> {
                       }),
                     );
                   }
-                } else {
-                  return _FolderTile(
-                    name: folders![keys[i]]!,
-                    onTap: () => openFolder(keys[i], folders![keys[i]]!),
-                    deleteFolder: widget.data.deleteFolder == null
-                        ? null
-                        : () => widget.data.deleteFolder!(keys[i]),
-                    updateState: () => setState(() {
-                      _loading = true;
-                    }),
-                  );
-                }
-              },
-              childCount: length,
+                },
+                childCount: length,
+              ),
             ),
-          ),
-          if (widget.data.addFolder != null)
-            SliverToBoxAdapter(
-              child: SizedBox(
-                height: 60,
-                width: double.infinity,
-                child: Center(
-                  child: TextButton(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text("新建收藏夹".tl),
-                        const Icon(
-                          Icons.add,
-                          size: 18,
-                        ),
-                      ],
+            if (widget.data.addFolder != null)
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 60,
+                  width: double.infinity,
+                  child: Center(
+                    child: TextButton(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text("新建收藏夹".tl),
+                          const Icon(
+                            Icons.add,
+                            size: 18,
+                          ),
+                        ],
+                      ),
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            return _CreateFolderDialog(
+                              widget.data,
+                              () => setState(() {
+                                _loading = true;
+                              }),
+                            );
+                          },
+                        );
+                      },
                     ),
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) {
-                          return _CreateFolderDialog(
-                            widget.data,
-                            () => setState(() {
-                              _loading = true;
-                            }),
-                          );
-                        },
-                      );
-                    },
                   ),
                 ),
               ),
-            ),
           ],
         ),
       );
@@ -680,7 +695,8 @@ class _FavoriteFolderComicsPage extends ComicsPage<BaseComic> {
   @override
   Widget? get header {
     final context = App.globalContext!;
-    final shouldShowMenuButton = MediaQuery.of(context).size.width <= _kTwoPanelChangeWidth;
+    final shouldShowMenuButton =
+        MediaQuery.of(context).size.width <= _kTwoPanelChangeWidth;
     final isMobileView = MediaQuery.of(context).size.width <= changePoint;
     return SliverPersistentHeader(
       pinned: true,
@@ -688,13 +704,13 @@ class _FavoriteFolderComicsPage extends ComicsPage<BaseComic> {
         title: folderTitle,
         topPadding: isMobileView ? 0 : MediaQuery.of(context).padding.top,
         leading: shouldShowMenuButton
-                ? Tooltip(
-                    message: "返回".tl,
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () => App.mainNavigatorKey?.currentState?.pop(),
-                    ),
-                  )
+            ? Tooltip(
+                message: "返回".tl,
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => App.mainNavigatorKey?.currentState?.pop(),
+                ),
+              )
             : null,
         actions: [
           MenuButton(entries: [
@@ -710,4 +726,4 @@ class _FavoriteFolderComicsPage extends ComicsPage<BaseComic> {
       ),
     );
   }
-} 
+}

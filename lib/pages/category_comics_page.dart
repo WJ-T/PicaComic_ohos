@@ -5,6 +5,7 @@ import 'package:pica_comic/components/category_selector.dart';
 import "package:pica_comic/foundation/app.dart";
 import 'package:pica_comic/network/base_comic.dart';
 import "package:pica_comic/network/res.dart";
+import 'package:pica_comic/pages/nhentai/nhentai_category_filter_dialog.dart';
 import "package:pica_comic/utils/translations.dart";
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
@@ -32,13 +33,16 @@ class CategoryComicsPage extends StatefulWidget {
 class _CategoryComicsPageState extends State<CategoryComicsPage> {
   late final CategoryComicsData data;
   late final List<CategoryComicsOptions> options;
+  late final ComicSource source;
   late List<String> optionsValue;
+  late String? currentParam;
   List<String> selectedCategories = [];
   bool showCategorySelector = false;
 
   void findData() {
     for (final source in ComicSource.sources) {
       if (source.categoryData?.key == widget.categoryKey) {
+        this.source = source;
         data = source.categoryComicsData!;
         options = data.options.where((element) {
           if (element.notShowWhen.contains(widget.category)) {
@@ -64,8 +68,129 @@ class _CategoryComicsPageState extends State<CategoryComicsPage> {
 
   @override
   void initState() {
+    currentParam = widget.param;
     findData();
     super.initState();
+  }
+
+  bool get _isNhentai => source.key == "nhentai";
+
+  Future<void> _openFilterDialog() async {
+    if (_isNhentai) {
+      await showDialog(
+        context: context,
+        builder: (context) => NhentaiCategoryFilterDialog(
+          initialParam: currentParam ?? '',
+          onConfirm: (nextParam) {
+            setState(() {
+              currentParam = nextParam;
+            });
+          },
+        ),
+      );
+      return;
+    }
+
+    if (App.isFluent) {
+      await fluent.showDialog(
+        context: context,
+        builder: (context) => CategorySelectorDialog(
+          categories: _getCategories(source),
+          initialSelectedCategories: selectedCategories,
+          onCategoriesSelected: (newSelectedCategories) {
+            setState(() {
+              selectedCategories = newSelectedCategories;
+            });
+          },
+        ),
+      );
+      return;
+    }
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => GestureDetector(
+        onTap: () {
+          Navigator.of(context).pop();
+        },
+        child: Material(
+          color: Colors.transparent,
+          child: GestureDetector(
+            onTap: () {},
+            child: CategorySelectorDialog(
+              categories: _getCategories(source),
+              initialSelectedCategories: selectedCategories,
+              onCategoriesSelected: (newSelectedCategories) {
+                setState(() {
+                  selectedCategories = newSelectedCategories;
+                });
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterAction(BuildContext context, List<String> categories) {
+    final onTap = () {
+      Future.delayed(Duration.zero, () {
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => GestureDetector(
+              onTap: () {
+                Navigator.of(context).pop();
+              },
+              child: Material(
+                color: Colors.transparent,
+                child: GestureDetector(
+                  onTap: () {},
+                  child: CategorySelectorDialog(
+                    categories: categories,
+                    initialSelectedCategories: selectedCategories,
+                    onCategoriesSelected: (newSelectedCategories) {
+                      setState(() {
+                        selectedCategories = newSelectedCategories;
+                      });
+                    },
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+      });
+    };
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
+      ),
+      child: TextButton(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        ),
+        child: const Text("分类过滤"),
+      ),
+    );
+  }
+
+  Widget _buildSelectedCategoryChip(String category) {
+    final onDelete = () {
+      setState(() {
+        selectedCategories.remove(category);
+      });
+    };
+    return Chip(
+      label: Text(category),
+      onDeleted: onDelete,
+    );
   }
 
   @override
@@ -73,7 +198,7 @@ class _CategoryComicsPageState extends State<CategoryComicsPage> {
     // 获取分类列表
     final source = ComicSource.sources
         .firstWhere((e) => e.categoryData?.key == widget.categoryKey);
-    final categories = _getCategories(source);
+    // final categories = _getCategories(source);
 
     if (App.isFluent) {
       return fluent.ScaffoldPage(
@@ -84,36 +209,21 @@ class _CategoryComicsPageState extends State<CategoryComicsPage> {
                     ? "${selectedCategories.length}个分类"
                     : selectedCategories.firstOrNull ?? widget.category),
           ),
-          commandBar: widget.param != "ca" ? fluent.CommandBar(
-            primaryItems: [
-              fluent.CommandBarButton(
-                label: const Text("分类过滤"),
-                icon: const Icon(fluent.FluentIcons.filter),
-                onPressed: () {
-                  Future.delayed(Duration.zero, () {
-                    if (mounted) {
-                      fluent.showDialog(
-                        context: context,
-                        builder: (context) => CategorySelectorDialog(
-                          categories: categories,
-                          initialSelectedCategories: selectedCategories,
-                          onCategoriesSelected: (newSelectedCategories) {
-                            setState(() {
-                              selectedCategories = newSelectedCategories;
-                            });
-                          },
-                        ),
-                      );
-                    }
-                  });
-                },
-              ),
-            ],
-          ) : null,
+          commandBar: widget.param != "ca"
+              ? fluent.CommandBar(
+                  primaryItems: [
+                    fluent.CommandBarButton(
+                      label: const Text("分类过滤"),
+                      icon: const Icon(fluent.FluentIcons.filter),
+                      onPressed: _openFilterDialog,
+                    ),
+                  ],
+                )
+              : null,
         ),
         content: Column(
           children: [
-            if (selectedCategories.length > 1) ...[
+            if (!_isNhentai && selectedCategories.length > 1) ...[
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Wrap(
@@ -121,15 +231,18 @@ class _CategoryComicsPageState extends State<CategoryComicsPage> {
                   runSpacing: 8,
                   children: selectedCategories.map((category) {
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: fluent.FluentTheme.of(context).accentColor.normal,
+                        color:
+                            fluent.FluentTheme.of(context).accentColor.normal,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(category, style: const TextStyle(color: Colors.white)),
+                          Text(category,
+                              style: const TextStyle(color: Colors.white)),
                           const SizedBox(width: 4),
                           GestureDetector(
                             onTap: () {
@@ -137,7 +250,8 @@ class _CategoryComicsPageState extends State<CategoryComicsPage> {
                                 selectedCategories.remove(category);
                               });
                             },
-                            child: const Icon(fluent.FluentIcons.clear, size: 12, color: Colors.white),
+                            child: const Icon(fluent.FluentIcons.clear,
+                                size: 12, color: Colors.white),
                           )
                         ],
                       ),
@@ -149,11 +263,11 @@ class _CategoryComicsPageState extends State<CategoryComicsPage> {
             Expanded(
               child: _CategoryComicsList(
                 key: ValueKey(
-                    "${selectedCategories.join(',')} with $optionsValue"),
+                    "${selectedCategories.join(',')} with $optionsValue and $currentParam"),
                 loader: data.load,
                 category: selectedCategories.join(','),
                 options: optionsValue,
-                param: widget.param,
+                param: currentParam,
                 header: buildOptions(),
                 sourceKey: source.key,
               ),
@@ -178,39 +292,11 @@ class _CategoryComicsPageState extends State<CategoryComicsPage> {
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Theme.of(context).colorScheme.outline),
+                border:
+                    Border.all(color: Theme.of(context).colorScheme.outline),
               ),
               child: TextButton(
-                onPressed: () {
-                  Future.delayed(Duration.zero, () {
-                    if (mounted) {
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (context) => GestureDetector(
-                          onTap: () {
-                            Navigator.of(context).pop();
-                          },
-                          child: Material(
-                            color: Colors.transparent,
-                            child: GestureDetector(
-                              onTap: () {},
-                              child: CategorySelectorDialog(
-                                categories: categories,
-                                initialSelectedCategories: selectedCategories,
-                                onCategoriesSelected: (newSelectedCategories) {
-                                  setState(() {
-                                    selectedCategories = newSelectedCategories;
-                                  });
-                                },
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-                  });
-                },
+                onPressed: _openFilterDialog,
                 style: TextButton.styleFrom(
                   foregroundColor: Theme.of(context).colorScheme.onSurface,
                   padding:
@@ -224,21 +310,14 @@ class _CategoryComicsPageState extends State<CategoryComicsPage> {
       body: Column(
         children: [
           // 显示已选分类
-          if (selectedCategories.length > 1) ...[
+          if (!_isNhentai && selectedCategories.length > 1) ...[
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: selectedCategories.map((category) {
-                  return Chip(
-                    label: Text(category),
-                    onDeleted: () {
-                      setState(() {
-                        selectedCategories.remove(category);
-                      });
-                    },
-                  );
+                  return _buildSelectedCategoryChip(category);
                 }).toList(),
               ),
             ),
@@ -247,11 +326,11 @@ class _CategoryComicsPageState extends State<CategoryComicsPage> {
           Expanded(
             child: _CategoryComicsList(
               key: ValueKey(
-                  "${selectedCategories.join(',')} with $optionsValue"),
+                  "${selectedCategories.join(',')} with $optionsValue and $currentParam"),
               loader: data.load,
               category: selectedCategories.join(','),
               options: optionsValue,
-              param: widget.param, // 保留原始参数，特别是作者搜索的"a"参数
+              param: currentParam,
               header: buildOptions(),
               sourceKey: source.key,
             ),

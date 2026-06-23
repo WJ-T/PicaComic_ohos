@@ -158,7 +158,7 @@ void setProxy(BuildContext context) {
                   ),
                   ListTile(
                     title: Text("使用系统代理".tl),
-                    trailing: Switch(
+                    trailing: AdaptiveSwitch(
                       value: controller.value,
                       onChanged: (value) {
                         if (value == true) {
@@ -1170,7 +1170,7 @@ void syncDataSettings(BuildContext context) {
                 leading: Icon(Icons.sync),
                 title: Text("自动同步数据".tl),
                 contentPadding: EdgeInsets.zero,
-                trailing: Switch(
+                trailing: AdaptiveSwitch(
                   value: autoSync,
                   onChanged: (v) {
                     setState(() {
