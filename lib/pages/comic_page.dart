@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:liquid_glass_widgets/widgets/overlays/glass_menu.dart';
 import 'package:liquid_glass_widgets/widgets/overlays/glass_menu_item.dart';
-import 'package:url_launcher/url_launcher_string.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pica_comic/base.dart';
@@ -1134,7 +1133,7 @@ abstract class BaseComicPage<T extends Object> extends StatelessWidget {
           title: "打开网页".tl,
           icon: const Icon(Icons.open_in_browser),
           onTap: () {
-            launchUrlString(url!);
+            AppUrlLauncher.launchExternalUrl(url!);
           },
         ),
     ];

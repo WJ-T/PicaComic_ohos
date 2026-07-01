@@ -8,7 +8,7 @@ import 'package:pica_comic/request/clients/download_http_client.dart';
 import 'package:pica_comic/request/config/api_endpoints.dart';
 import 'package:pica_comic/services/logging/logger.dart';
 import 'package:pica_comic/utils/date_time.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:pica_comic/utils/app_url_launcher.dart';
 
 import '../../bean/dialog/dialog_helper.dart';
 import 'app_updater.dart';
@@ -381,10 +381,7 @@ class _AppUpdaterHistoryPageState extends State<AppUpdaterHistoryPage> {
             if (release.htmlUrl.isNotEmpty)
               TextButton(
                 onPressed: () {
-                  launchUrl(
-                    Uri.parse(release.htmlUrl),
-                    mode: LaunchMode.externalApplication,
-                  );
+                  AppUrlLauncher.launchExternalUrl(release.htmlUrl);
                 },
                 child: Text(releaseOnly ? '前往下载' : '查看详情'),
               ),

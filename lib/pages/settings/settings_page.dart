@@ -31,7 +31,6 @@ import 'package:pica_comic/pages/logs_page.dart';
 import 'package:pica_comic/utils/extensions.dart';
 import 'package:pica_comic/utils/app_url_launcher.dart';
 import 'package:pica_comic/utils/io_tools.dart';
-import 'package:url_launcher/url_launcher_string.dart';
 import '../../foundation/comic_source/comic_source.dart';
 import '../../components/components.dart' hide Select;
 import '../../foundation/app.dart';
@@ -494,16 +493,15 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
         fluent.ListTile(
           leading: const Icon(Icons.code),
           title: Text("项目地址".tl),
-          onPressed: () => launchUrlString("https://github.com/ccbkv/PicaComic",
-              mode: LaunchMode.externalApplication),
+          onPressed: () => AppUrlLauncher.launchExternalUrl(
+              "https://github.com/ccbkv/PicaComic"),
           trailing: const Icon(Icons.open_in_new),
         ),
         fluent.ListTile(
           leading: const Icon(Icons.comment_outlined),
           title: Text("问题反馈 (Github)".tl),
-          onPressed: () => launchUrlString(
-              "https://github.com/ccbkv/PicaComic/issues",
-              mode: LaunchMode.externalApplication),
+          onPressed: () => AppUrlLauncher.launchExternalUrl(
+              "https://github.com/ccbkv/PicaComic/issues"),
           trailing: const Icon(Icons.open_in_new),
         ),
       ],
@@ -1698,16 +1696,15 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
         ListTile(
           leading: const Icon(Icons.code),
           title: Text("项目地址".tl),
-          onTap: () => launchUrlString("https://github.com/ccbkv/PicaComic",
-              mode: LaunchMode.externalApplication),
+          onTap: () => AppUrlLauncher.launchExternalUrl(
+              "https://github.com/ccbkv/PicaComic"),
           trailing: const Icon(Icons.open_in_new),
         ),
         ListTile(
           leading: const Icon(Icons.comment_outlined),
           title: Text("问题反馈 (Github)".tl),
-          onTap: () => launchUrlString(
-              "https://github.com/ccbkv/PicaComic/issues",
-              mode: LaunchMode.externalApplication),
+          onTap: () => AppUrlLauncher.launchExternalUrl(
+              "https://github.com/ccbkv/PicaComic/issues"),
           trailing: const Icon(Icons.open_in_new),
         ),
         // ListTile(

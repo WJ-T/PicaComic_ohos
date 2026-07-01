@@ -14,6 +14,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:pica_comic/utils/device.dart';
 import 'package:pica_comic/utils/date_time.dart';
 import 'package:pica_comic/utils/crypto.dart';
+import 'package:pica_comic/utils/app_url_launcher.dart';
 import 'package:pica_comic/utils/version.dart';
 
 /// 安装类型枚举
@@ -438,8 +439,7 @@ class AutoUpdater {
           if (updateInfo.releaseNotes.isNotEmpty)
             TextButton(
               onPressed: () {
-                launchUrl(Uri.parse(updateInfo.releaseNotes),
-                    mode: LaunchMode.externalApplication);
+                AppUrlLauncher.launchExternalUrl(updateInfo.releaseNotes);
               },
               child: const Text('查看详情'),
             ),
@@ -732,7 +732,7 @@ class AutoUpdater {
         if (releaseUrl.isEmpty) {
           releaseUrl = ApiEndpoints.latestApp;
         }
-        launchUrl(Uri.parse(releaseUrl), mode: LaunchMode.externalApplication);
+        AppUrlLauncher.launchExternalUrl(releaseUrl);
         return;
       }
 
