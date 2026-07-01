@@ -944,6 +944,124 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
     return const Placeholder();
   }
 
+  Future<FilePickerResult?> _pickFontFile() async {
+    PlatformException? lastError;
+
+    Future<FilePickerResult?> pick({
+      required FileType type,
+      List<String>? allowedExtensions,
+    }) async {
+      try {
+        return await FilePicker.platform.pickFiles(
+          type: type,
+          allowedExtensions: allowedExtensions,
+          withData: true,
+          allowMultiple: false,
+        );
+      } on PlatformException catch (e) {
+        if (e.code == 'unknown_activity' ||
+            e.code == 'unknown_activity_error') {
+          return null;
+        }
+        lastError = e;
+        return null;
+      }
+    }
+
+    final filtered = await pick(
+      type: FileType.custom,
+      allowedExtensions: const ['ttf', 'otf'],
+    );
+    if (filtered != null) {
+      return filtered;
+    }
+
+    final unfiltered = await pick(type: FileType.any);
+    if (unfiltered != null) {
+      return unfiltered;
+    }
+
+    if (lastError != null &&
+        lastError!.code != 'unknown_path' &&
+        lastError!.code != 'unknown_activity' &&
+        lastError!.code != 'unknown_activity_error') {
+      throw lastError!;
+    }
+    return null;
+  }
+
+  Future<String?> _fontImportPath(PlatformFile file) async {
+    final lowerName = file.name.toLowerCase();
+    if (!(lowerName.endsWith('.ttf') || lowerName.endsWith('.otf'))) {
+      if (mounted) {
+        context.showMessage(message: "仅支持 .ttf / .otf 字体文件".tl);
+      }
+      return null;
+    }
+
+    final path = file.path;
+    if (path != null && path.isNotEmpty && File(path).existsSync()) {
+      return path;
+    }
+
+    final bytes = file.bytes;
+    if (bytes == null || bytes.isEmpty) {
+      if (mounted) {
+        context.showMessage(message: "无法读取字体文件".tl);
+      }
+      return null;
+    }
+
+    final tempDir = await getTemporaryDirectory();
+    final safeName = file.name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    final tempFile = File(
+      "${tempDir.path}${pathSep}font_import_${DateTime.now().millisecondsSinceEpoch}_$safeName",
+    );
+    await tempFile.create(recursive: true);
+    await tempFile.writeAsBytes(bytes, flush: true);
+    return tempFile.path;
+  }
+
+  Future<void> _importFont() async {
+    try {
+      final result = await _pickFontFile();
+      if (result == null || result.files.isEmpty) {
+        return;
+      }
+
+      final path = await _fontImportPath(result.files.single);
+      if (path == null) {
+        return;
+      }
+
+      final name = await FontManager().addFont(path);
+      if (name == null) {
+        if (mounted) {
+          context.showMessage(message: "导入字体失败".tl);
+        }
+        return;
+      }
+
+      if (mounted) {
+        setState(() {});
+        context.showMessage(message: "已导入".tl);
+      }
+      MyApp.updater?.call();
+    } on PlatformException catch (e) {
+      if (e.code == 'unknown_activity' || e.code == 'unknown_activity_error') {
+        return;
+      }
+      if (mounted) {
+        context.showMessage(message: "导入字体失败: ${e.code}".tl);
+      }
+    } catch (e, s) {
+      LogManager.addLog(LogLevel.error, "Settings.importFont", "$e\n$s");
+      if (mounted) {
+        context.showMessage(message: "导入字体失败".tl);
+      }
+    }
+  }
+
   Widget buildFluentAppearanceSettings() {
     return Column(
       children: [
@@ -1017,19 +1135,7 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
         fluent.ListTile(
           leading: const Icon(Icons.add_circle_outline),
           title: Text("导入字体".tl),
-          onPressed: () async {
-            FilePickerResult? result = await FilePicker.platform.pickFiles(
-              type: FileType.custom,
-              allowedExtensions: ['ttf', 'otf'],
-            );
-
-            if (result != null && result.files.single.path != null) {
-              var name = await FontManager().addFont(result.files.single.path!);
-              if (name != null) {
-                setState(() {});
-              }
-            }
-          },
+          onPressed: _importFont,
         ),
         fluent.ListTile(
           leading: const Icon(Icons.folder_open),
@@ -1253,20 +1359,7 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
           ListTile(
             leading: const Icon(Icons.add_circle_outline),
             title: Text("导入字体".tl),
-            onTap: () async {
-              FilePickerResult? result = await FilePicker.platform.pickFiles(
-                type: FileType.custom,
-                allowedExtensions: ['ttf', 'otf'],
-              );
-
-              if (result != null && result.files.single.path != null) {
-                var name =
-                    await FontManager().addFont(result.files.single.path!);
-                if (name != null) {
-                  setState(() {});
-                }
-              }
-            },
+            onTap: _importFont,
           ),
           ListTile(
             leading: const Icon(Icons.folder_open),

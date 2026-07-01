@@ -67,19 +67,30 @@ export class FileUtils {
     const sourcePath: string = FileUtils.resolvePath(uri);
     const fileName: string = FileUtils.getFileName(uri, context) as string;
     const cacheDir: string = context.cacheDir + "/file_picker";
-    let finalPath: string = cacheDir + "/" + fileName;
+    const decodedName = FileUtils.urlDecodeManual(fileName);
+    let finalPath: string = cacheDir + "/" + Date.now().toString() + "_" + FileUtils.safeCacheName(decodedName);
     try {
       if (!await fs.access(cacheDir)) {
         fs.mkdirSync(cacheDir, true);
       }
-      const decodedName = FileUtils.urlDecodeManual(fileName);
-      finalPath = FileUtils.replaceFileName(finalPath, fileName, decodedName);
       let copied: boolean = false;
-      try {
-        fs.copyFileSync(sourcePath, finalPath);
-        copied = true;
-      } catch (e) {
-        Log.e(FileUtils.TAG, "copyFileSync failed: " + e.toString());
+      const copyCandidates: string[] = sourcePath === uri ? [sourcePath] : [sourcePath, uri];
+      for (let i = 0; i < copyCandidates.length; i++) {
+        try {
+          fs.copyFileSync(copyCandidates[i], finalPath);
+          copied = true;
+          break;
+        } catch (e) {
+          Log.e(FileUtils.TAG, "copyFileSync failed: " + e.toString());
+        }
+      }
+      if (!copied) {
+        for (let i = 0; i < copyCandidates.length; i++) {
+          if (FileUtils.copyByStream(copyCandidates[i], finalPath)) {
+            copied = true;
+            break;
+          }
+        }
       }
       if (!copied) {
         return null;
@@ -93,12 +104,55 @@ export class FileUtils {
       fileInfo
         .withPath(finalPath)
         .withName(decodedName)
-        .withUri(FileUtils.replaceFileName(uri, fileName, decodedName))
+        .withUri(uri)
         .withSize(stat.size);
     } catch (err) {
       Log.e(FileUtils.TAG, "open uri file failed err:" + err)
     }
     return fileInfo.build()
+  }
+
+  static safeCacheName(name: string): string {
+    let result = '';
+    for (let i = 0; i < name.length; i++) {
+      const ch = name[i];
+      const code = name.charCodeAt(i);
+      const valid =
+        (code >= 48 && code <= 57) ||
+        (code >= 65 && code <= 90) ||
+        (code >= 97 && code <= 122) ||
+        ch === '.' || ch === '_' || ch === '-';
+      result += valid ? ch : '_';
+    }
+    return result.length > 0 ? result : ("picked_" + Date.now().toString());
+  }
+
+  static copyByStream(source: string, target: string): boolean {
+    let sourceEntry: fs.File | null = null;
+    let targetEntry: fs.File | null = null;
+    try {
+      sourceEntry = fs.openSync(source, fs.OpenMode.READ_ONLY);
+      targetEntry = fs.openSync(target, fs.OpenMode.CREATE | fs.OpenMode.READ_WRITE);
+      const buffer = new ArrayBuffer(4096);
+      while (true) {
+        const readSize = fs.readSync(sourceEntry.fd, buffer);
+        if (readSize <= 0) {
+          break;
+        }
+        fs.writeSync(targetEntry.fd, buffer, { length: readSize });
+      }
+      return true;
+    } catch (e) {
+      Log.e(FileUtils.TAG, "copyByStream failed: " + e.toString());
+      return false;
+    } finally {
+      if (sourceEntry != null) {
+        fs.closeSync(sourceEntry);
+      }
+      if (targetEntry != null) {
+        fs.closeSync(targetEntry);
+      }
+    }
   }
 
   // 将各种 file://docs/file:// 等 URI 解析成真实路径
