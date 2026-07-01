@@ -16,6 +16,7 @@
     "sqflite": "file:./sqflite",
     "@ohos/flutter_module": "file:./entry",
     "file_picker_ohos": "file:./har/file_picker_ohos.har",
-    "flutter_inappwebview_ohos": "file:./har/flutter_inappwebview_ohos.har"
+    "flutter_inappwebview_ohos": "file:./har/flutter_inappwebview_ohos.har",
+    "image_picker_ohos": "file:./har/image_picker_ohos.har"
   }
 }

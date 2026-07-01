@@ -51,7 +51,11 @@ dependencies:
       url: https://gitcode.com/openharmony-sig/fluttertpc_file_picker.git
       ref: br_v10.2.0_ohos
       path: ohos
-  image_picker: ^1.0.2
+  image_picker:
+    git:
+      url: https://gitcode.com/openharmony-sig/flutter_packages.git
+      ref: br_image_picker-v1.2.1_ohos
+      path: packages/image_picker/image_picker
   image_gallery_saver: 2.0.3
   flutter_file_dialog: 3.0.1
   flutter_local_notifications: ^17.2.2
