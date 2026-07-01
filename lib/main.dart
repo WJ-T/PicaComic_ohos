@@ -24,6 +24,7 @@ import 'package:pica_comic/pages/welcome_page.dart';
 import 'package:pica_comic/utils/block_screenshot.dart';
 import 'package:pica_comic/utils/mouse_listener.dart';
 import 'package:pica_comic/utils/ohos_continuation.dart';
+import 'package:pica_comic/utils/ohos_device_info.dart';
 import 'package:pica_comic/utils/android_first_use_manager.dart';
 import 'package:pica_comic/utils/tags_translation.dart';
 import 'package:window_manager/window_manager.dart';
@@ -200,7 +201,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
     listenMouseSideButtonToBack();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    if (App.isAndroid || App.isIOS) {
+    if (App.isAndroid ||
+        App.isIOS ||
+        OhosDeviceInfoBridge.shouldLockAppPortrait) {
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.portraitUp,
         DeviceOrientation.portraitDown,
@@ -342,7 +345,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     if (appdata.settings.length > 95 && appdata.settings[95].isNotEmpty) {
       return (appdata.settings[95], null);
     }
-    
+
     String? font;
     List<String>? fallback;
     if (App.isLinux || App.isWindows) {

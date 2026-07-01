@@ -48,6 +48,7 @@ import '../../utils/extensions.dart';
 import '../../utils/key_down_event.dart';
 import '../../utils/ohos_continuation.dart';
 import '../../utils/ohos_battery.dart';
+import '../../utils/ohos_device_info.dart';
 import 'package:pica_comic/network/picacg_network/methods.dart' as picacg;
 import 'package:pica_comic/utils/translations.dart';
 
@@ -78,7 +79,9 @@ part 'reading_data.dart';
 part 'continuation.dart';
 
 void _restoreAppOrientations() {
-  if (App.isAndroid || App.isIOS) {
+  if (App.isAndroid ||
+      App.isIOS ||
+      OhosDeviceInfoBridge.shouldLockAppPortrait) {
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,

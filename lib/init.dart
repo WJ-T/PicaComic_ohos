@@ -19,6 +19,7 @@ import 'package:pica_comic/utils/background_service.dart';
 import 'package:pica_comic/utils/cache_auto_clear.dart';
 import 'package:pica_comic/utils/io_extensions.dart';
 import 'package:pica_comic/utils/io_tools.dart';
+import 'package:pica_comic/utils/ohos_device_info.dart';
 import 'package:pica_comic/utils/translations.dart';
 import 'package:pica_comic/utils/android_first_use_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -44,6 +45,7 @@ Future<void> init() async {
     OhosPathProvider.registerIfNeeded();
     configureOhosSqlite();
     await App.init();
+    await OhosDeviceInfoBridge.initialize();
     if (PlatformUtils.isOhos) {
       SharedPreferencesStorePlatform.instance =
           OhosSharedPreferencesStore("${App.dataPath}/shared_prefs.json");
