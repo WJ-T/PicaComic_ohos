@@ -362,15 +362,15 @@ Future<void> saveFile(
       await File(cache).writeAsBytes(data);
       file = File(cache);
     }
-    if (App.isMobile) {
-      final params = SaveFileDialogParams(sourceFilePath: file!.path);
-      await FlutterFileDialog.saveFile(params: params);
-    } else if (PlatformUtils.isOhos) {
+    if (PlatformUtils.isOhos) {
       await fp.FilePicker.platform.saveFile(
         fileName: filename,
         type: fp.FileType.any,
         bytes: await file!.readAsBytes(),
       );
+    } else if (App.isMobile) {
+      final params = SaveFileDialogParams(sourceFilePath: file!.path);
+      await FlutterFileDialog.saveFile(params: params);
     } else {
       final result = await file_selector.getSaveLocation(
         suggestedName: filename,

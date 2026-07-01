@@ -50,7 +50,13 @@ Future<bool> exportComic(String id, String name,
       return false;
     }
 
-    if (App.isMobile) {
+    if (PlatformUtils.isOhos) {
+      await FilePicker.platform.saveFile(
+        fileName: '$name.zip',
+        type: FileType.any,
+        bytes: await File('${data.path}$pathSep$name.zip').readAsBytes(),
+      );
+    } else if (App.isMobile) {
       var params =
           SaveFileDialogParams(sourceFilePath: '${data.path}$pathSep$name.zip');
       await FlutterFileDialog.saveFile(params: params);
@@ -91,7 +97,13 @@ Future<bool> exportComics(List<DownloadedItem> comics) async {
       ));
     }
     await Isolate.run(() => runningExportComics(exportDatas));
-    if (App.isMobile) {
+    if (PlatformUtils.isOhos) {
+      await FilePicker.platform.saveFile(
+        fileName: 'comics.zip',
+        type: FileType.any,
+        bytes: await File('${downloadManager.path}/comics.zip').readAsBytes(),
+      );
+    } else if (App.isMobile) {
       var params = SaveFileDialogParams(
           sourceFilePath: '${downloadManager.path}/comics.zip');
       await FlutterFileDialog.saveFile(params: params);
@@ -118,7 +130,13 @@ Future<bool> exportComics(List<DownloadedItem> comics) async {
 
 Future<bool> exportPdf(String pdfPath) async {
   try {
-    if (App.isMobile) {
+    if (PlatformUtils.isOhos) {
+      await FilePicker.platform.saveFile(
+        fileName: File(pdfPath).name,
+        type: FileType.any,
+        bytes: await File(pdfPath).readAsBytes(),
+      );
+    } else if (App.isMobile) {
       var params = SaveFileDialogParams(sourceFilePath: pdfPath);
       await FlutterFileDialog.saveFile(params: params);
     } else {
@@ -447,8 +465,8 @@ Future<bool> importData([String? filePath]) async {
                 '$path${pathSep}picked_${DateTime.now().millisecondsSinceEpoch}.picadata');
             temp.writeAsBytesSync(picked.bytes!);
             filePath = temp.path;
-            LogManager.addLog(
-                LogLevel.info, "importData", "OHOS picker fallback: wrote bytes to $filePath");
+            LogManager.addLog(LogLevel.info, "importData",
+                "OHOS picker fallback: wrote bytes to $filePath");
           }
         }
       } catch (e, s) {
@@ -482,8 +500,7 @@ Future<bool> importData([String? filePath]) async {
     LogManager.addLog(LogLevel.info, "importData",
         "准备导入: $filePath, 存在=$exists, 大小=${size}B");
     if (!exists || size == 0) {
-      LogManager.addLog(
-          LogLevel.error, "importData", "选中的备份文件不存在或大小为0");
+      LogManager.addLog(LogLevel.error, "importData", "选中的备份文件不存在或大小为0");
       return false;
     }
     final raf = pickedFile.openSync();
@@ -495,8 +512,8 @@ Future<bool> importData([String? filePath]) async {
       raf.closeSync();
     }
   } catch (e, s) {
-    LogManager.addLog(LogLevel.error, "importData",
-        "检查备份文件出错: $e\n$s\n路径: $filePath");
+    LogManager.addLog(
+        LogLevel.error, "importData", "检查备份文件出错: $e\n$s\n路径: $filePath");
     return false;
   }
   SingleInstanceCookieJar.instance?.dispose();
@@ -519,19 +536,15 @@ Future<bool> importData([String? filePath]) async {
       final appdataFile = File("$path/dataTemp/appdata");
       if (!appdataFile.existsSync()) {
         final dir = Directory("$path/dataTemp");
-        final entries = dir
-            .listSync(recursive: true)
-            .map((entity) {
-              final relative =
-                  entity.path.replaceFirst("$path/dataTemp", "dataTemp");
-              return "${entity is Directory ? "Dir" : "File"}:$relative";
-            })
-            .toList();
+        final entries = dir.listSync(recursive: true).map((entity) {
+          final relative =
+              entity.path.replaceFirst("$path/dataTemp", "dataTemp");
+          return "${entity is Directory ? "Dir" : "File"}:$relative";
+        }).toList();
         final listing = entries.isEmpty ? "<empty>" : entries.join("\n");
         LogManager.addLog(
             LogLevel.error, "importData", "未找到appdata，目录结构:\n$listing");
-        throw Exception(
-            "未找到appdata文件, 解压结果如下:\n$listing");
+        throw Exception("未找到appdata文件, 解压结果如下:\n$listing");
       }
       final json = appdataFile.readAsStringSync();
       int fileVersion = int.parse(
@@ -611,7 +624,13 @@ void saveLog(String log) async {
   var path = (await getTemporaryDirectory()).path;
   var file = File("$path${pathSep}logs.txt");
   file.writeAsStringSync(log);
-  if (App.isMobile) {
+  if (PlatformUtils.isOhos) {
+    await FilePicker.platform.saveFile(
+      fileName: "logs.txt",
+      type: FileType.any,
+      bytes: await file.readAsBytes(),
+    );
+  } else if (App.isMobile) {
     var params =
         SaveFileDialogParams(sourceFilePath: "$path${pathSep}logs.txt");
     await FlutterFileDialog.saveFile(params: params);
@@ -624,7 +643,15 @@ void saveLog(String log) async {
 }
 
 Future<void> exportStringDataAsFile(String data, String fileName) async {
-  if (App.isMobile) {
+  if (PlatformUtils.isOhos) {
+    final Uint8List fileData =
+        Uint8List.fromList(const Utf8Encoder().convert(data));
+    await FilePicker.platform.saveFile(
+      fileName: fileName,
+      type: FileType.any,
+      bytes: fileData,
+    );
+  } else if (App.isMobile) {
     var cachePath = (await getApplicationCacheDirectory()).path;
     var file = File("$cachePath$pathSep$fileName");
     if (!file.existsSync()) {
@@ -671,8 +698,8 @@ Future<String?> getDataFromUserSelectedFile(List<String> extensions) async {
         return utf8.decode(bytes, allowMalformed: true);
       }
     } catch (e, s) {
-      LogManager.addLog(
-          LogLevel.error, "getDataFromUserSelectedFile", "OHOS file picker failed: $e\n$s");
+      LogManager.addLog(LogLevel.error, "getDataFromUserSelectedFile",
+          "OHOS file picker failed: $e\n$s");
     }
     return null;
   }
@@ -710,7 +737,8 @@ void _flattenExtractedRoot(String dataTempPath) {
       .listSync(recursive: true)
       .whereType<File>()
       .firstWhere(
-          (file) => file.name == appdataName && file.parent.path != dataTempPath,
+          (file) =>
+              file.name == appdataName && file.parent.path != dataTempPath,
           orElse: () => File(''));
   if (nestedAppdata.path.isEmpty) {
     return;

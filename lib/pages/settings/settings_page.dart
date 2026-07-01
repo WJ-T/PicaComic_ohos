@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:file_selector/file_selector.dart';
+import 'package:file_picker_ohos/file_picker_ohos.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -15,7 +15,6 @@ import 'package:flutter_reorderable_grid_view/widgets/reorderable_builder.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pica_comic/base.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:pica_comic/foundation/comic_source/built_in/picacg.dart';
 import 'package:pica_comic/foundation/js_engine.dart';
 import 'package:pica_comic/foundation/comic_source/built_in/jm.dart';
