@@ -6,6 +6,7 @@ import 'package:pica_comic/base.dart';
 import 'package:pica_comic/components/components.dart';
 import 'package:pica_comic/foundation/app_page_route.dart';
 import 'package:pica_comic/network/webdav.dart';
+import 'package:pica_comic/pages/settings/app_updater.dart';
 import 'package:pica_comic/utils/app_links.dart';
 import 'package:pica_comic/utils/background_service.dart';
 import 'package:pica_comic/utils/ohos_continuation.dart';
@@ -16,9 +17,7 @@ import 'explore_page.dart';
 import 'favorites/favorites_page.dart';
 import 'pre_search_page.dart';
 import 'settings/settings_page.dart';
-import 'package:pica_comic/utils/app_url_launcher.dart';
 import 'package:pica_comic/foundation/app.dart';
-import 'package:pica_comic/network/update.dart';
 import 'me_page.dart';
 import 'package:pica_comic/network/picacg_network/methods.dart';
 import 'package:pica_comic/utils/android_first_use_manager.dart';
@@ -167,77 +166,7 @@ class MainPageState extends State<MainPage> {
   }
 
   void _checkUpdates() async {
-    if (appdata.settings[2] != "1") {
-      return;
-    }
-    var res = await checkUpdate();
-    if (res == null) {
-      // 网络异常时不记录时间，确保下次启动还能再次尝试
-      return;
-    }
-    appdata.writeLastCheckUpdate(DateTime.now().millisecondsSinceEpoch);
-    if (res != true) return;
-    var info = await getUpdatesInfo();
-    if (info == null) return;
-
-    if (App.isFluent) {
-      fluent.showDialog(
-        context: App.globalContext!,
-        builder: (dialogContext) {
-          return fluent.ContentDialog(
-            title: Text("有可用更新".tl),
-            content: Text(info),
-            actions: [
-              fluent.Button(
-                  onPressed: () {
-                    dialogContext.pop();
-                    appdata.settings[2] = "0";
-                    appdata.writeData();
-                  },
-                  child: const Text("关闭更新检查")),
-              fluent.Button(onPressed: dialogContext.pop, child: Text("取消".tl)),
-              fluent.FilledButton(
-                  onPressed: () {
-                    getDownloadUrl().then((s) {
-                      AppUrlLauncher.launchExternalUrl(s);
-                    });
-                  },
-                  child: Text("下载".tl))
-            ],
-          );
-        }
-      );
-      return;
-    }
-
-    showDialog(
-        context: App.globalContext!,
-        builder: (dialogContext) {
-          return ContentDialog(
-            title: "有可用更新".tl,
-            content: Text(info).paddingHorizontal(16).paddingVertical(8),
-            actions: [
-              Button.text(
-                  onPressed: () {
-                    dialogContext.pop();
-                    appdata.settings[2] = "0";
-                    appdata.writeData();
-                  },
-                  child: const Text("关闭更新检查")),
-              Button.filled(
-                  onPressed: () {
-                    getDownloadUrl().then((s) {
-                      AppUrlLauncher.launchExternalUrl(s);
-                    });
-                  },
-                  child: Text("下载".tl))
-            ],
-          );
-        });
-
-    // if (appdata.settings[80] == "1") {
-    //   ComicSourceSettings.checkCustomComicSourceUpdate();
-    // }
+    AutoUpdater().autoCheckForUpdates();
   }
 
   void _checkDownload() {

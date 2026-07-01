@@ -280,6 +280,7 @@ class _CategoryComicsPageState extends State<CategoryComicsPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: Appbar(
+        allowLiquidGlass: false,
         scrolledUnderElevation: 0,
         title: Text(
           widget.displayTitle ??

@@ -6,13 +6,16 @@ import 'package:desktop_webview_window/desktop_webview_window.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
+import 'package:liquid_glass_widgets/widgets/overlays/glass_menu.dart';
+import 'package:liquid_glass_widgets/widgets/overlays/glass_menu_item.dart';
 import 'package:pica_comic/components/components.dart';
 import 'package:pica_comic/foundation/app.dart';
 import 'package:pica_comic/foundation/ui_mode.dart';
 import 'package:pica_comic/network/http_client.dart';
+import 'package:pica_comic/utils/app_url_launcher.dart';
 import 'package:pica_comic/utils/extensions.dart';
 import 'package:pica_comic/utils/translations.dart';
-import 'package:pica_comic/utils/app_url_launcher.dart';
 
 import '../base.dart';
 
@@ -52,16 +55,15 @@ extension WebviewExtension on InAppWebViewController {
 class AppWebview extends StatefulWidget {
   const AppWebview(
       {required this.initialUrl,
-      this.userAgent,
       this.onTitleChange,
       this.onNavigation,
       this.singlePage = false,
       this.onStarted,
       this.onLoadStop,
+      this.userAgent,
       super.key});
 
   final String initialUrl;
-  final String? userAgent;
 
   final void Function(String title, InAppWebViewController controller)?
       onTitleChange;
@@ -75,56 +77,230 @@ class AppWebview extends StatefulWidget {
 
   final bool singlePage;
 
+  final String? userAgent;
+
   @override
   State<AppWebview> createState() => _AppWebviewState();
 }
 
 class _AppWebviewState extends State<AppWebview> {
+  static const double _kLocalAppBarHeight = 58;
+
   InAppWebViewController? controller;
 
   String title = "Webview";
 
   double _progress = 0;
 
+  late final Future<void> future = _setupAndroidProxy();
+
+  Future<void> _openInBrowser() async {
+    final url = (await controller?.getUrl())?.toString();
+    if (url != null) {
+      await AppUrlLauncher.launchExternalUrl(url);
+    }
+  }
+
+  Future<void> _copyLink() async {
+    final url = (await controller?.getUrl())?.toString();
+    if (url != null) {
+      await Clipboard.setData(ClipboardData(text: url));
+    }
+  }
+
+  void _showMoreMenu() {
+    showMenuX(
+      context,
+      Offset(context.width, context.padding.top),
+      [
+        MenuEntry(
+          icon: Icons.open_in_browser,
+          text: "在浏览器中打开".tl,
+          onClick: _openInBrowser,
+        ),
+        MenuEntry(
+          icon: Icons.copy,
+          text: "复制链接".tl,
+          onClick: _copyLink,
+        ),
+        MenuEntry(
+          icon: Icons.refresh,
+          text: "重新加载".tl,
+          onClick: () => controller?.reload(),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _buildGlassMenuItems() {
+    return [
+      GlassMenuItem(
+        title: "在浏览器中打开".tl,
+        icon: const Icon(Icons.open_in_browser),
+        onTap: _openInBrowser,
+      ),
+      GlassMenuItem(
+        title: "复制链接".tl,
+        icon: const Icon(Icons.copy),
+        onTap: _copyLink,
+      ),
+      GlassMenuItem(
+        title: "重新加载".tl,
+        icon: const Icon(Icons.refresh),
+        onTap: () => controller?.reload(),
+      ),
+    ];
+  }
+
+  PreferredSizeWidget _buildAppBar(List<Widget> actions) {
+    final topPadding = context.padding.top;
+    final content = SizedBox(
+      height: _kLocalAppBarHeight + topPadding,
+      child: Padding(
+        padding: EdgeInsets.only(top: topPadding),
+        child: Row(
+          children: [
+            const SizedBox(width: 8),
+            Tooltip(
+              message: "返回".tl,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: DefaultTextStyle(
+                style: DefaultTextStyle.of(context).style.copyWith(fontSize: 20),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            ...actions,
+            const SizedBox(width: 8),
+          ],
+        ),
+      ),
+    );
+
+    final appBarChild = enableLiquidGlassUi
+        ? GlassContainerLite(
+            width: double.infinity,
+            height: _kLocalAppBarHeight + topPadding,
+            shape: LiquidRoundedSuperellipse(borderRadius: 28),
+            child: content,
+          )
+        : Material(
+            color: Theme.of(context).colorScheme.surface,
+            child: content,
+          );
+
+    return PreferredSize(
+      preferredSize: Size.fromHeight(_kLocalAppBarHeight + topPadding),
+      child: appBarChild,
+    );
+  }
+
+  Future<void> _setupAndroidProxy() async {
+    // 获取代理设置 - 使用索引 [8]
+    var proxy = appdata.settings[8].toString();
+    // 只在 Android 平台处理代理设置，iOS 不支持 WebViewFeature API
+    // 并且只处理非系统代理和非直连的情况
+    if (App.isAndroid &&
+        proxy != "system" &&
+        proxy != "direct" &&
+        proxy != "0" &&
+        proxy.isNotEmpty) {
+      var proxyAvailable = await WebViewFeature.isFeatureSupported(
+        WebViewFeature.PROXY_OVERRIDE,
+      );
+      if (proxyAvailable) {
+        ProxyController proxyController = ProxyController.instance();
+        await proxyController.clearProxyOverride();
+        if (!proxy.contains("://")) {
+          proxy = "http://$proxy";
+        }
+        await proxyController.setProxyOverride(
+          settings: ProxySettings(
+            proxyRules: [ProxyRule(url: proxy)],
+          ),
+        );
+      }
+    }
+    if (!App.isWindows) {
+      return;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
     final actions = [
-      Tooltip(
-        message: "更多",
-        child: IconButton(
-          icon: const Icon(Icons.more_horiz),
-          onPressed: () {
-            showMenuX(
-              context,
-              Offset(context.width, context.padding.top),
-              [
-                MenuEntry(
-                  icon: Icons.open_in_browser,
-                  text: "在浏览器中打开".tl,
-                  onClick: () async =>
-                      AppUrlLauncher.launchExternalUrl((await controller?.getUrl())!.toString()),
+      if (enableLiquidGlassUi)
+        Builder(builder: (context) {
+          final view = View.of(context);
+          final actualSize = Size(
+            view.physicalSize.width / view.devicePixelRatio,
+            view.physicalSize.height / view.devicePixelRatio,
+          );
+          return MediaQuery(
+            data: MediaQuery.of(context).copyWith(size: actualSize),
+            child: GlassMenu(
+              autoAdjustToScreen: true,
+              menuWidth: 220,
+              settings: LiquidGlassSettings(
+                blur: 18,
+                glassColor: isDark
+                    ? scheme.surfaceContainerHighest.withValues(alpha: 0.24)
+                    : Colors.white.withValues(alpha: 0.28),
+                ambientStrength: isDark ? 0.34 : 0.48,
+                saturation: 1.14,
+                thickness: 18,
+              ),
+              items: _buildGlassMenuItems(),
+              triggerBuilder: (ctx, toggle) => Tooltip(
+                message: "更多",
+                child: GlassIconActionButton(
+                  icon: Icons.more_horiz,
+                  tooltip: "更多".tl,
+                  onTap: toggle,
                 ),
-                MenuEntry(
-                  icon: Icons.copy,
-                  text: "复制链接".tl,
-                  onClick: () async => Clipboard.setData(ClipboardData(
-                      text: (await controller?.getUrl())!.toString())),
-                ),
-                MenuEntry(
-                  icon: Icons.refresh,
-                  text: "重新加载".tl,
-                  onClick: () => controller?.reload(),
-                ),
-              ],
-            );
-          },
-        ),
-      )
+              ),
+            ),
+          );
+        })
+      else
+        Tooltip(
+          message: "更多",
+          child: IconButton(
+            icon: const Icon(Icons.more_horiz),
+            onPressed: _showMoreMenu,
+          ),
+        )
     ];
 
-    final body = Stack(
+    Widget body = FutureBuilder(
+      future: future,
+      builder: (context, e) {
+        if (e.error != null) {
+          return Center(child: Text("Error: ${e.error}"));
+        }
+        if (e.connectionState != ConnectionState.done) {
+          return const SizedBox();
+        }
+        return createWebview();
+      },
+    );
+
+    body = Stack(
       children: [
-        Positioned.fill(child: createWebview()),
+        Positioned.fill(child: body),
         if (_progress < 1.0)
           const Positioned.fill(
               child: Center(child: CircularProgressIndicator()))
@@ -132,15 +308,23 @@ class _AppWebviewState extends State<AppWebview> {
     );
 
     return Scaffold(
-        appBar: Appbar(
-          title: Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          actions: actions,
-        ),
-        body: body);
+        appBar: _buildAppBar(actions),
+        body: Builder(
+          builder: (context) {
+            final route = ModalRoute.of(context);
+            if (route == null) return body;
+            return AnimatedBuilder(
+              animation: route.secondaryAnimation ?? const AlwaysStoppedAnimation(0),
+              builder: (context, child) {
+                return Offstage(
+                  offstage: route.secondaryAnimation?.status != AnimationStatus.dismissed,
+                  child: child,
+                );
+              },
+              child: body,
+            );
+          },
+        ));
   }
 
   Widget createWebview() {
