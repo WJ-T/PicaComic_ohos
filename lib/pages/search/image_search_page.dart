@@ -1,13 +1,16 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:file_picker_ohos/file_picker_ohos.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pica_comic/bean/card/network_img_layer.dart';
 import 'package:pica_comic/bean/dialog/dialog_helper.dart';
 import 'package:pica_comic/pages/search/image_search_module.dart';
 import 'package:pica_comic/pages/search/search_controller.dart';
+import 'package:pica_comic/foundation/platform_utils.dart';
 import 'package:pica_comic/utils/app_url_launcher.dart';
 import 'package:pica_comic/utils/constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,6 +21,13 @@ class ImageSearchPage extends StatefulWidget {
 
   @override
   State<ImageSearchPage> createState() => _ImageSearchPageState();
+}
+
+class _PickedImageFile {
+  const _PickedImageFile(this.file, this.name);
+
+  final File file;
+  final String name;
 }
 
 class _ImageSearchPageState extends State<ImageSearchPage> {
@@ -167,10 +177,14 @@ class _ImageSearchPageState extends State<ImageSearchPage> {
   }
 
   Future<void> _pickImageFile() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image == null) return;
+    final _PickedImageFile? image = PlatformUtils.isOhos
+        ? await _pickOhosImageFile()
+        : await _pickPlatformImageFile();
+    if (image == null) {
+      return;
+    }
     const int maxImageBytes = 25 * 1024 * 1024;
-    final imageFile = File(image.path);
+    final imageFile = image.file;
     final imageBytes = await imageFile.length();
     if (imageBytes > maxImageBytes) {
       if (!mounted) return;
@@ -188,10 +202,73 @@ class _ImageSearchPageState extends State<ImageSearchPage> {
     });
   }
 
+  Future<_PickedImageFile?> _pickPlatformImageFile() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    if (image == null) {
+      return null;
+    }
+    return _PickedImageFile(File(image.path), image.name);
+  }
+
+  Future<_PickedImageFile?> _pickOhosImageFile() async {
+    FilePickerResult? result;
+    try {
+      result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'],
+        withData: true,
+        allowMultiple: false,
+      );
+    } on PlatformException catch (e) {
+      if (e.code == 'unknown_activity' || e.code == 'unknown_activity_error') {
+        return null;
+      }
+    }
+
+    result ??= await FilePicker.platform.pickFiles(
+      type: FileType.any,
+      withData: true,
+      allowMultiple: false,
+    );
+    if (result == null || result.files.isEmpty) {
+      return null;
+    }
+
+    final selected = result.files.single;
+    final lowerName = selected.name.toLowerCase();
+    final validImage = lowerName.endsWith('.jpg') ||
+        lowerName.endsWith('.jpeg') ||
+        lowerName.endsWith('.png') ||
+        lowerName.endsWith('.webp') ||
+        lowerName.endsWith('.gif') ||
+        lowerName.endsWith('.bmp');
+    if (!validImage) {
+      KazumiDialog.showToast(message: '请选择图片文件');
+      return null;
+    }
+
+    final path = selected.path;
+    if (path != null && path.isNotEmpty && File(path).existsSync()) {
+      return _PickedImageFile(File(path), selected.name);
+    }
+
+    final bytes = selected.bytes;
+    if (bytes == null || bytes.isEmpty) {
+      KazumiDialog.showToast(message: '无法读取图片文件');
+      return null;
+    }
+
+    final safeName = selected.name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    final tempFile = File(
+      '${Directory.systemTemp.path}${Platform.pathSeparator}image_search_${DateTime.now().millisecondsSinceEpoch}_$safeName',
+    );
+    await tempFile.create(recursive: true);
+    await tempFile.writeAsBytes(bytes, flush: true);
+    return _PickedImageFile(tempFile, selected.name);
+  }
+
   Future<void> _startSearch() async {
-    final selectedDatabases = _selectedDatabaseIndexes
-        .toList()
-      ..sort();
+    final selectedDatabases = _selectedDatabaseIndexes.toList()..sort();
     final selectedDatabaseValues = selectedDatabases
         .map((index) => _databaseValues[index])
         .toList(growable: false);
