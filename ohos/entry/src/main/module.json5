@@ -12,6 +12,7 @@
     "deliveryWithInstall": true,
     "installationFree": false,
     "pages": "$profile:main_pages",
+    "compressNativeLibs": true,
     "abilities": [
       {
         "name": "EntryAbility",
