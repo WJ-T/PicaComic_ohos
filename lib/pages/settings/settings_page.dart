@@ -493,15 +493,13 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
         fluent.ListTile(
           leading: const Icon(Icons.code),
           title: Text("项目地址".tl),
-          onPressed: () => AppUrlLauncher.launchExternalUrl(
-              "https://github.com/ccbkv/PicaComic"),
+          onPressed: () => AppUrlLauncher.launchExternalUrl(kProjectRepoUrl),
           trailing: const Icon(Icons.open_in_new),
         ),
         fluent.ListTile(
           leading: const Icon(Icons.comment_outlined),
           title: Text("问题反馈 (Github)".tl),
-          onPressed: () => AppUrlLauncher.launchExternalUrl(
-              "https://github.com/ccbkv/PicaComic/issues"),
+          onPressed: () => AppUrlLauncher.launchExternalUrl(kProjectIssuesUrl),
           trailing: const Icon(Icons.open_in_new),
         ),
       ],
@@ -1061,16 +1059,68 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
           ),
         ),
         if (appdata.settings[32] == "0" || appdata.settings[32] == "2")
-         fluent.ListTile(
-          leading: const Icon(Icons.window),
-          title: const Text("Fluent UI"),
-          subtitle: Text("实验性功能,注目前这ui比较多bug，而且对手机不太友好".tl),
+          fluent.ListTile(
+            leading: const Icon(Icons.window),
+            title: const Text("Fluent UI"),
+            subtitle: Text("实验性功能,注目前这ui比较多bug，而且对手机不太友好".tl),
+            trailing: fluent.ToggleSwitch(
+              checked: (() {
+                while (appdata.settings.length <= 103) {
+                  appdata.settings.add("0");
+                }
+                final fluentEnabled = appdata.settings[91] == "1";
+                if (fluentEnabled && appdata.settings[103] == "1") {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    setState(() {
+                      appdata.settings[103] = "0";
+                    });
+                    appdata.updateSettings();
+                    MyApp.updater?.call();
+                  });
+                }
+                return fluentEnabled;
+              })(),
+              onChanged: (b) {
+                setState(() {
+                  while (appdata.settings.length <= 103) {
+                    appdata.settings.add("0");
+                  }
+                  appdata.settings[91] = b ? "1" : "0";
+                  if (b) {
+                    appdata.settings[103] = "0";
+                  }
+                });
+                appdata.updateSettings();
+                MyApp.updater?.call();
+              },
+            ),
+          ),
+        fluent.ListTile(
+          leading: const Icon(Icons.remove_red_eye),
+          title: Text("纯黑色模式".tl),
           trailing: fluent.ToggleSwitch(
-            checked: (() {
+            checked: appdata.settings[84] == "1",
+            onChanged: (i) {
+              setState(() {
+                appdata.settings[84] = i ? "1" : "0";
+              });
+              appdata.updateSettings();
+              MyApp.updater?.call();
+            },
+          ),
+        ),
+        fluent.ListTile(
+          leading: const Icon(Icons.water_drop_outlined),
+          title: Text("液态玻璃效果和导航栏".tl),
+          subtitle: Text("实验性功能,可能存在性能或点击区域问题".tl),
+          trailing: AdaptiveSwitch(
+            value: (() {
               while (appdata.settings.length <= 103) {
                 appdata.settings.add("0");
               }
-              final fluentEnabled = appdata.settings[91] == "1";
+              final fluentEnabled =
+                  appdata.settings.length > 91 && appdata.settings[91] == "1";
               if (fluentEnabled && appdata.settings[103] == "1") {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (!mounted) return;
@@ -1080,17 +1130,20 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
                   appdata.updateSettings();
                   MyApp.updater?.call();
                 });
+                return false;
               }
-              return fluentEnabled;
+              return appdata.settings[103] == "1";
             })(),
             onChanged: (b) {
               setState(() {
                 while (appdata.settings.length <= 103) {
                   appdata.settings.add("0");
                 }
-                appdata.settings[91] = b ? "1" : "0";
-                if (b) {
-                  appdata.settings[103] = "0";
+                appdata.settings[103] = b ? "1" : "0";
+                if (b &&
+                    appdata.settings.length > 91 &&
+                    appdata.settings[91] == "1") {
+                  appdata.settings[91] = "0";
                 }
               });
               appdata.updateSettings();
@@ -1098,96 +1151,43 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
             },
           ),
         ),
-          fluent.ListTile(
-            leading: const Icon(Icons.remove_red_eye),
-            title: Text("纯黑色模式".tl),
-            trailing: fluent.ToggleSwitch(
-              checked: appdata.settings[84] == "1",
-              onChanged: (i) {
-                setState(() {
-                  appdata.settings[84] = i ? "1" : "0";
-                });
-                appdata.updateSettings();
-                MyApp.updater?.call();
-              },
-            ),
+        fluent.ListTile(
+          leading: const Icon(Icons.comment),
+          title: Text("显示章节评论".tl),
+          trailing: AdaptiveSwitch(
+            value: appdata.settings.length > 92
+                ? appdata.settings[92] == "1"
+                : true,
+            onChanged: (b) {
+              setState(() {
+                while (appdata.settings.length <= 92) {
+                  appdata.settings.add("1");
+                }
+                appdata.settings[92] = b ? "1" : "0";
+              });
+              appdata.updateSettings();
+            },
           ),
-
-          fluent.ListTile(
-              leading: const Icon(Icons.water_drop_outlined),
-              title: Text("液态玻璃效果和导航栏".tl),
-              subtitle: Text("实验性功能,可能存在性能或点击区域问题".tl),
-              trailing: AdaptiveSwitch(
-                      value: (() {
-                        while (appdata.settings.length <= 103) {
-                          appdata.settings.add("0");
-                        }
-                        final fluentEnabled =
-                            appdata.settings.length > 91 &&
-                                appdata.settings[91] == "1";
-                        if (fluentEnabled && appdata.settings[103] == "1") {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (!mounted) return;
-                            setState(() {
-                              appdata.settings[103] = "0";
-                            });
-                            appdata.updateSettings();
-                            MyApp.updater?.call();
-                          });
-                          return false;
-                        }
-                        return appdata.settings[103] == "1";
-                      })(),
-                      onChanged: (b) {
-                        setState(() {
-                          while (appdata.settings.length <= 103) {
-                            appdata.settings.add("0");
-                          }
-                          appdata.settings[103] = b ? "1" : "0";
-                          if (b &&
-                              appdata.settings.length > 91 &&
-                              appdata.settings[91] == "1") {
-                            appdata.settings[91] = "0";
-                          }
-                        });
-                        appdata.updateSettings();
-                        MyApp.updater?.call();
-                      },
-                    ),
-            ),
-          fluent.ListTile(
-            leading: const Icon(Icons.comment),
-            title: Text("显示章节评论".tl),
-            trailing: AdaptiveSwitch(
-              value: appdata.settings.length > 92 ? appdata.settings[92] == "1" : true,
-              onChanged: (b) {
-                setState(() {
-                  while (appdata.settings.length <= 92) {
-                    appdata.settings.add("1");
-                  }
-                  appdata.settings[92] = b ? "1" : "0";
-                });
-                appdata.updateSettings();
-              },
-            ),
+        ),
+        fluent.ListTile(
+          leading: const Icon(Icons.save),
+          title: Text("下载时保存章节评论".tl),
+          subtitle: Text("断网时也可查看已保存的章节评论".tl),
+          trailing: AdaptiveSwitch(
+            value: appdata.settings.length > 102
+                ? appdata.settings[102] == "1"
+                : false,
+            onChanged: (b) {
+              setState(() {
+                while (appdata.settings.length <= 102) {
+                  appdata.settings.add("0");
+                }
+                appdata.settings[102] = b ? "1" : "0";
+              });
+              appdata.updateSettings();
+            },
           ),
-          fluent.ListTile(
-            leading: const Icon(Icons.save),
-            title: Text("下载时保存章节评论".tl),
-            subtitle: Text("断网时也可查看已保存的章节评论".tl),
-            trailing: AdaptiveSwitch(
-              value: appdata.settings.length > 102 ? appdata.settings[102] == "1" : false,
-              onChanged: (b) {
-                setState(() {
-                  while (appdata.settings.length <= 102) {
-                    appdata.settings.add("0");
-                  }
-                  appdata.settings[102] = b ? "1" : "0";
-                });
-                appdata.updateSettings();
-              },
-            ),
-          ),
+        ),
       ],
     );
   }
@@ -1301,7 +1301,9 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
             title: const Text("Fluent UI"),
             subtitle: Text("实验性功能,注目前这ui比较多bug，而且对手机不太友好".tl),
             trailing: AdaptiveSwitch(
-              value: appdata.settings.length > 91 ? appdata.settings[91] == "1" : false,
+              value: appdata.settings.length > 91
+                  ? appdata.settings[91] == "1"
+                  : false,
               onChanged: (b) {
                 setState(() {
                   while (appdata.settings.length <= 91) {
@@ -1321,53 +1323,54 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
             ),
           ),
           //if (PlatformUtils.isOhos)
-            ListTile(
-              leading: const Icon(Icons.water_drop_outlined),
-              title: Text("液态玻璃效果和导航栏".tl),
-              subtitle: Text("实验性功能,可能存在性能或点击区域问题".tl),
-              trailing: AdaptiveSwitch(
-                      value: (() {
-                        while (appdata.settings.length <= 103) {
-                          appdata.settings.add("0");
-                        }
-                        final fluentEnabled =
-                            appdata.settings.length > 91 &&
-                                appdata.settings[91] == "1";
-                        if (fluentEnabled && appdata.settings[103] == "1") {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (!mounted) return;
-                            setState(() {
-                              appdata.settings[103] = "0";
-                            });
-                            appdata.updateSettings();
-                            MyApp.updater?.call();
-                          });
-                          return false;
-                        }
-                        return appdata.settings[103] == "1";
-                      })(),
-                      onChanged: (b) {
-                        setState(() {
-                          while (appdata.settings.length <= 103) {
-                            appdata.settings.add("0");
-                          }
-                          appdata.settings[103] = b ? "1" : "0";
-                          if (b &&
-                              appdata.settings.length > 91 &&
-                              appdata.settings[91] == "1") {
-                            appdata.settings[91] = "0";
-                          }
-                        });
-                        appdata.updateSettings();
-                        MyApp.updater?.call();
-                      },
-                    ),
+          ListTile(
+            leading: const Icon(Icons.water_drop_outlined),
+            title: Text("液态玻璃效果和导航栏".tl),
+            subtitle: Text("实验性功能,可能存在性能或点击区域问题".tl),
+            trailing: AdaptiveSwitch(
+              value: (() {
+                while (appdata.settings.length <= 103) {
+                  appdata.settings.add("0");
+                }
+                final fluentEnabled =
+                    appdata.settings.length > 91 && appdata.settings[91] == "1";
+                if (fluentEnabled && appdata.settings[103] == "1") {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    setState(() {
+                      appdata.settings[103] = "0";
+                    });
+                    appdata.updateSettings();
+                    MyApp.updater?.call();
+                  });
+                  return false;
+                }
+                return appdata.settings[103] == "1";
+              })(),
+              onChanged: (b) {
+                setState(() {
+                  while (appdata.settings.length <= 103) {
+                    appdata.settings.add("0");
+                  }
+                  appdata.settings[103] = b ? "1" : "0";
+                  if (b &&
+                      appdata.settings.length > 91 &&
+                      appdata.settings[91] == "1") {
+                    appdata.settings[91] = "0";
+                  }
+                });
+                appdata.updateSettings();
+                MyApp.updater?.call();
+              },
             ),
+          ),
           ListTile(
             leading: const Icon(Icons.comment),
             title: Text("显示章节评论".tl),
             trailing: AdaptiveSwitch(
-              value: appdata.settings.length > 92 ? appdata.settings[92] == "1" : true,
+              value: appdata.settings.length > 92
+                  ? appdata.settings[92] == "1"
+                  : true,
               onChanged: (b) {
                 setState(() {
                   while (appdata.settings.length <= 92) {
@@ -1384,7 +1387,9 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
             title: Text("下载时保存章节评论".tl),
             subtitle: Text("断网时也可查看已保存的章节评论".tl),
             trailing: AdaptiveSwitch(
-              value: appdata.settings.length > 102 ? appdata.settings[102] == "1" : false,
+              value: appdata.settings.length > 102
+                  ? appdata.settings[102] == "1"
+                  : false,
               onChanged: (b) {
                 setState(() {
                   while (appdata.settings.length <= 102) {
@@ -1672,8 +1677,8 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
           leading: const Icon(Icons.history),
           title: const Text("历史版本"),
           subtitle: const Text("查看历史版本更新"),
-          onTap: () =>
-              showPopUpWidget(App.globalContext!, const AppUpdaterHistoryPage()),
+          onTap: () => showPopUpWidget(
+              App.globalContext!, const AppUpdaterHistoryPage()),
           trailing: const Icon(Icons.arrow_right),
         ),
         ListTile(
@@ -1696,15 +1701,13 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
         ListTile(
           leading: const Icon(Icons.code),
           title: Text("项目地址".tl),
-          onTap: () => AppUrlLauncher.launchExternalUrl(
-              "https://github.com/ccbkv/PicaComic"),
+          onTap: () => AppUrlLauncher.launchExternalUrl(kProjectRepoUrl),
           trailing: const Icon(Icons.open_in_new),
         ),
         ListTile(
           leading: const Icon(Icons.comment_outlined),
           title: Text("问题反馈 (Github)".tl),
-          onTap: () => AppUrlLauncher.launchExternalUrl(
-              "https://github.com/ccbkv/PicaComic/issues"),
+          onTap: () => AppUrlLauncher.launchExternalUrl(kProjectIssuesUrl),
           trailing: const Icon(Icons.open_in_new),
         ),
         // ListTile(
@@ -1739,8 +1742,7 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
       4 => buildAppSettings(),
       5 => const NetworkSettings(),
       _aboutPageIndex => buildAbout(),
-      _appUpdaterHistoryIndex =>
-          const AppUpdaterHistoryPage(embedded: true),
+      _appUpdaterHistoryIndex => const AppUpdaterHistoryPage(embedded: true),
       _debugPageIndex => const DebugPage(),
       _ => throw UnimplementedError()
     };
@@ -1859,7 +1861,8 @@ class _GlassSettingsCategoryItem extends StatefulWidget {
       _GlassSettingsCategoryItemState();
 }
 
-class _GlassSettingsCategoryItemState extends State<_GlassSettingsCategoryItem> {
+class _GlassSettingsCategoryItemState
+    extends State<_GlassSettingsCategoryItem> {
   bool _pressed = false;
 
   @override

@@ -139,7 +139,7 @@ flutter_to_arch:
   icon: debian/gui/pica-comic.png
   categories: Utility
   keywords: Flutter;comic;images;
-  url: https://github.com/Pacalini/PicaComic
+  url: https://github.com/nimmi114514/PicaComic_ohos
   depends:
     - gtk3
     - webkit2gtk-4.1

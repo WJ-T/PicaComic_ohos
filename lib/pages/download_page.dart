@@ -478,7 +478,9 @@ class DownloadPageLogic extends StateController {
 
     // 应用类型筛选
     if (downloadTypeFilter != null) {
-      filteredComics = filteredComics.where((comic) => comic.type == downloadTypeFilter).toList();
+      filteredComics = filteredComics
+          .where((comic) => comic.type == downloadTypeFilter)
+          .toList();
     }
 
     // 处理分页
@@ -669,7 +671,9 @@ class _DownloadPageState extends State<DownloadPage> {
                           Expanded(
                             child: Center(
                               child: Material(
-                                color: Theme.of(context).colorScheme.surfaceContainer,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainer,
                                 borderRadius: BorderRadius.circular(8),
                                 child: InkWell(
                                   borderRadius: BorderRadius.circular(8),
@@ -679,7 +683,8 @@ class _DownloadPageState extends State<DownloadPage> {
                                       builder: (context) {
                                         TextEditingController controller =
                                             TextEditingController(
-                                                text: logic.currentPage.toString());
+                                                text: logic.currentPage
+                                                    .toString());
                                         return ContentDialog(
                                           title: "输入页码".tl,
                                           content: TextField(
@@ -690,14 +695,18 @@ class _DownloadPageState extends State<DownloadPage> {
                                               hintText: "1-${logic.maxPage}",
                                             ),
                                             inputFormatters: <TextInputFormatter>[
-                                              FilteringTextInputFormatter.digitsOnly
+                                              FilteringTextInputFormatter
+                                                  .digitsOnly
                                             ],
                                           ).paddingHorizontal(16),
                                           actions: [
                                             Button.filled(
                                               onPressed: () {
-                                                int? p = int.tryParse(controller.text);
-                                                if (p != null && p >= 1 && p <= logic.maxPage) {
+                                                int? p = int.tryParse(
+                                                    controller.text);
+                                                if (p != null &&
+                                                    p >= 1 &&
+                                                    p <= logic.maxPage) {
                                                   Navigator.pop(context, p);
                                                 } else {
                                                   showToast(message: "页码无效".tl);
@@ -712,14 +721,17 @@ class _DownloadPageState extends State<DownloadPage> {
                                     if (page != null) {
                                       logic.currentPage = page;
                                       getComics(logic).then((_) {
-                                        logic.resetSelected(logic.comics.length);
+                                        logic
+                                            .resetSelected(logic.comics.length);
                                         logic.update();
                                       });
                                     }
                                   },
                                   child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                                    child: Text("${"页面".tl} ${logic.currentPage} / ${logic.maxPage}"),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 6),
+                                    child: Text(
+                                        "${"页面".tl} ${logic.currentPage} / ${logic.maxPage}"),
                                   ),
                                 ),
                               ),
@@ -760,7 +772,9 @@ class _DownloadPageState extends State<DownloadPage> {
                           Expanded(
                             child: Center(
                               child: Material(
-                                color: Theme.of(context).colorScheme.surfaceContainer,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainer,
                                 borderRadius: BorderRadius.circular(8),
                                 child: InkWell(
                                   borderRadius: BorderRadius.circular(8),
@@ -770,7 +784,8 @@ class _DownloadPageState extends State<DownloadPage> {
                                       builder: (context) {
                                         TextEditingController controller =
                                             TextEditingController(
-                                                text: logic.currentPage.toString());
+                                                text: logic.currentPage
+                                                    .toString());
                                         return ContentDialog(
                                           title: "输入页码".tl,
                                           content: TextField(
@@ -781,14 +796,18 @@ class _DownloadPageState extends State<DownloadPage> {
                                               hintText: "1-${logic.maxPage}",
                                             ),
                                             inputFormatters: <TextInputFormatter>[
-                                              FilteringTextInputFormatter.digitsOnly
+                                              FilteringTextInputFormatter
+                                                  .digitsOnly
                                             ],
                                           ).paddingHorizontal(16),
                                           actions: [
                                             Button.filled(
                                               onPressed: () {
-                                                int? p = int.tryParse(controller.text);
-                                                if (p != null && p >= 1 && p <= logic.maxPage) {
+                                                int? p = int.tryParse(
+                                                    controller.text);
+                                                if (p != null &&
+                                                    p >= 1 &&
+                                                    p <= logic.maxPage) {
                                                   Navigator.pop(context, p);
                                                 } else {
                                                   showToast(message: "页码无效".tl);
@@ -803,14 +822,17 @@ class _DownloadPageState extends State<DownloadPage> {
                                     if (page != null) {
                                       logic.currentPage = page;
                                       getComics(logic).then((_) {
-                                        logic.resetSelected(logic.comics.length);
+                                        logic
+                                            .resetSelected(logic.comics.length);
                                         logic.update();
                                       });
                                     }
                                   },
                                   child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                                    child: Text("${"页面".tl} ${logic.currentPage} / ${logic.maxPage}"),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 6),
+                                    child: Text(
+                                        "${"页面".tl} ${logic.currentPage} / ${logic.maxPage}"),
                                   ),
                                 ),
                               ),
@@ -919,7 +941,8 @@ class _DownloadPageState extends State<DownloadPage> {
             ),
           ),
         SliverPadding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
+          padding:
+              EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
         )
       ],
     );
@@ -1407,7 +1430,7 @@ class _DownloadPageState extends State<DownloadPage> {
     var dio = logDio();
     try {
       await dio.download(
-        "https://raw.githubusercontent.com/ccbkv/PicaComic/master/fonts/NotoSansSC-Regular.ttf",
+        "https://raw.githubusercontent.com/nimmi114514/PicaComic_ohos/master/fonts/NotoSansSC-Regular.ttf",
         "${App.dataPath}/font.ttf",
         cancelToken: cancelToken,
       );
@@ -1564,24 +1587,24 @@ class _DownloadPageState extends State<DownloadPage> {
                   logic.comics[index].read();
                 },
               ),
-                  DesktopMenuEntry(
-                    text: "删除".tl,
-                    onClick: () {
-                      showConfirmDialog(
-                        context: context,
-                        title: "确认删除".tl,
-                        content: "此操作无法撤销, 是否继续?".tl,
-                        onConfirm: () {
-                          downloadManager.delete([logic.comics[index].id]);
-                          logic.comics.removeAt(index);
-                          logic.selected.removeAt(index);
-                          logic.update();
-                          StateController.findOrNull(tag: "me_page_downloads")
-                              ?.update();
-                        },
-                      );
+              DesktopMenuEntry(
+                text: "删除".tl,
+                onClick: () {
+                  showConfirmDialog(
+                    context: context,
+                    title: "确认删除".tl,
+                    content: "此操作无法撤销, 是否继续?".tl,
+                    onConfirm: () {
+                      downloadManager.delete([logic.comics[index].id]);
+                      logic.comics.removeAt(index);
+                      logic.selected.removeAt(index);
+                      logic.update();
+                      StateController.findOrNull(tag: "me_page_downloads")
+                          ?.update();
                     },
-                  ),
+                  );
+                },
+              ),
               DesktopMenuEntry(
                 text: "导出".tl,
                 onClick: () =>
@@ -1915,7 +1938,8 @@ class _DownloadPageState extends State<DownloadPage> {
             icon: Icons.sort,
             onTap: () async {
               bool changed = false;
-              var sortType = DownloadSortType.values[int.parse(appdata.settings[26][0])];
+              var sortType =
+                  DownloadSortType.values[int.parse(appdata.settings[26][0])];
               await showDialog(
                 context: context,
                 builder: (context) {
@@ -1959,9 +1983,11 @@ class _DownloadPageState extends State<DownloadPage> {
                               initialValue: appdata.settings[26][1] == "1",
                               onChanged: (b) {
                                 if (b) {
-                                  appdata.settings[26] = appdata.settings[26].setValueAt("1", 1);
+                                  appdata.settings[26] =
+                                      appdata.settings[26].setValueAt("1", 1);
                                 } else {
-                                  appdata.settings[26] = appdata.settings[26].setValueAt("0", 1);
+                                  appdata.settings[26] =
+                                      appdata.settings[26].setValueAt("0", 1);
                                 }
                                 appdata.updateSettings();
                                 changed = true;
@@ -1973,7 +1999,8 @@ class _DownloadPageState extends State<DownloadPage> {
                       actions: [
                         FilledButton(
                           onPressed: () {
-                            appdata.settings[26] = appdata.settings[26].setValueAt(sortType.index.toString(), 0);
+                            appdata.settings[26] = appdata.settings[26]
+                                .setValueAt(sortType.index.toString(), 0);
                             appdata.updateSettings();
                             changed = true;
                             Navigator.pop(context);
@@ -2027,7 +2054,8 @@ class _DownloadPageState extends State<DownloadPage> {
                   MenuEntry(
                     icon: Icons.favorite_border,
                     text: "添加至本地收藏".tl,
-                    onClick: () => addToLocalFavoriteFolder(App.globalContext!, logic),
+                    onClick: () =>
+                        addToLocalFavoriteFolder(App.globalContext!, logic),
                   ),
                   MenuEntry(
                     icon: Icons.chrome_reader_mode_outlined,
@@ -2662,8 +2690,10 @@ class _DownloadedComicInfoViewState extends State<DownloadedComicInfoView>
                 indicatorColor: Theme.of(context).colorScheme.primary,
                 labelColor: Theme.of(context).colorScheme.primary,
                 unselectedLabelColor: Theme.of(context).colorScheme.onSurface,
-                labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.normal),
+                labelStyle:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                unselectedLabelStyle: const TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.normal),
                 overlayColor: WidgetStateProperty.all(Colors.transparent),
                 onTap: (index) {
                   if (index != _selectedGroupIndex) {
@@ -2672,9 +2702,7 @@ class _DownloadedComicInfoViewState extends State<DownloadedComicInfoView>
                     });
                   }
                 },
-                tabs: _chapters!.groups
-                    .map((g) => Tab(text: g))
-                    .toList(),
+                tabs: _chapters!.groups.map((g) => Tab(text: g)).toList(),
               ),
             ),
             const SizedBox(height: 4),
@@ -2730,7 +2758,8 @@ class _DownloadedComicInfoViewState extends State<DownloadedComicInfoView>
                       ),
                       onTap: () => readSpecifiedEps(globalIndex),
                       onLongPress: () => deleteEpisode(globalIndex),
-                      onSecondaryTapDown: (details) => deleteEpisode(globalIndex),
+                      onSecondaryTapDown: (details) =>
+                          deleteEpisode(globalIndex),
                     ),
                   );
                 },
@@ -2911,8 +2940,7 @@ void showDownloadTypeFilterMenu({
           children: [
             if (logic.downloadTypeFilter == null)
               const Icon(Icons.check, size: 20),
-            if (logic.downloadTypeFilter != null)
-              const SizedBox(width: 28),
+            if (logic.downloadTypeFilter != null) const SizedBox(width: 28),
             const SizedBox(width: 8),
             Text("全部".tl),
           ],
@@ -2940,8 +2968,7 @@ void showDownloadTypeFilterMenu({
             children: [
               if (logic.downloadTypeFilter == type)
                 const Icon(Icons.check, size: 20),
-              if (logic.downloadTypeFilter != type)
-                const SizedBox(width: 28),
+              if (logic.downloadTypeFilter != type) const SizedBox(width: 28),
               Text(typeName),
             ],
           ),

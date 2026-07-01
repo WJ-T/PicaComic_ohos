@@ -48,8 +48,6 @@ class ComicSourceSettings extends StatefulWidget {
   // }
 }
 
-
-
 class _ComicSourceSettingsState extends State<ComicSourceSettings> {
   var url = "";
 
@@ -67,17 +65,17 @@ class _ComicSourceSettingsState extends State<ComicSourceSettings> {
           ),
           buildCard(context),
           const _SliverBuiltInSources(),
-          if(appdata.appSettings.isComicSourceEnabled("picacg"))
+          if (appdata.appSettings.isComicSourceEnabled("picacg"))
             const SliverPicacgSettings(),
-          if(appdata.appSettings.isComicSourceEnabled("ehentai"))
+          if (appdata.appSettings.isComicSourceEnabled("ehentai"))
             const SliverEhSettings(),
-          if(appdata.appSettings.isComicSourceEnabled("nhentai"))
+          if (appdata.appSettings.isComicSourceEnabled("nhentai"))
             const SliverNhSettings(),
-          if(appdata.appSettings.isComicSourceEnabled("jm"))
+          if (appdata.appSettings.isComicSourceEnabled("jm"))
             const SliverJmSettings(),
-          if(appdata.appSettings.isComicSourceEnabled("hitomi"))
+          if (appdata.appSettings.isComicSourceEnabled("hitomi"))
             const SliverHitomiSettings(),
-          if(appdata.appSettings.isComicSourceEnabled("htmanga"))
+          if (appdata.appSettings.isComicSourceEnabled("htmanga"))
             const SliverHtSettings(),
           for (var source in ComicSource.sources.where((e) => !e.isBuiltIn))
             _SliverComicSource(
@@ -87,7 +85,9 @@ class _ComicSourceSettingsState extends State<ComicSourceSettings> {
               update: update,
               delete: delete,
             ),
-          SliverPadding(padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom)),
+          SliverPadding(
+              padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).padding.bottom)),
         ],
       ),
     );
@@ -113,8 +113,6 @@ class _ComicSourceSettingsState extends State<ComicSourceSettings> {
   //     ],
   //   );
   // }
-
-
 
   void delete(ComicSource source) {
     showConfirmDialog(
@@ -204,7 +202,8 @@ class _ComicSourceSettingsState extends State<ComicSourceSettings> {
                   onPressed: () {
                     showPopUpWidget(
                       context,
-                      _ComicSourceList(handleAddSource, onClose: () => Navigator.of(context).pop()),
+                      _ComicSourceList(handleAddSource,
+                          onClose: () => Navigator.of(context).pop()),
                     );
                   },
                 ),
@@ -282,7 +281,7 @@ class _ComicSourceSettingsState extends State<ComicSourceSettings> {
 
   void help() {
     AppUrlLauncher.launchExternalUrl(
-      "https://github.com/ccbkv/PicaComic/blob/master/doc/comic_source.md",
+      "$kProjectRepoUrl/blob/master/doc/comic_source.md",
     );
   }
 
@@ -407,9 +406,7 @@ class _CheckUpdatesButtonState extends State<_CheckUpdatesButton> {
       }
     }
     if (shouldUpdate.isNotEmpty) {
-      ComicSource.updates = {
-        for (var key in shouldUpdate) key: versions[key]!
-      };
+      ComicSource.updates = {for (var key in shouldUpdate) key: versions[key]!};
     }
     return shouldUpdate.length;
   }
@@ -481,7 +478,8 @@ class _ComicSourceListState extends State<_ComicSourceList> {
   @override
   void initState() {
     super.initState();
-    controller.text = "https://raw.githubusercontent.com/ccbkv/pica_configs/refs/heads/master/index.json";
+    controller.text =
+        "https://raw.githubusercontent.com/ccbkv/pica_configs/refs/heads/master/index.json";
     load();
   }
 
@@ -496,7 +494,9 @@ class _ComicSourceListState extends State<_ComicSourceList> {
       appBar: AppBar(
         title: Text("漫画源".tl),
         actions: [
-          IconButton(onPressed: widget.onClose ?? App.globalBack, icon: const Icon(Icons.close)),
+          IconButton(
+              onPressed: widget.onClose ?? App.globalBack,
+              icon: const Icon(Icons.close)),
         ],
       ),
       body: buildBody(),
@@ -550,7 +550,7 @@ class _ComicSourceListState extends State<_ComicSourceList> {
                     TextButton(
                       onPressed: () {
                         AppUrlLauncher.launchExternalUrl(
-                          "https://github.com/ccbkv/PicaComic/blob/master/doc/comic_source.md",
+                          "$kProjectRepoUrl/blob/master/doc/comic_source.md",
                         );
                       },
                       child: Text("帮助".tl),
@@ -595,8 +595,7 @@ class _ComicSourceListState extends State<_ComicSourceList> {
                         .replaceFirst("https://", "")
                         .replaceFirst("http://", "")
                         .contains("/")) {
-                      url =
-                          listUrl.substring(0, listUrl.lastIndexOf("/") + 1) +
+                      url = listUrl.substring(0, listUrl.lastIndexOf("/") + 1) +
                           fileName;
                     } else {
                       url = '$listUrl/$fileName';
@@ -802,8 +801,7 @@ class _SliverBuiltInSourcesState extends State<_SliverBuiltInSources> {
   Widget buildTile(int index) {
     var key = builtInSources[index];
     return ListTile(
-      title: Text(
-          ComicSource.builtIn.firstWhere((e) => e.key == key).name.tl),
+      title: Text(ComicSource.builtIn.firstWhere((e) => e.key == key).name.tl),
       trailing: AdaptiveSwitch(
         value: appdata.appSettings.isComicSourceEnabled(key),
         onChanged: (v) async {
@@ -811,7 +809,7 @@ class _SliverBuiltInSourcesState extends State<_SliverBuiltInSources> {
           isLoading = true;
           appdata.appSettings.setComicSourceEnabled(key, v);
           await appdata.updateSettings();
-          if(!v) {
+          if (!v) {
             ComicSource.sources.removeWhere((e) => e.key == key);
             _validatePages();
           } else {
@@ -823,7 +821,8 @@ class _SliverBuiltInSourcesState extends State<_SliverBuiltInSources> {
           isLoading = false;
           if (mounted) {
             setState(() {});
-            context.findAncestorStateOfType<_ComicSourceSettingsState>()
+            context
+                .findAncestorStateOfType<_ComicSourceSettingsState>()
                 ?.setState(() {});
           }
           StateController.findOrNull(tag: "me_page_sources")?.update();
@@ -917,7 +916,8 @@ class _SliverComicSourceState extends State<_SliverComicSource> {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    color:
+                        Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -1022,7 +1022,9 @@ class _SliverComicSourceState extends State<_SliverComicSource> {
           String currentText = currentValue?.toString() ?? '';
           for (var option in options) {
             if (option is Map && option['value'] == currentValue) {
-              currentText = option['text']?.toString() ?? option['value']?.toString() ?? currentValue.toString();
+              currentText = option['text']?.toString() ??
+                  option['value']?.toString() ??
+                  currentValue.toString();
               break;
             }
           }
@@ -1033,7 +1035,9 @@ class _SliverComicSourceState extends State<_SliverComicSource> {
           for (var option in options) {
             if (option is Map) {
               var value = option['value']?.toString() ?? '';
-              var text = option['text']?.toString() ?? option['value']?.toString() ?? '';
+              var text = option['text']?.toString() ??
+                  option['value']?.toString() ??
+                  '';
               optionValues.add(value);
               optionTexts.add(text);
             }
@@ -1042,7 +1046,8 @@ class _SliverComicSourceState extends State<_SliverComicSource> {
           if (optionValues.isEmpty) continue;
 
           // Find current index
-          int currentIndex = optionValues.indexOf(currentValue?.toString() ?? '');
+          int currentIndex =
+              optionValues.indexOf(currentValue?.toString() ?? '');
           if (currentIndex < 0) currentIndex = 0;
 
           widgets.add(
@@ -1082,7 +1087,8 @@ class _SliverComicSourceState extends State<_SliverComicSource> {
           );
         } else if (type == 'input') {
           var defaultValue = setting['default']?.toString() ?? '';
-          var currentValue = source.data['settings'][key]?.toString() ?? defaultValue;
+          var currentValue =
+              source.data['settings'][key]?.toString() ?? defaultValue;
 
           widgets.add(
             SliverToBoxAdapter(
@@ -1113,7 +1119,8 @@ class _SliverComicSourceState extends State<_SliverComicSource> {
           );
         }
       } catch (e, s) {
-        log("Failed to build setting $key: $e\n$s", "ComicSourceSettings", LogLevel.error);
+        log("Failed to build setting $key: $e\n$s", "ComicSourceSettings",
+            LogLevel.error);
       }
     }
 
@@ -1188,7 +1195,8 @@ class __EditFilePageState extends State<_EditFilePage> {
       ),
       body: Column(
         children: [
-          Container(height: 0.6, color: Theme.of(context).colorScheme.outlineVariant),
+          Container(
+              height: 0.6, color: Theme.of(context).colorScheme.outlineVariant),
           Expanded(
             child: TextField(
               controller: TextEditingController(text: current),
@@ -1249,7 +1257,8 @@ class _ComicSourceAppBarDelegate extends SliverPersistentHeaderDelegate {
   });
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
     return SizedBox.expand(
       child: Material(
         color: Theme.of(context).colorScheme.surface,
