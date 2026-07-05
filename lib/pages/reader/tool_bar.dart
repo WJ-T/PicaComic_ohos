@@ -61,10 +61,9 @@ extension ToolBar on ComicReadingPage {
           8 + MediaQuery.of(context).padding.right,
           top ? 0 : 8,
         ),
-        child: GlassSurface(
+        child: GlassSurfaceLite(
           borderRadius: 26,
           padding: padding,
-          useOwnLayer: false,
           child: child,
         ),
       );
@@ -535,6 +534,8 @@ extension ToolBar on ComicReadingPage {
                           ),
                         ),
                         //const Spacer(),
+
+
                         if (_shouldShowChapterComments())
                           Padding(
                             padding: const EdgeInsets.fromLTRB(10, 0, 0, 0),

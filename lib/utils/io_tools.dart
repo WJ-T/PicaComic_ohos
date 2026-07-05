@@ -31,10 +31,9 @@ Future<double> getFolderSize(Directory path) async {
   return total;
 }
 
-Future<bool> exportComic(String id, String name,
-    [List<String>? epNames]) async {
+Future<bool> exportComic(String id, String name, [List<String>? epNames]) async {
   try {
-    name = sanitizeFileName(name);
+    name = sanitizeFileName(name, maxLength: 251);
     var data = ExportComicData(
       id,
       downloadManager.path!,

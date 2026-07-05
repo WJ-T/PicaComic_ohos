@@ -119,9 +119,38 @@ class _ReadingSettingsState extends State<ReadingSettings> {
               context.to(() => const ChapterCommentsManagerPage());
             },
           ),
-
-
-
+          ListTile(
+            leading: const Icon(Icons.comment_bank),
+            title: Text("下载漫画时保存普通评论".tl),
+            subtitle: Text("断网时也可查看已保存的漫画评论, 联网时会自动更新".tl),
+            trailing: AdaptiveSwitch(
+              value: appdata.settings.length > 104 ? appdata.settings[104] == "1" : false,
+              onChanged: (b) {
+                setState(() {
+                  while (appdata.settings.length <= 104) {
+                    appdata.settings.add("0");
+                  }
+                  appdata.settings[104] = b ? "1" : "0";
+                });
+                appdata.updateSettings();
+              },
+            ),
+          ),          
+          ListTile(
+            leading: const Icon(Icons.comment_bank),
+            title: Text("管理已保存的普通评论".tl),
+            subtitle: Text("查看或删除已下载漫画的评论".tl),
+            onTap: () {
+              context.to(() => const ComicCommentsManagerPage());
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.folder_open),
+            title: Text("文件管理器".tl),
+            subtitle: Text("浏览应用私有目录".tl),
+            onTap: () => context.to(() => const FileManagerPage()),
+            trailing: const Icon(Icons.arrow_right),
+          ),
         ListTile(
           leading: const Icon(Icons.timer_sharp),
           subtitle: SizedBox(

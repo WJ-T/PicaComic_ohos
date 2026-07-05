@@ -34,6 +34,7 @@ import 'package:pica_comic/network/jm_network/jm_models.dart' as jm;
 import 'package:pica_comic/network/nhentai_network/nhentai_main_network.dart';
 import 'package:pica_comic/network/res.dart';
 import 'package:pica_comic/pages/comic_page.dart';
+import 'package:pica_comic/pages/follow_updates_page.dart';
 import 'package:pica_comic/utils/keep_screen_on.dart';
 import 'package:pica_comic/foundation/image_manager.dart';
 import 'package:pica_comic/foundation/history.dart';
@@ -254,6 +255,8 @@ class ComicReadingPage extends StatelessWidget {
       StateController.remove<ComicReadingPageLogic>();
       // 更新本地收藏
       LocalFavoritesManager().onReadEnd(readingData.favoriteId, readingData.favoriteType);
+      LocalFavoritesManager().markAsRead(readingData.favoriteId, readingData.favoriteType);
+      updateFollowUpdatesUI();
       // 保存历史记录
       if (history != null) {
         _updateHistory(logic, true);

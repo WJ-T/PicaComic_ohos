@@ -108,9 +108,6 @@ Widget Function(BuildContext, EditableTextState)? _defaultSelectionContextMenuBu
   if (builder != null) {
     return builder;
   }
-  if (!App.isMobile) {
-    return null;
-  }
   return (context, editableTextState) {
     return AdaptiveTextSelectionToolbar.editableText(
       editableTextState: editableTextState,

@@ -134,6 +134,7 @@ class Appdata {
     "0", //101
     "0", //102 下载时保存章节评论
     "0", //103 液态玻璃底部导航栏
+    "0", //104 下载漫画时保存普通评论
 
   ];
 
@@ -1073,6 +1074,20 @@ class _Settings {
     }
     appdata.settings[102] = value ? "1" : "0";
   }
+
+  bool get saveComicCommentsOnDownload {
+    while (appdata.settings.length <= 104) {
+      appdata.settings.add("0");
+    }
+    return appdata.settings[104] == "1";
+  }
+
+  set saveComicCommentsOnDownload(bool value) {
+    while (appdata.settings.length <= 104) {
+      appdata.settings.add("0");
+    }
+    appdata.settings[104] = value ? "1" : "0";
+  }
 }
 
 class ChapterCommentsStorage {
@@ -1377,6 +1392,195 @@ class ChapterCommentsStorage {
     return {
       'totalComics': totalComics,
       'totalChapters': totalChapters,
+      'totalSize': totalSize,
+    };
+  }
+}
+
+/// 漫画普通评论的本地存储, 只保存文字内容
+class ComicCommentsStorage {
+  static String get _basePath => "${App.dataPath}/comic_comments";
+
+  static String _sanitize(String s) =>
+      s.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+
+  /// 保存评论, 只保存文字内容, 仅在内容变化时写入
+  static Future<bool> saveComments({
+    required String sourceKey,
+    required String comicId,
+    required List<Map<String, dynamic>> comments,
+    String? comicName,
+  }) async {
+    var dir = Directory(
+        "$_basePath/${_sanitize(sourceKey)}_${_sanitize(comicId)}");
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    var file = File("${dir.path}/comments.json");
+
+    if (await file.exists()) {
+      try {
+        var existingContent = await file.readAsString();
+        var existingData = jsonDecode(existingContent) as Map<String, dynamic>;
+        var existingComments = existingData['comments'] as List<dynamic>?;
+        if (_commentsEqual(existingComments, comments)) {
+          return false;
+        }
+      } catch (e) {
+        // 读取失败时继续保存
+      }
+    }
+
+    var data = {
+      'sourceKey': sourceKey,
+      'comicId': comicId,
+      'comicName': comicName,
+      'savedAt': DateTime.now().toIso8601String(),
+      'comments': comments,
+    };
+
+    await file.writeAsString(jsonEncode(data));
+    return true;
+  }
+
+  static bool _commentsEqual(List<dynamic>? a, List<Map<String, dynamic>> b) {
+    if (a == null) return false;
+    if (a.length != b.length) return false;
+    //  同样的内容判为相同, 避免多余写入
+    String keyOf(Map m) =>
+        "${m['userName'] ?? ''}\u0000${m['content'] ?? ''}\u0000${m['time'] ?? ''}";
+    var counts = <String, int>{};
+    for (var c in b) {
+      counts[keyOf(c)] = (counts[keyOf(c)] ?? 0) + 1;
+    }
+    for (var c in a) {
+      var k = keyOf(c as Map);
+      var n = counts[k];
+      if (n == null) return false;
+      if (n == 1) {
+        counts.remove(k);
+      } else {
+        counts[k] = n - 1;
+      }
+    }
+    return counts.isEmpty;
+  }
+
+  /// 加载评论, 返回结构
+  static Future<Map<String, dynamic>?> loadCommentsWithMeta(
+      String sourceKey, String comicId) async {
+    var file = File(
+        "$_basePath/${_sanitize(sourceKey)}_${_sanitize(comicId)}/comments.json");
+    if (!await file.exists()) return null;
+    try {
+      var data = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+      return data;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// 加载评论列表
+  static Future<List<Map<String, dynamic>>?> loadComments(
+      String sourceKey, String comicId) async {
+    var meta = await loadCommentsWithMeta(sourceKey, comicId);
+    if (meta == null) return null;
+    var comments = meta['comments'];
+    if (comments is List) {
+      return comments.map((c) => Map<String, dynamic>.from(c as Map)).toList();
+    }
+    return null;
+  }
+
+  /// 获取所有保存的漫画评论文件信息
+  static Future<List<Map<String, dynamic>>> getAllSavedComments() async {
+    var result = <Map<String, dynamic>>[];
+    var baseDir = Directory(_basePath);
+    if (!await baseDir.exists()) return result;
+
+    await for (var entity in baseDir.list()) {
+      if (entity is Directory) {
+        await for (var file in entity.list()) {
+          if (file is File && file.path.endsWith('.json')) {
+            try {
+              var content = await file.readAsString();
+              var data = jsonDecode(content) as Map<String, dynamic>;
+              var stat = await file.stat();
+              data['fileSize'] = stat.size;
+              data['filePath'] = file.path;
+              result.add(data);
+            } catch (e) {
+              // 忽略无法解析的文件
+            }
+          }
+        }
+      }
+    }
+
+    result.sort((a, b) {
+      var aTime = a['savedAt'] ?? '';
+      var bTime = b['savedAt'] ?? '';
+      return bTime.toString().compareTo(aTime.toString());
+    });
+
+    return result;
+  }
+
+  /// 删除指定漫画的所有评论
+  static Future<bool> deleteComicComments(
+      String sourceKey, String comicId) async {
+    try {
+      var dir = Directory(
+          "$_basePath/${_sanitize(sourceKey)}_${_sanitize(comicId)}");
+      if (await dir.exists()) {
+        await dir.delete(recursive: true);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// 获取统计信息
+  static Future<Map<String, dynamic>> getStats() async {
+    var totalComics = 0;
+    var totalComments = 0;
+    var totalSize = 0;
+
+    var baseDir = Directory(_basePath);
+    if (!await baseDir.exists()) {
+      return {
+        'totalComics': 0,
+        'totalComments': 0,
+        'totalSize': 0,
+      };
+    }
+
+    await for (var entity in baseDir.list()) {
+      if (entity is Directory) {
+        totalComics++;
+        await for (var file in entity.list()) {
+          if (file is File) {
+            totalSize += await file.length();
+            try {
+              var data =
+                  jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+              var comments = data['comments'];
+              if (comments is List) {
+                totalComments += comments.length;
+              }
+            } catch (e) {
+              // 忽略
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      'totalComics': totalComics,
+      'totalComments': totalComments,
       'totalSize': totalSize,
     };
   }

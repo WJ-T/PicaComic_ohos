@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pica_comic/base.dart';
 import 'package:pica_comic/foundation/comic_source/comic_source.dart';
 import 'package:pica_comic/foundation/app.dart';
+import 'package:pica_comic/foundation/comic_comments_helper.dart';
 import 'package:pica_comic/foundation/local_favorites.dart';
 import 'package:pica_comic/foundation/log.dart';
 import 'package:pica_comic/network/custom_download_model.dart';
@@ -250,9 +251,13 @@ class DownloadManager with _DownloadDb implements Listenable {
   ///当一个下载任务完成时, 调用此函数
   void _onFinish() async {
     var task = downloading.removeFirst();
-    _addToDb(await task.toDownloadedItem(), task.directory!);
+    var downloadedItem = await task.toDownloadedItem();
+    _addToDb(downloadedItem, task.directory!);
     await _saveInfo();
     task.saveChapterComments();
+    if (appdata.settings.length > 104 && appdata.settings[104] == "1") {
+      await ComicCommentsHelper.fetchAndSave(downloadedItem);
+    }
     StateController.findOrNull<DownloadPageLogic>()?.refresh();
     StateController.findOrNull(tag: "me_page_downloads")?.update();
     if (downloading.isNotEmpty) {
@@ -318,9 +323,9 @@ class DownloadManager with _DownloadDb implements Listenable {
     return _getComicWithDb(id);
   }
 
-  /// 更新已下载漫画的存储信息（如章节列表更新）
+  /// 更新已下载漫画的章节列表
   void updateComic(DownloadedItem item) {
-    _addToDb(item, item.directory ?? getDirectory(item.id));
+    _addToDb(item, item.directory ?? getDirectory(item.id), item.time);
   }
 
   ///删除已下载的漫画
@@ -355,7 +360,7 @@ class DownloadManager with _DownloadDb implements Listenable {
       var size = Directory("$path/${getDirectory(comic.id)}").getMBSizeSync();
       comic.downloadedEps.remove(ep);
       comic.comicSize = size;
-      _addToDb(comic, comic.directory ?? getDirectory(comic.id));
+      _addToDb(comic, comic.directory ?? getDirectory(comic.id), comic.time);
       return null;
     } catch (e, s) {
       LogManager.addLog(LogLevel.error, "IO", "$e/n$s");

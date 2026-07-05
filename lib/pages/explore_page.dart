@@ -86,7 +86,17 @@ class _ExplorePageState extends State<ExplorePage>
           77,
           _explorePages(),
           onChange: () {
-            setState(() {});
+            setState(() {
+              final oldController = controller;
+              pages = appdata.appSettings.explorePages;
+              controller = TabController(
+                length: pages.length,
+                vsync: this,
+              );
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                oldController.dispose();
+              });
+            });
           },
         ));
   }

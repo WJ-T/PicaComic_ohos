@@ -70,8 +70,7 @@ extension DirectoryExtension on Directory{
   }
 }
 
-String sanitizeFileName(String fileName) {
-  const maxLength = 255;
+String sanitizeFileName(String fileName, {int maxLength = 255}) {
   final invalidChars = RegExp(r'[<>:"/\\|?*]');
   final sanitizedFileName = fileName.replaceAll(invalidChars, ' ');
   var trimmedFileName = sanitizedFileName.trim();

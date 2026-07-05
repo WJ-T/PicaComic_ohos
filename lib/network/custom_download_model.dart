@@ -24,6 +24,8 @@ class CustomDownloadedItem extends DownloadedItem {
 
   final String comicId;
 
+  final String? subId;
+
   @override
   final String id;
 
@@ -56,7 +58,8 @@ class CustomDownloadedItem extends DownloadedItem {
       this.sourceKey,
       this.sourceName,
       this.cover,
-      this.comicId);
+      this.comicId,
+      [this.subId]);
 
   @override
   Map<String, dynamic> toJson() => {
@@ -70,7 +73,8 @@ class CustomDownloadedItem extends DownloadedItem {
         "sourceKey": sourceKey,
         "sourceName": sourceName,
         "cover": cover,
-        "comicId": comicId
+        "comicId": comicId,
+        "subId": subId,
       };
 
   CustomDownloadedItem.fromJson(Map<String, dynamic> json)
@@ -84,7 +88,8 @@ class CustomDownloadedItem extends DownloadedItem {
         sourceKey = json["sourceKey"],
         sourceName = json["sourceName"],
         cover = json["cover"],
-        comicId = json["comicId"];
+        comicId = json["comicId"],
+        subId = json["subId"];
 }
 
 class CustomDownloadingItem extends DownloadingItem {
@@ -207,6 +212,7 @@ class CustomDownloadingItem extends DownloadingItem {
       source.name,
       comic.cover,
       comic.comicId,
+      comic.subId,
     );
   }
 
