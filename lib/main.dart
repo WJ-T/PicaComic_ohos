@@ -202,12 +202,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
     listenMouseSideButtonToBack();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    if (App.isAndroid ||
-        App.isIOS ||
-        OhosDeviceInfoBridge.shouldLockAppPortrait) {
+    if (App.isAndroid || App.isIOS) {
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.portraitUp,
         DeviceOrientation.portraitDown,
+      ]);
+    } else if (OhosDeviceInfoBridge.shouldLockAppPortrait) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
       ]);
     } else if (PlatformUtils.isOhos) {
       SystemChrome.setPreferredOrientations(DeviceOrientation.values);
@@ -407,8 +409,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       (context as Element).visitChildren(rebuild);
     }
 
-    if (appdata.settings.length > 91 && appdata.settings[91] == "1" &&
-        appdata.settings.length > 103 && appdata.settings[103] == "1") {
+    if (appdata.settings.length > 91 &&
+        appdata.settings[91] == "1" &&
+        appdata.settings.length > 103 &&
+        appdata.settings[103] == "1") {
       appdata.settings[91] = "0";
       appdata.settings[103] = "0";
       appdata.updateSettings();
@@ -422,31 +426,31 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           navigatorKey: App.navigatorKey,
           navigatorObservers: [KazumiDialog.observer],
           theme: fluent.FluentThemeData(
-             accentColor: fluent.AccentColor('normal', {
-               'normal': lightColor.primary,
-               'dark': lightColor.primary,
-               'light': lightColor.primary,
-               'darker': lightColor.primary,
-               'lighter': lightColor.primary,
-               'darkest': lightColor.primary,
-               'lightest': lightColor.primary,
-             }),
-             brightness: fluent.Brightness.light,
-             fontFamily: _getFontConfig().$1,
-           ),
-           darkTheme: fluent.FluentThemeData(
-             accentColor: fluent.AccentColor('normal', {
-               'normal': darkColor.primary,
-               'dark': darkColor.primary,
-               'light': darkColor.primary,
-               'darker': darkColor.primary,
-               'lighter': darkColor.primary,
-               'darkest': darkColor.primary,
-               'lightest': darkColor.primary,
-             }),
-             brightness: fluent.Brightness.dark,
-             fontFamily: _getFontConfig().$1,
-           ),
+            accentColor: fluent.AccentColor('normal', {
+              'normal': lightColor.primary,
+              'dark': lightColor.primary,
+              'light': lightColor.primary,
+              'darker': lightColor.primary,
+              'lighter': lightColor.primary,
+              'darkest': lightColor.primary,
+              'lightest': lightColor.primary,
+            }),
+            brightness: fluent.Brightness.light,
+            fontFamily: _getFontConfig().$1,
+          ),
+          darkTheme: fluent.FluentThemeData(
+            accentColor: fluent.AccentColor('normal', {
+              'normal': darkColor.primary,
+              'dark': darkColor.primary,
+              'light': darkColor.primary,
+              'darker': darkColor.primary,
+              'lighter': darkColor.primary,
+              'darkest': darkColor.primary,
+              'lightest': darkColor.primary,
+            }),
+            brightness: fluent.Brightness.dark,
+            fontFamily: _getFontConfig().$1,
+          ),
           themeMode: appdata.appSettings.darkMode == 2
               ? fluent.ThemeMode.dark
               : appdata.appSettings.darkMode == 1
@@ -588,7 +592,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                       if (globalNavigator != null && globalNavigator.canPop()) {
                         App.globalBack();
                       } else {
-                        final mainNavigator = App.mainNavigatorKey?.currentState;
+                        final mainNavigator =
+                            App.mainNavigatorKey?.currentState;
                         if (mainNavigator != null && mainNavigator.canPop()) {
                           mainNavigator.pop();
                         }

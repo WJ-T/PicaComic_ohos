@@ -79,12 +79,14 @@ part 'reading_data.dart';
 part 'continuation.dart';
 
 void _restoreAppOrientations() {
-  if (App.isAndroid ||
-      App.isIOS ||
-      OhosDeviceInfoBridge.shouldLockAppPortrait) {
+  if (App.isAndroid || App.isIOS) {
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
+    ]);
+  } else if (OhosDeviceInfoBridge.shouldLockAppPortrait) {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
     ]);
   } else {
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
@@ -127,7 +129,8 @@ class ComicReadingPage extends StatelessWidget {
             StateController.find<ComicReadingPageLogic>(), false)));
   }
 
-  ComicReadingPage.ehentai(eh.Gallery gallery, {super.key, this.initialPage = 1})
+  ComicReadingPage.ehentai(eh.Gallery gallery,
+      {super.key, this.initialPage = 1})
       : initialEp = 1,
         readingData = EhReadingData(gallery) {
     StateController.put(ComicReadingPageLogic(
@@ -231,7 +234,8 @@ class ComicReadingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StateBuilder<ComicReadingPageLogic>(initState: (logic) {
-      final alwaysShowStatusBar = appdata.settings.length > 95 && appdata.settings[95] == "1";
+      final alwaysShowStatusBar =
+          appdata.settings.length > 95 && appdata.settings[95] == "1";
       SystemChrome.setEnabledSystemUIMode(
         alwaysShowStatusBar ? SystemUiMode.edgeToEdge : SystemUiMode.immersive,
       );
@@ -244,10 +248,8 @@ class ComicReadingPage extends StatelessWidget {
           DeviceOrientation.landscapeRight
         ]);
       } else if (appdata.settings[76] == "2") {
-        SystemChrome.setPreferredOrientations([
-          DeviceOrientation.portraitUp,
-          DeviceOrientation.portraitDown
-        ]);
+        SystemChrome.setPreferredOrientations(
+            [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
       } else if (App.isMobile) {
         SystemChrome.setPreferredOrientations(DeviceOrientation.values);
       }
@@ -260,8 +262,7 @@ class ComicReadingPage extends StatelessWidget {
       };
       logic.addIndexChangeCallback(logic.continuationIndexCallback!);
       unawaited(syncReaderContinuationState(readingData, logic));
-      if (useDarkBackground) {
-      }
+      if (useDarkBackground) {}
     }, dispose: (logic) {
       //清除缓存并减小最大缓存
       BaseImageProvider.clearCache();
@@ -284,7 +285,8 @@ class ComicReadingPage extends StatelessWidget {
       ComicImage.clear();
       StateController.remove<ComicReadingPageLogic>();
       // 更新本地收藏
-      LocalFavoritesManager().onReadEnd(readingData.favoriteId, readingData.favoriteType);
+      LocalFavoritesManager()
+          .onReadEnd(readingData.favoriteId, readingData.favoriteType);
       // 保存历史记录
       if (history != null) {
         _updateHistory(logic, true);
@@ -302,8 +304,7 @@ class ComicReadingPage extends StatelessWidget {
           BaseComicPage.tagsStack.last.updateHistory(history);
         }
       });
-      if (useDarkBackground) {
-      }
+      if (useDarkBackground) {}
     }, builder: (logic) {
       return DefaultTextStyle.merge(
         style: TextStyle(
@@ -379,19 +380,16 @@ class ComicReadingPage extends StatelessWidget {
                           ),
                         ),
                       ),
-
-                    if (appdata.appSettings.showPageInfoInReader && !logic.isOnChapterCommentsPage)
+                    if (appdata.appSettings.showPageInfoInReader &&
+                        !logic.isOnChapterCommentsPage)
                       buildPageInfoText(logic, context),
-
-                    if (appdata.appSettings.enableClockAndBatteryInfoInReader && !logic.isOnChapterCommentsPage)
+                    if (appdata.appSettings.enableClockAndBatteryInfoInReader &&
+                        !logic.isOnChapterCommentsPage)
                       buildStatusInfo(logic, context),
-
                     if (!logic.isOnChapterCommentsPage)
                       buildBottomToolBar(logic, context, readingData.hasEp),
-
                     if (!logic.isOnChapterCommentsPage)
                       ...buildButtons(logic, context),
-
                     if (!logic.isOnChapterCommentsPage)
                       buildTopToolBar(logic, context),
                   ],
@@ -462,7 +460,8 @@ class ComicReadingPage extends StatelessWidget {
               child: Builder(
                 builder: (context) {
                   // 检查是否是 Cloudflare 错误
-                  final cfe = CloudflareException.fromString(logic.errorMessage ?? "");
+                  final cfe =
+                      CloudflareException.fromString(logic.errorMessage ?? "");
                   if (cfe != null) {
                     // Cloudflare 错误：显示验证按钮和切换章节按钮
                     return Row(
