@@ -6,6 +6,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:pica_comic/base.dart';
 import 'package:pica_comic/foundation/comic_source/comic_source.dart';
+import 'package:pica_comic/foundation/comic_comments_helper.dart';
 import 'package:pica_comic/foundation/history.dart';
 import 'package:pica_comic/network/app_dio.dart';
 import 'package:pica_comic/network/base_comic.dart';
@@ -17,9 +18,11 @@ import 'package:pica_comic/network/htmanga_network/ht_download_model.dart';
 import 'package:pica_comic/network/nhentai_network/download.dart';
 import 'package:pica_comic/network/nhentai_network/nhentai_main_network.dart';
 import 'package:pica_comic/pages/comic_page.dart';
+import 'package:pica_comic/pages/downloaded_comic_comments_page.dart';
 import 'package:pica_comic/pages/picacg/comic_page.dart';
 import 'package:pica_comic/pages/reader/comic_reading_page.dart';
 import 'package:pica_comic/utils/extensions.dart';
+import 'package:pica_comic/utils/io_extensions.dart';
 import 'package:pica_comic/utils/io_tools.dart';
 import 'package:pica_comic/foundation/ui_mode.dart';
 import 'package:pica_comic/utils/pdf.dart';
@@ -1472,8 +1475,8 @@ class _DownloadPageState extends State<DownloadPage> {
         onCancel: () => canceled = true,
         allowCancel: false,
       );
-      var fileName = "${comic.name}.pdf";
-      fileName = fileName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '');
+      // Android single filename limit is 255 bytes; reserve 4 bytes for ".pdf"
+      var fileName = "${sanitizeFileName(comic.name, maxLength: 251)}.pdf";
       await createPdfFromComicWithIsolate(
           title: comic.name,
           comicPath:
@@ -2431,6 +2434,8 @@ class _DownloadedComicInfoViewState extends State<DownloadedComicInfoView>
 
   bool get _isGrouped => _chapters != null && _chapters!.isGrouped;
 
+  bool get shouldShowComments => ComicCommentsHelper.supports(comic);
+
   @override
   void initState() {
     super.initState();
@@ -2452,7 +2457,7 @@ class _DownloadedComicInfoViewState extends State<DownloadedComicInfoView>
   }
 
   void _buildTabController() {
-    _tabController?.dispose();
+    final oldController = _tabController;
     _selectedGroupIndex = 0;
     if (_isGrouped) {
       _tabController = TabController(
@@ -2462,6 +2467,11 @@ class _DownloadedComicInfoViewState extends State<DownloadedComicInfoView>
       );
     } else {
       _tabController = null;
+    }
+    if (oldController != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        oldController.dispose();
+      });
     }
   }
 
@@ -2527,10 +2537,20 @@ class _DownloadedComicInfoViewState extends State<DownloadedComicInfoView>
               _buildTabController();
               _loadingEps = false;
             });
-            if (!_listEquals(newEps, oldEps)) {
+            bool epsChanged = !_listEquals(newEps, oldEps);
+            bool subIdMissing = c.subId == null && res.data!.subId != null;
+            if (epsChanged || subIdMissing) {
               var json = c.toJson();
-              json["chapters"] = newChapters.toJson();
-              _persistComic(CustomDownloadedItem.fromJson(json));
+              if (epsChanged) {
+                json["chapters"] = newChapters.toJson();
+              }
+              if (res.data!.subId != null) {
+                json["subId"] = res.data!.subId;
+              }
+              var updated = CustomDownloadedItem.fromJson(json);
+              updated.time = c.time;
+              updated.directory = c.directory;
+              _persistComic(updated);
             }
             return;
           }
@@ -2653,6 +2673,15 @@ class _DownloadedComicInfoViewState extends State<DownloadedComicInfoView>
                         child: Text("查看详情".tl)),
                   ),
                   const SizedBox(width: 16),
+                  if (shouldShowComments) ...[
+                    Expanded(
+                      child: fluent.Button(
+                          onPressed: () =>
+                              showDownloadedComicComments(context, widget.item),
+                          child: Text("查看评论".tl)),
+                    ),
+                    const SizedBox(width: 16),
+                  ],
                   Expanded(
                     child: fluent.FilledButton(
                         onPressed: () => read(), child: Text("阅读".tl)),
@@ -2782,6 +2811,17 @@ class _DownloadedComicInfoViewState extends State<DownloadedComicInfoView>
                   const SizedBox(
                     width: 16,
                   ),
+                  if (shouldShowComments) ...[
+                    Expanded(
+                      child: FilledButton(
+                          onPressed: () =>
+                              showDownloadedComicComments(context, widget.item),
+                          child: Text("查看评论".tl)),
+                    ),
+                    const SizedBox(
+                      width: 16,
+                    ),
+                  ],
                   Expanded(
                     child: FilledButton(
                         onPressed: () => read(), child: Text("阅读".tl)),
@@ -2843,11 +2883,11 @@ class DownloadedComicTile extends ComicTile {
       timeStr =
           "${downloadTime!.year}/${downloadTime!.month.toString().padLeft(2, '0')}/${downloadTime!.day.toString().padLeft(2, '0')} ${downloadTime!.hour.toString().padLeft(2, '0')}:${downloadTime!.minute.toString().padLeft(2, '0')}";
     }
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text("大小:${size}MB", style: const TextStyle(fontSize: 12.0)),
         if (timeStr.isNotEmpty) ...[
-          const SizedBox(width: 8),
           Text("下载时间:${timeStr}", style: const TextStyle(fontSize: 12.0)),
         ],
       ],

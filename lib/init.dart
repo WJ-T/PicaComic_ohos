@@ -10,6 +10,7 @@ import 'package:pica_comic/foundation/js_engine.dart';
 import 'package:pica_comic/foundation/local_favorites.dart';
 import 'package:pica_comic/foundation/log.dart';
 import 'package:pica_comic/pages/follow_updates_page.dart';
+import 'package:pica_comic/pages/settings/app_updater.dart';
 import 'package:pica_comic/network/cookie_jar.dart';
 import 'package:pica_comic/network/http_proxy.dart';
 import 'package:pica_comic/network/jm_network/jm_network.dart';
@@ -94,6 +95,7 @@ Future<void> init() async {
       HttpProxyServer.startServer();
     }
     startClearCache();
+    AutoUpdater.cleanupResidualApks();
     if (App.isAndroid) {
       final appLinks = AppLinks();
       appLinks.allUriLinkStream.listen((uri) async {

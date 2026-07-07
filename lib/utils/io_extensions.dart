@@ -3,86 +3,86 @@ import 'dart:io';
 
 import 'package:pica_comic/utils/extensions.dart';
 
-extension FileSystemEntityExt on FileSystemEntity{
+extension FileSystemEntityExt on FileSystemEntity {
   String get name {
     var path = this.path;
-    if(path.endsWith('/') || path.endsWith('\\')){
-      path = path.substring(0, path.length-1);
+    if (path.endsWith('/') || path.endsWith('\\')) {
+      path = path.substring(0, path.length - 1);
     }
 
     int i = path.length - 1;
 
-    while(i >= 0 && path[i] != '\\' && path[i] != '/'){
+    while (i >= 0 && path[i] != '\\' && path[i] != '/') {
       i--;
     }
 
-    return path.substring(i+1);
+    return path.substring(i + 1);
   }
 
-  Future<void> deleteIgnoreError({bool recursive = false}) async{
-    try{
+  Future<void> deleteIgnoreError({bool recursive = false}) async {
+    try {
       await delete(recursive: recursive);
-    }catch(e){
+    } catch (e) {
       // ignore
     }
   }
 }
 
-extension FileExtension on File{
+extension FileExtension on File {
   /// Get file size information in MB
-  double getMBSizeSync(){
+  double getMBSizeSync() {
     var bytes = lengthSync();
-    return bytes/1024/1024;
+    return bytes / 1024 / 1024;
   }
 
   String get extension => path.split('.').last;
 }
 
-extension DirectoryExtension on Directory{
+extension DirectoryExtension on Directory {
   /// Get directory size information in MB
   ///
   /// if directory is not exist, return 0;
-  double getMBSizeSync(){
-    if(!existsSync()) return 0;
+  double getMBSizeSync() {
+    if (!existsSync()) return 0;
     double total = 0;
-    for(var f in listSync(recursive: true)){
-      if(FileSystemEntity.typeSync(f.path)==FileSystemEntityType.file){
-        total += File(f.path).lengthSync()/1024/1024;
+    for (var f in listSync(recursive: true)) {
+      if (FileSystemEntity.typeSync(f.path) == FileSystemEntityType.file) {
+        total += File(f.path).lengthSync() / 1024 / 1024;
       }
     }
     return total;
   }
 
-  Future<int> get size async{
-    if(!existsSync()) return 0;
+  Future<int> get size async {
+    if (!existsSync()) return 0;
     int total = 0;
-    for(var f in listSync(recursive: true)){
-      if(FileSystemEntity.typeSync(f.path)==FileSystemEntityType.file){
+    for (var f in listSync(recursive: true)) {
+      if (FileSystemEntity.typeSync(f.path) == FileSystemEntityType.file) {
         total += await File(f.path).length();
       }
     }
     return total;
   }
 
-  Directory renameX(String newName){
+  Directory renameX(String newName) {
     newName = sanitizeFileName(newName);
     return renameSync(path.replaceLast(name, newName));
   }
 }
 
-String sanitizeFileName(String fileName) {
-  const maxLength = 255;
+String sanitizeFileName(String fileName, {int maxLength = 255}) {
   final invalidChars = RegExp(r'[<>:"/\\|?*]');
   final sanitizedFileName = fileName.replaceAll(invalidChars, ' ');
   var trimmedFileName = sanitizedFileName.trim();
   if (trimmedFileName.isEmpty) {
     throw Exception('Invalid File Name: Empty length.');
   }
-  while(true){
+  while (true) {
     final bytes = utf8.encode(trimmedFileName);
     if (bytes.length > maxLength) {
-      trimmedFileName = trimmedFileName.substring(0, trimmedFileName.length-1);
-    }else{
+      trimmedFileName =
+          trimmedFileName.substring(0, trimmedFileName.length - 1);
+    } else {
       break;
     }
   }
@@ -93,7 +93,7 @@ String findValidDirectoryName(String path, String directory) {
   var name = sanitizeFileName(directory);
   var dir = Directory("$path/$name");
   var i = 1;
-  while(dir.existsSync()){
+  while (dir.existsSync()) {
     name = sanitizeFileName("$directory($i)");
     dir = Directory("$path/$name");
     i++;

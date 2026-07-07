@@ -52,6 +52,7 @@ import '../welcome_page.dart';
 import 'package:pica_comic/utils/translations.dart';
 import 'package:pica_comic/utils/font_manager.dart';
 import 'package:pica_comic/pages/settings/font_management_page.dart';
+import 'package:pica_comic/pages/settings/file_manager_page.dart';
 import 'user_comments_page.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
@@ -72,6 +73,7 @@ part "app_settings.dart";
 part 'components.dart';
 part 'debug.dart';
 part 'chapter_comments_manager_page.dart';
+part 'comic_comments_manager_page.dart';
 
 class SettingsPage extends StatefulWidget {
   static void open([int initialPage = -1, VoidCallback? onPop]) {
@@ -90,7 +92,8 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> implements PopEntry {
   static const int _aboutPageIndex = 6;
   static const int _appUpdaterHistoryIndex = 7;
-  static const int _debugPageIndex = 8;
+  static const int _fileManagerIndex = 8;
+  static const int _debugPageIndex = 9;
 
   int currentPage = -1;
 
@@ -110,6 +113,7 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
     "网络",
     "关于",
     "历史版本",
+    "文件管理器",
     "Debug"
   ];
 
@@ -122,6 +126,7 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
     Icons.public,
     Icons.info,
     Icons.history,
+    Icons.folder_open,
     Icons.bug_report,
   ];
 
@@ -296,6 +301,8 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
         return buildFluentAbout();
       case _appUpdaterHistoryIndex:
         return const AppUpdaterHistoryPage(embedded: true);
+      case _fileManagerIndex:
+        return const FileManagerPage();
       case _debugPageIndex:
         return const DebugPage();
       default:
@@ -1474,6 +1481,7 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
               },
             ),
           ),
+
           ListTile(
             leading: const Icon(Icons.save),
             title: Text("下载时保存章节评论".tl),
@@ -1488,6 +1496,25 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
                     appdata.settings.add("0");
                   }
                   appdata.settings[102] = b ? "1" : "0";
+                });
+                appdata.updateSettings();
+              },
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.comment_bank),
+            title: Text("下载漫画时保存普通评论".tl),
+            subtitle: Text("断网时也可查看已保存的漫画评论, 联网时会自动更新".tl),
+            trailing: AdaptiveSwitch(
+              value: appdata.settings.length > 104
+                  ? appdata.settings[104] == "1"
+                  : false,
+              onChanged: (b) {
+                setState(() {
+                  while (appdata.settings.length <= 104) {
+                    appdata.settings.add("0");
+                  }
+                  appdata.settings[104] = b ? "1" : "0";
                 });
                 appdata.updateSettings();
               },
@@ -1585,7 +1612,6 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
               child: Text('设置'.tl),
             ),
           ),
-
         ListTile(
           title: Text("缓存大小".tl),
           subtitle: Text(bytesToReadableString(CacheManager().currentSize)),
@@ -1605,7 +1631,14 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
             setState(() {});
           },
         ),
-
+        if (App.isMobile || App.isDesktop)
+          ListTile(
+            leading: const Icon(Icons.folder_open),
+            title: Text("文件管理器".tl),
+            subtitle: Text("浏览应用私有目录".tl),
+            onTap: () => context.to(() => const FileManagerPage()),
+            trailing: const Icon(Icons.arrow_right),
+          ),
         ListTile(
             title: Text("缓存限制".tl),
             subtitle:
@@ -1824,6 +1857,10 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
   }
 
   Widget buildRight() {
+    if (currentPage == _fileManagerIndex) {
+      return const FileManagerPage();
+    }
+
     final Widget body = switch (currentPage) {
       -1 => const SizedBox(),
       0 => buildExploreSettings(context, false),

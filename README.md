@@ -1,9 +1,9 @@
 # Pica Comic (OHOS Fork)
 
 [![flutter](https://img.shields.io/badge/flutter-3.35.8--ohos-blue)](https://flutter.dev/)
-[![License](https://img.shields.io/github/license/Pacalini/PicaComic)](https://github.com/Pacalini/PicaComic/blob/master/LICENSE)
-[![Download](https://img.shields.io/github/v/release/Pacalini/PicaComic)](https://github.com/Pacalini/PicaComic/releases)
-[![stars](https://img.shields.io/github/stars/Pacalini/PicaComic)](https://github.com/Pacalini/PicaComic/stargazers)
+[![License](https://img.shields.io/github/license/nimmi114514/PicaComic_ohos)](https://github.com/nimmi114514/PicaComic_ohos/blob/master/LICENSE)
+[![Download](https://img.shields.io/github/v/release/nimmi114514/PicaComic_ohos)](https://github.com/nimmi114514/PicaComic_ohos/releases)
+[![stars](https://img.shields.io/github/stars/nimmi114514/PicaComic_ohos)](https://github.com/nimmi114514/PicaComic_ohos/stargazers)
 
 A comic app with multiple sources built with flutter.
 
@@ -15,11 +15,11 @@ A comic app with multiple sources built with flutter.
 
 ## Download
 
-<a href="https://github.com/Pacalini/PicaComic/releases">
+<a href="https://github.com/nimmi114514/PicaComic_ohos/releases">
 <img src="https://user-images.githubusercontent.com/69304392/148696068-0cfea65d-b18f-4685-82b5-329a330b1c0d.png"
 alt="Get it on GitHub" align="center" height="80" /></a>
 
-<a href="https://github.com/Pacalini/PicaComic/blob/master/INSTALL.md#obtainium">
+<a href="https://github.com/nimmi114514/PicaComic_ohos/blob/master/INSTALL.md#obtainium">
 <img src="https://github.com/ImranR98/Obtainium/blob/main/assets/graphics/badge_obtainium.png"
 alt="Get it on Obtainium" align="center" height="54" />
 </a>

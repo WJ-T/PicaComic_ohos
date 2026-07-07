@@ -293,6 +293,22 @@ class AutoUpdater {
 
   final DownloadHttpClient _downloadClient = DownloadHttpClient.instance;
 
+  /// 清理 cache 目录中残留的旧 APK。启动时调用
+  static Future<void> cleanupResidualApks() async {
+    if (!Platform.isAndroid) return;
+    try {
+      final tempDir = await getTemporaryDirectory();
+      await for (final entity in tempDir.list(recursive: false)) {
+        if (entity is File && entity.path.toLowerCase().endsWith('.apk')) {
+          await entity.delete();
+          KazumiLogger().i('Update: cleaned up residual apk: ${entity.path}');
+        }
+      }
+    } catch (e) {
+      KazumiLogger().w('Update: cleanup residual apk failed', error: e);
+    }
+  }
+
   /// 检测所有可能的安装类型
   Future<List<InstallationType>> _detectAvailableInstallationTypes() async {
     List<InstallationType> availableTypes = [];

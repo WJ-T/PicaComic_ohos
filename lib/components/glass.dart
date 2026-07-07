@@ -43,10 +43,12 @@ class GlassContainerLite extends StatelessWidget {
         (isDark
             ? Colors.white.withValues(alpha: 0.18)
             : Colors.white.withValues(alpha: 0.28));
-    final ambientStrength = glassSettings?.ambientStrength ?? (isDark ? 0.34 : 0.48);
+    final ambientStrength =
+        glassSettings?.ambientStrength ?? (isDark ? 0.34 : 0.48);
     final blur = glassSettings?.blur ?? 0;
     final borderRadius = _borderRadius;
-    final content = padding == null ? child : Padding(padding: padding!, child: child);
+    final content =
+        padding == null ? child : Padding(padding: padding!, child: child);
     final borderOpacity =
         ((blur == 0 ? 0.14 : 0.12) + ambientStrength * 0.14).clamp(0.14, 0.24);
     final dividerColor = isDark
@@ -114,10 +116,12 @@ class GlassContainerLiteSettings extends StatelessWidget {
         (isDark
             ? scheme.surfaceContainerHighest.withValues(alpha: 0.24)
             : Colors.white.withValues(alpha: 0.16));
-    final ambientStrength = glassSettings?.ambientStrength ?? (isDark ? 0.34 : 0.48);
+    final ambientStrength =
+        glassSettings?.ambientStrength ?? (isDark ? 0.34 : 0.48);
     final blur = glassSettings?.blur ?? 0;
     final borderRadius = _borderRadius;
-    final content = padding == null ? child : Padding(padding: padding!, child: child);
+    final content =
+        padding == null ? child : Padding(padding: padding!, child: child);
     final highlightOpacity = (0.08 + ambientStrength * 0.18).clamp(0.08, 0.18);
     final shadowOpacity = (blur == 0 ? 0.08 : 0.05) + (isDark ? 0.16 : 0.03);
 
@@ -133,7 +137,8 @@ class GlassContainerLiteSettings extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: shadowOpacity.clamp(0.08, 0.22)),
+            color:
+                Colors.black.withValues(alpha: shadowOpacity.clamp(0.08, 0.22)),
             blurRadius: blur == 0 ? 12 : 8,
             spreadRadius: 0,
             offset: const Offset(0, 2),
@@ -241,6 +246,149 @@ class GlassSurface extends StatelessWidget {
       );
     }
     return surface;
+  }
+}
+
+/// 参考 haka_comic的毛玻璃。减少卡顿
+class GlassSurfaceLite extends StatelessWidget {
+  const GlassSurfaceLite({
+    super.key,
+    required this.child,
+    this.margin,
+    this.padding,
+    this.borderRadius = 20,
+    this.onTap,
+    this.height,
+    this.width,
+    this.blur = 15.0,
+    this.active = true,
+    this.retainDuration = const Duration(milliseconds: 250),
+    this.backgroundColor,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry? margin;
+  final EdgeInsetsGeometry? padding;
+  final double borderRadius;
+  final VoidCallback? onTap;
+  final double? height;
+  final double? width;
+  final double blur;
+  final bool active;
+  final Duration retainDuration;
+  final Color? backgroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveBackgroundColor = backgroundColor ??
+        (isDark
+            ? scheme.surfaceContainerHighest.withValues(alpha: 0.30)
+            : scheme.surface.withValues(alpha: 0.30));
+
+    final content = SizedBox(
+      width: width,
+      height: height,
+      child: padding == null ? child : Padding(padding: padding!, child: child),
+    );
+
+    Widget surface = RepaintBoundary(
+      child: _DeferredBlur(
+        active: active,
+        retainDuration: retainDuration,
+        blur: blur,
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: Material(
+          color: effectiveBackgroundColor,
+          borderRadius: BorderRadius.circular(borderRadius),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(borderRadius),
+            onTap: onTap,
+            child: content,
+          ),
+        ),
+      ),
+    );
+
+    if (margin != null) {
+      return Padding(
+        padding: margin!,
+        child: surface,
+      );
+    }
+    return surface;
+  }
+}
+
+/// 按需启用 [BackdropFilter] 的包装组件。
+///
+/// - [active] 为 true 时立即启用模糊；
+/// - [active] 从 true 变为 false 后，等待 [retainDuration] 再卸载模糊，
+///   避免外层隐藏动画中途模糊突然消失；
+/// - [active] 为 false 且冷却期已过时直接返回 [child]，节省背景采样开销。
+class _DeferredBlur extends StatefulWidget {
+  const _DeferredBlur({
+    required this.active,
+    required this.child,
+    this.blur = 15.0,
+    this.borderRadius = BorderRadius.zero,
+    this.retainDuration = const Duration(milliseconds: 250),
+  });
+
+  final bool active;
+  final Widget child;
+  final double blur;
+  final BorderRadius borderRadius;
+  final Duration retainDuration;
+
+  @override
+  State<_DeferredBlur> createState() => _DeferredBlurState();
+}
+
+class _DeferredBlurState extends State<_DeferredBlur> {
+  late bool _blurActive = widget.active;
+  Timer? _timer;
+
+  @override
+  void didUpdateWidget(covariant _DeferredBlur oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active) {
+      _timer?.cancel();
+      _timer = null;
+      if (!_blurActive) {
+        setState(() => _blurActive = true);
+      }
+    } else if (_blurActive) {
+      _timer?.cancel();
+      _timer = Timer(widget.retainDuration, () {
+        if (!mounted) return;
+        setState(() => _blurActive = false);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_blurActive) return widget.child;
+    return ClipRRect(
+      clipBehavior: Clip.hardEdge,
+      borderRadius: widget.borderRadius,
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(
+          sigmaX: widget.blur,
+          sigmaY: widget.blur,
+          tileMode: ui.TileMode.mirror,
+        ),
+        child: widget.child,
+      ),
+    );
   }
 }
 

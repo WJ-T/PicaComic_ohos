@@ -1,7 +1,8 @@
 part of 'comic_reading_page.dart';
 
 extension ToolBar on ComicReadingPage {
-  bool get isReversed => appdata.settings[9] == "2" || appdata.settings[9] == "6";
+  bool get isReversed =>
+      appdata.settings[9] == "2" || appdata.settings[9] == "6";
 
   Widget _buildToolIconButton({
     required BuildContext context,
@@ -61,10 +62,9 @@ extension ToolBar on ComicReadingPage {
           8 + MediaQuery.of(context).padding.right,
           top ? 0 : 8,
         ),
-        child: GlassSurface(
+        child: GlassSurfaceLite(
           borderRadius: 26,
           padding: padding,
-          useOwnLayer: false,
           child: child,
         ),
       );
@@ -323,8 +323,7 @@ extension ToolBar on ComicReadingPage {
                         for (var button in buttons)
                           if (!small)
                             button.paddingHorizontal(4)
-                          else
-                            ...[button, const Spacer()],
+                          else ...[button, const Spacer()],
                         if (!small) const SizedBox(width: 4),
                       ],
                     );
@@ -480,9 +479,9 @@ extension ToolBar on ComicReadingPage {
                     right: MediaQuery.of(context).padding.right,
                   ),
                   child: SizedBox(
-                    width: MediaQuery.of(context).size.width
-                        - MediaQuery.of(context).padding.left
-                        - MediaQuery.of(context).padding.right,
+                    width: MediaQuery.of(context).size.width -
+                        MediaQuery.of(context).padding.left -
+                        MediaQuery.of(context).padding.right,
                     child: Row(
                       children: [
                         Padding(
@@ -502,7 +501,8 @@ extension ToolBar on ComicReadingPage {
                                 maxWidth:
                                     MediaQuery.of(context).size.width - 75),
                             child: Builder(builder: (context) {
-                              var epName = readingData.eps?.values.elementAtOrNull(
+                              var epName = readingData.eps?.values
+                                  .elementAtOrNull(
                                       comicReadingPageLogic.order - 1);
                               if (epName == null) {
                                 return Padding(
@@ -535,6 +535,7 @@ extension ToolBar on ComicReadingPage {
                           ),
                         ),
                         //const Spacer(),
+
                         if (_shouldShowChapterComments())
                           Padding(
                             padding: const EdgeInsets.fromLTRB(10, 0, 0, 0),
@@ -578,11 +579,14 @@ extension ToolBar on ComicReadingPage {
   }
 
   bool _shouldShowChapterComments() {
-    if (!readingData.hasEp || readingData.eps == null || readingData.eps!.isEmpty) {
+    if (!readingData.hasEp ||
+        readingData.eps == null ||
+        readingData.eps!.isEmpty) {
       return false;
     }
 
-    var showChapterComments = appdata.settings.length > 92 && appdata.settings[92] == "1";
+    var showChapterComments =
+        appdata.settings.length > 92 && appdata.settings[92] == "1";
     if (!showChapterComments) return false;
 
     var source = ComicSource.find(readingData.sourceKey);
@@ -593,7 +597,8 @@ extension ToolBar on ComicReadingPage {
 
   bool _shouldShowChapterCommentsAtEnd() {
     if (!_shouldShowChapterComments()) return false;
-    var readingMethod = ReadingMethod.values[int.parse(appdata.settings[9]) - 1];
+    var readingMethod =
+        ReadingMethod.values[int.parse(appdata.settings[9]) - 1];
     if (readingMethod != ReadingMethod.leftToRight &&
         readingMethod != ReadingMethod.rightToLeft &&
         readingMethod != ReadingMethod.topToBottom) {
@@ -669,8 +674,7 @@ extension ToolBar on ComicReadingPage {
     );
   }
 
-  Widget buildStatusInfo(
-      ComicReadingPageLogic logic, BuildContext context) {
+  Widget buildStatusInfo(ComicReadingPageLogic logic, BuildContext context) {
     return Positioned(
       bottom: 13,
       right: 25,
