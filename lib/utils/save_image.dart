@@ -6,9 +6,9 @@ import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:pica_comic/components/components.dart';
 import 'package:pica_comic/foundation/log.dart';
 import 'package:pica_comic/utils/file_type.dart';
+import 'package:pica_comic/utils/app_share.dart';
 import 'package:pica_comic/utils/io_tools.dart';
 import 'package:pica_comic/utils/translations.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:pica_comic/foundation/platform_utils.dart';
 
 import '../foundation/app.dart';
@@ -65,5 +65,5 @@ Future<String> persistentCurrentImage(File file) async {
 }
 
 void shareImage(File file) {
-  Share.shareXFiles([XFile(file.path)]);
+  AppShare.shareFile(file.path);
 }

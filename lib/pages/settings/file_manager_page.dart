@@ -4,8 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:pica_comic/components/components.dart';
-import 'package:share_plus/share_plus.dart' as s;
 import 'package:pica_comic/foundation/app.dart';
+import 'package:pica_comic/utils/app_share.dart';
 import 'package:pica_comic/utils/translations.dart';
 
 class FileManagerPage extends StatefulWidget {
@@ -218,7 +218,7 @@ class _FileManagerPageState extends State<FileManagerPage> {
                 title: Text('分享'.tl),
                 onTap: () {
                   Navigator.pop(ctx);
-                  s.Share.shareXFiles([s.XFile((e as File).path)]);
+                  AppShare.shareFile((e as File).path);
                 },
               ),
             ListTile(

@@ -10,6 +10,7 @@ import ContinuationPlugin, {
 import UrlLauncherPlugin from '../plugins/url_launcher/UrlLauncherPlugin';
 import VolumeKeyPlugin from '../plugins/volume/VolumeKeyPlugin';
 import OhosDeviceInfoPlugin from '../plugins/device_info/OhosDeviceInfoPlugin';
+import OhosSharePlugin from '../plugins/share/OhosSharePlugin';
 import { GeneratedPluginRegistrant } from '../plugins/GeneratedPluginRegistrant';
 import hilog from '@ohos.hilog';
 import type Want from '@ohos.app.ability.Want';
@@ -64,6 +65,7 @@ export default class EntryAbility extends FlutterAbility {
     flutterEngine.getPlugins()?.add(new UrlLauncherPlugin());
     flutterEngine.getPlugins()?.add(new VolumeKeyPlugin());
     flutterEngine.getPlugins()?.add(new OhosDeviceInfoPlugin());
+    flutterEngine.getPlugins()?.add(new OhosSharePlugin());
   }
 
   private async setInitialContinueState(): Promise<void> {

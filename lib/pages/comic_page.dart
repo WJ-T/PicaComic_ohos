@@ -27,10 +27,10 @@ import 'package:pica_comic/pages/favorites/local_favorites.dart';
 import 'package:pica_comic/pages/reader/comic_reading_page.dart';
 import 'package:pica_comic/pages/search_result_page.dart';
 import 'package:pica_comic/utils/app_url_launcher.dart';
+import 'package:pica_comic/utils/app_share.dart';
 import 'package:pica_comic/utils/tags_translation.dart';
 import 'package:pica_comic/utils/translations.dart';
 import 'show_image_page.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:shimmer_animation/shimmer_animation.dart';
 import 'dart:math' as math;
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
@@ -896,7 +896,7 @@ abstract class BaseComicPage<T extends Object> extends StatelessWidget {
                         if (url != null) {
                           text += ":$url";
                         }
-                        Share.share(text);
+                        AppShare.shareText(text);
                       },
                     ),
                     fluent.CommandBarButton(
@@ -1577,7 +1577,7 @@ abstract class BaseComicPage<T extends Object> extends StatelessWidget {
                   if (url != null) {
                     text += ":$url";
                   }
-                  Share.share(text);
+                  AppShare.shareText(text);
                 },
                 iconColor: _useTextColor(context, Colors.blue),
               ),

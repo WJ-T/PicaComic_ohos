@@ -7,12 +7,11 @@ import 'package:flutter_saf/flutter_saf.dart';
 import 'package:pica_comic/utils/extensions.dart';
 import 'package:pica_comic/utils/ext.dart';
 import 'package:path/path.dart' as p;
-import 'package:share_plus/share_plus.dart' as s;
 import 'package:file_selector/file_selector.dart' as file_selector;
 import 'package:file_picker_ohos/file_picker_ohos.dart' as fp;
 import 'package:pica_comic/utils/file_type.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:pica_comic/foundation/platform_utils.dart';
+import 'package:pica_comic/utils/app_share.dart';
 
 import '../foundation/app.dart';
 
@@ -431,20 +430,11 @@ class Share {
     required String filename,
     required String mime,
   }) {
-    if (!App.isWindows) {
-      s.Share.shareXFiles(
-        [s.XFile.fromData(data, mimeType: mime, name: filename)],
-      );
-    } else {
-      // write to cache
-      var file = File(FilePath.join(App.cachePath, filename));
-      file.writeAsBytesSync(data);
-      s.Share.shareXFiles([s.XFile(file.path)]);
-    }
+    AppShare.shareData(data: data, filename: filename, mime: mime);
   }
 
   static void shareText(String text) {
-    s.Share.share(text);
+    AppShare.shareText(text);
   }
 }
 
