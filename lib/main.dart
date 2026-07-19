@@ -20,11 +20,9 @@ import 'package:pica_comic/init.dart';
 import 'package:pica_comic/network/http_client.dart';
 import 'package:pica_comic/pages/auth_page.dart';
 import 'package:pica_comic/pages/main_page.dart';
-import 'package:pica_comic/pages/reader/comic_reading_page.dart';
 import 'package:pica_comic/pages/welcome_page.dart';
 import 'package:pica_comic/utils/block_screenshot.dart';
 import 'package:pica_comic/utils/mouse_listener.dart';
-import 'package:pica_comic/utils/ohos_continuation.dart';
 import 'package:pica_comic/utils/ohos_device_info.dart';
 import 'package:pica_comic/utils/android_first_use_manager.dart';
 import 'package:pica_comic/utils/tags_translation.dart';
@@ -41,9 +39,6 @@ void main(List<String> args) {
     WidgetsFlutterBinding.ensureInitialized();
     await LiquidGlassWidgets.initialize();
     await init();
-    if (PlatformUtils.isOhos && kEnableOhosContinuation) {
-      await OhosContinuationService.instance.preloadInitialPayload();
-    }
     FlutterError.onError = (details) {
       LogManager.addLog(LogLevel.error, "Unhandled Exception",
           "${details.exception}\n${details.stack}");
@@ -96,7 +91,6 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   DateTime time = DateTime.fromMillisecondsSinceEpoch(0);
-  Map<String, dynamic>? _startupContinuationPayload;
 
   bool forceRebuild = false;
 
@@ -174,14 +168,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   void initState() {
-    if (PlatformUtils.isOhos &&
-        kEnableOhosContinuation &&
-        appdata.firstUse.length > 3 &&
-        appdata.firstUse[3] == "1" &&
-        appdata.settings[13] != "1") {
-      _startupContinuationPayload =
-          OhosContinuationService.instance.takeStartupPayload();
-    }
     MyApp.updater = () => setState(() => forceRebuild = true);
     time = DateTime.now();
     TagsTranslation.readData();
@@ -271,20 +257,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         isRootRoute: true,
       ),
     ];
-
-    final payload = _startupContinuationPayload;
-    if (payload != null) {
-      final page = buildReaderContinuationPage(payload);
-      if (page != null) {
-        routes.add(
-          AppPageRoute(
-            builder: (context) => page,
-            settings: const RouteSettings(name: '/ComicReadingPage'),
-          ),
-        );
-      }
-      _startupContinuationPayload = null;
-    }
 
     return routes;
   }

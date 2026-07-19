@@ -56,6 +56,11 @@ class OhosContinuationService {
     }
     _initialized = true;
     _channel.setMethodCallHandler(_handleMethodCall);
+    if (_startupPayload != null) {
+      _pendingPayload = _startupPayload;
+      _startupPayload = null;
+      return;
+    }
     if (!_startupPayloadLoaded) {
       try {
         final payload = await _channel.invokeMapMethod<String, dynamic>(
