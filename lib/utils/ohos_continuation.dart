@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:pica_comic/foundation/log.dart';
 
-const bool kEnableOhosContinuation = false;
+const bool kEnableOhosContinuation = true;
 
 class OhosContinuationService {
   OhosContinuationService._();
@@ -80,12 +80,14 @@ class OhosContinuationService {
     _handler = handler;
   }
 
-  bool get hasPendingPayload => kEnableOhosContinuation && _pendingPayload != null;
+  bool get hasPendingPayload =>
+      kEnableOhosContinuation && _pendingPayload != null;
 
   bool get launchedFromContinuation =>
       kEnableOhosContinuation && _launchedFromContinuation;
 
-  bool get hasStartupPayload => kEnableOhosContinuation && _startupPayload != null;
+  bool get hasStartupPayload =>
+      kEnableOhosContinuation && _startupPayload != null;
 
   Map<String, dynamic>? takeStartupPayload() {
     if (!kEnableOhosContinuation) {

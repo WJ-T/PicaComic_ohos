@@ -19,7 +19,7 @@ const CHANNEL: string = 'pica_comic/ohos_continuation';
 const TAG: string = 'ContinuationPlugin';
 const DOMAIN: number = 0xD005105;
 const PAYLOAD_KEY: string = 'pica_comic.continuation_payload';
-export const ENABLE_CONTINUATION: boolean = false;
+export const ENABLE_CONTINUATION: boolean = true;
 
 type ContinuationPayload = Record<string, Object>;
 

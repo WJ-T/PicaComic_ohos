@@ -20,7 +20,7 @@
         "description": "$string:EntryAbility_desc",
         "icon": "$media:icon",
         "label": "$string:EntryAbility_label",
-        "continuable": false,
+        "continuable": true,
         "startWindowIcon": "$media:icon",
         "startWindowBackground": "$color:start_window_background",
         "exported": true,
