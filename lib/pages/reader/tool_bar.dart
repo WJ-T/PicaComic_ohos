@@ -628,23 +628,21 @@ extension ToolBar on ComicReadingPage {
   }
 
   ///显示当前的章节和页面位置
-  Widget buildPageInfoText(
-      ComicReadingPageLogic comicReadingPageLogic, BuildContext context) {
+  Widget buildPageInfoText(ComicReadingPageLogic _, BuildContext context) {
     return Positioned(
       bottom: 13,
       left: 25,
       child: StateBuilder<ComicReadingPageLogic>(
         id: "ToolBar",
         builder: (logic) {
-          var epName = readingData.eps?.values
-                  .elementAtOrNull(comicReadingPageLogic.order - 1) ??
-              "E1";
+          var epName =
+              readingData.eps?.values.elementAtOrNull(logic.order - 1) ?? "E1";
           if (epName.length > 8) {
             epName = "${epName.substring(0, 8)}...";
           }
           var text = readingData.hasEp
-              ? "$epName : ${comicReadingPageLogic.index}/${comicReadingPageLogic.urls.length}"
-              : "${comicReadingPageLogic.index}/${comicReadingPageLogic.urls.length}";
+              ? "$epName : ${logic.index}/${logic.urls.length}"
+              : "${logic.index}/${logic.urls.length}";
           return Stack(
             children: [
               Text(

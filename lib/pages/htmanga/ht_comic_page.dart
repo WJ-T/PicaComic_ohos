@@ -70,6 +70,8 @@ class HtComicPage extends BaseComicPage<HtComicInfo> {
         data!.target,
         data!.title,
         initialPage: index + 1,
+        historySubTitle: data!.subTitle,
+        historyCover: data!.cover,
       ),
     );
   }
@@ -94,6 +96,8 @@ class HtComicPage extends BaseComicPage<HtComicInfo> {
         data!.target,
         data!.title,
         initialPage: history!.page,
+        historySubTitle: data!.subTitle,
+        historyCover: data!.cover,
       ),
     );
   }

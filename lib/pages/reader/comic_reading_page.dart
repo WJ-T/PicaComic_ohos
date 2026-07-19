@@ -31,6 +31,7 @@ import 'package:pica_comic/network/eh_network/get_gallery_id.dart';
 import 'package:pica_comic/base.dart';
 import 'package:pica_comic/network/htmanga_network/htmanga_main_network.dart';
 import 'package:pica_comic/network/jm_network/jm_models.dart' as jm;
+import 'package:pica_comic/network/jm_network/jm_image.dart';
 import 'package:pica_comic/network/nhentai_network/nhentai_main_network.dart';
 import 'package:pica_comic/network/res.dart';
 import 'package:pica_comic/pages/comic_page.dart';
@@ -100,7 +101,7 @@ class ComicReadingPage extends StatelessWidget {
 
   final ReadingData readingData;
 
-  late final History? history = HistoryManager().findSync(readingData.id);
+  late final History history = _findOrCreateHistory(readingData);
 
   final int initialPage;
 
@@ -120,8 +121,17 @@ class ComicReadingPage extends StatelessWidget {
 
   ComicReadingPage.picacg(
       String target, this.initialEp, List<String> eps, String title,
-      {super.key, this.initialPage = 1})
-      : readingData = PicacgReadingData(title, target, eps) {
+      {super.key,
+      this.initialPage = 1,
+      String historySubTitle = '',
+      String historyCover = ''})
+      : readingData = PicacgReadingData(
+          title,
+          target,
+          eps,
+          historySubTitle: historySubTitle,
+          historyCover: historyCover,
+        ) {
     StateController.put(ComicReadingPageLogic(
         initialEp,
         readingData,
@@ -166,6 +176,8 @@ class ComicReadingPage extends StatelessWidget {
           comic.target,
           comic.files,
           link,
+          historySubTitle: comic.subTitle,
+          historyCover: comic.cover,
         ) {
     StateController.put(ComicReadingPageLogic(
         initialEp,
@@ -176,9 +188,17 @@ class ComicReadingPage extends StatelessWidget {
   }
 
   ComicReadingPage.htmanga(String target, String title,
-      {super.key, this.initialPage = 1})
+      {super.key,
+      this.initialPage = 1,
+      String historySubTitle = '',
+      String historyCover = ''})
       : initialEp = 1,
-        readingData = HtReadingData(title, target) {
+        readingData = HtReadingData(
+          title,
+          target,
+          historySubTitle: historySubTitle,
+          historyCover: historyCover,
+        ) {
     StateController.put(ComicReadingPageLogic(
         initialEp,
         readingData,
@@ -188,9 +208,17 @@ class ComicReadingPage extends StatelessWidget {
   }
 
   ComicReadingPage.nhentai(String target, String title,
-      {super.key, this.initialPage = 1})
+      {super.key,
+      this.initialPage = 1,
+      String historySubTitle = '',
+      String historyCover = ''})
       : initialEp = 1,
-        readingData = NhentaiReadingData(title, target) {
+        readingData = NhentaiReadingData(
+          title,
+          target,
+          historySubTitle: historySubTitle,
+          historyCover: historyCover,
+        ) {
     StateController.put(ComicReadingPageLogic(
         initialEp,
         readingData,
@@ -202,32 +230,53 @@ class ComicReadingPage extends StatelessWidget {
   _updateHistory(ComicReadingPageLogic? logic, bool updateMePage) {
     if (readingData.hasEp) {
       if (logic!.order == 1 && logic.index == 1) {
-        history?.ep = 0;
-        history?.page = 0;
+        history.ep = 0;
+        history.page = 0;
       } else {
         if (logic.order == readingData.eps?.length &&
             logic.index == logic.length) {
-          history?.ep = logic.order;
-          history?.page = logic.length;
+          history.ep = logic.order;
+          history.page = logic.length;
         } else {
-          history?.ep = logic.order;
-          history?.page = logic.index;
+          history.ep = logic.order;
+          history.page = logic.index;
         }
       }
     } else {
       if (logic!.index == 1) {
-        history?.ep = 0;
-        history?.page = 0;
+        history.ep = 0;
+        history.page = 0;
       } else if (logic.index == logic.length) {
-        history?.ep = 0;
-        history?.page = logic.length;
+        history.ep = 0;
+        history.page = logic.length;
       } else {
-        history?.ep = 1;
-        history?.page = logic.index;
+        history.ep = 1;
+        history.page = logic.index;
       }
     }
-    history!.maxPage = logic.length;
-    HistoryManager().saveReadHistory(history!, updateMePage);
+    history.maxPage = logic.length;
+    HistoryManager().saveReadHistory(history, updateMePage);
+  }
+
+  History _findOrCreateHistory(ReadingData readingData) {
+    final historyManager = HistoryManager();
+    final target = readingData.historyTarget;
+    final history = historyManager.findSync(target);
+    if (history != null) {
+      return history;
+    }
+    final newHistory = History(
+      readingData.historyType,
+      DateTime.now(),
+      readingData.title,
+      readingData.historySubTitle,
+      readingData.historyCover,
+      0,
+      0,
+      target,
+    );
+    unawaited(historyManager.addHistory(newHistory));
+    return newHistory;
   }
 
   bool get useDarkBackground => appdata.appSettings.useDarkBackground;
@@ -292,9 +341,7 @@ class ComicReadingPage extends StatelessWidget {
           .markAsRead(readingData.favoriteId, readingData.favoriteType);
       updateFollowUpdatesUI();
       // 保存历史记录
-      if (history != null) {
-        _updateHistory(logic, true);
-      }
+      _updateHistory(logic, true);
       // 退出全屏
       if (logic.isFullScreen) {
         logic.fullscreen();
@@ -325,7 +372,7 @@ class ComicReadingPage extends StatelessWidget {
           floatingActionButton: buildEpChangeButton(logic),
           body: StateBuilder<ComicReadingPageLogic>(builder: (logic) {
             if (logic.isLoading) {
-              history?.readEpisode.add(logic.order);
+              history.readEpisode.add(logic.order);
               loadInfo(logic);
               return const Center(
                 child: CircularProgressIndicator(),

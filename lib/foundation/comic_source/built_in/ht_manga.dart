@@ -250,6 +250,8 @@ class _HtComicTile extends ComicTile {
               res.data.id,
               comic.name,
               initialPage: history.page,
+              historySubTitle: res.data.subTitle,
+              historyCover: res.data.cover,
             ),
           );
         }

@@ -18,6 +18,8 @@ Map<String, dynamic>? buildReaderContinuationPayload(
     'title': readingData.title,
     'order': logic.order,
     'page': logic.index,
+    'historySubTitle': readingData.historySubTitle,
+    'historyCover': readingData.historyCover,
   };
 
   switch (readingData) {
@@ -59,6 +61,8 @@ Widget? buildReaderContinuationPage(Map<String, dynamic> payload) {
   final title = payload['title']?.toString() ?? '';
   final order = _parsePositiveInt(payload['order']) ?? 1;
   final page = _parsePositiveInt(payload['page']) ?? 1;
+  final historySubTitle = payload['historySubTitle']?.toString() ?? '';
+  final historyCover = payload['historyCover']?.toString() ?? '';
 
   if (sourceKey == null || comicId == null || comicId.isEmpty) {
     return null;
@@ -76,6 +80,8 @@ Widget? buildReaderContinuationPage(Map<String, dynamic> payload) {
         eps,
         title,
         initialPage: page,
+        historySubTitle: historySubTitle,
+        historyCover: historyCover,
       );
     case 'jm':
       final epIds = _readStringList(payload['epIds']);
@@ -84,20 +90,32 @@ Widget? buildReaderContinuationPage(Map<String, dynamic> payload) {
         return null;
       }
       return ComicReadingPage(
-        JmReadingData(title, comicId, epIds, epNames),
+        JmReadingData(
+          title,
+          comicId,
+          epIds,
+          epNames,
+          historySubTitle: historySubTitle,
+        ),
         page,
         order,
       );
     case 'hitomi':
-      final images = _readMapList(payload['images'])
-          .map(HitomiFile.fromMap)
-          .toList();
+      final images =
+          _readMapList(payload['images']).map(HitomiFile.fromMap).toList();
       final link = payload['link']?.toString();
       if (images.isEmpty || link == null || link.isEmpty) {
         return null;
       }
       return ComicReadingPage(
-        HitomiReadingData(title, comicId, images, link),
+        HitomiReadingData(
+          title,
+          comicId,
+          images,
+          link,
+          historySubTitle: historySubTitle,
+          historyCover: historyCover,
+        ),
         page,
         order,
       );
@@ -106,12 +124,16 @@ Widget? buildReaderContinuationPage(Map<String, dynamic> payload) {
         comicId,
         title,
         initialPage: page,
+        historySubTitle: historySubTitle,
+        historyCover: historyCover,
       );
     case 'nhentai':
       return ComicReadingPage.nhentai(
         comicId,
         title,
         initialPage: page,
+        historySubTitle: historySubTitle,
+        historyCover: historyCover,
       );
     case 'ehentai':
       final galleryMap = payload['gallery'];
@@ -132,7 +154,14 @@ Widget? buildReaderContinuationPage(Map<String, dynamic> payload) {
       }
       final chapters = ComicChapters.fromJsonOrNull(payload['chapters']);
       return ComicReadingPage(
-        CustomReadingData(comicId, title, source, chapters),
+        CustomReadingData(
+          comicId,
+          title,
+          source,
+          chapters,
+          historySubTitle: historySubTitle,
+          historyCover: historyCover,
+        ),
         page,
         order,
       );
@@ -173,15 +202,15 @@ List<String> _readStringList(dynamic raw) {
   if (raw is! List) {
     return const [];
   }
-  return raw.map((e) => e?.toString() ?? '').where((e) => e.isNotEmpty).toList();
+  return raw
+      .map((e) => e?.toString() ?? '')
+      .where((e) => e.isNotEmpty)
+      .toList();
 }
 
 List<Map<String, dynamic>> _readMapList(dynamic raw) {
   if (raw is! List) {
     return const [];
   }
-  return raw
-      .whereType<Map>()
-      .map((e) => Map<String, dynamic>.from(e))
-      .toList();
+  return raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
 }

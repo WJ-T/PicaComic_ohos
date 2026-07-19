@@ -35,7 +35,7 @@ final nhentai = ComicSource.named(
       const FixedCategoryPart("language", ["中文", "日本語", "english"], "category",
           ["/language/chinese", "/language/japanese", "/language/english"]),
       RandomCategoryPartWithRuntimeData(
-                  "tag",
+        "tag",
         () => nhentaiTags.values.toList(),
         50,
         "category",
@@ -67,12 +67,12 @@ final nhentai = ComicSource.named(
     ],
   ),
   categoryComicsData: CategoryComicsData.named(
-    load: (category, param, options, page) => NhentaiNetwork()
-        .getCategoryComics(
-          param ?? '',
-          page,
-          NhentaiSort.fromValue(options[0]),
-        ),
+    load: (category, param, options, page) =>
+        NhentaiNetwork().getCategoryComics(
+      param ?? '',
+      page,
+      NhentaiSort.fromValue(options[0]),
+    ),
     options: [
       CategoryComicsOptions.named(
         options: LinkedHashMap.of({
@@ -197,7 +197,7 @@ class _NhentaiComicTile extends ComicTile {
   }
 
   @override
-    String get subTitle => '';
+  String get subTitle => '';
 
   @override
   String get title => comic.title;
@@ -240,6 +240,8 @@ class _NhentaiComicTile extends ComicTile {
               res.data.id,
               res.data.title,
               initialPage: history.page,
+              historySubTitle: res.data.subTitle,
+              historyCover: res.data.cover,
             ),
           );
         }

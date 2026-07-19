@@ -1,10 +1,7 @@
 part of 'comic_reading_page.dart';
 
 void showSettings(BuildContext context) {
-  showSideBar(
-      context,
-      const ReadingSettings(),
-      width: 400);
+  showSideBar(context, const ReadingSettings(), width: 400);
 }
 
 class ReadingSettings extends StatefulWidget {
@@ -35,7 +32,8 @@ class _ComicSwitchSetting extends StatelessWidget {
       title: Text(title),
       value: appdata.getReaderSetting(comicId, sourceKey, settingIndex) == "1",
       onChanged: (b) {
-        appdata.setReaderSetting(comicId, sourceKey, settingIndex, b ? "1" : "0");
+        appdata.setReaderSetting(
+            comicId, sourceKey, settingIndex, b ? "1" : "0");
         appdata.updateSettings();
         onChanged?.call();
       },
@@ -60,7 +58,7 @@ class _ReadingSettingsState extends State<ReadingSettings> {
     logic.tools = false;
     logic.showSettings = false;
     logic.index = 1;
-    logic.pageController = PageController(initialPage: 1);
+    logic.pageController = logic._createPageController(1);
     logic.clearPhotoViewControllers();
     logic.update();
   }
@@ -90,11 +88,11 @@ class _ReadingSettingsState extends State<ReadingSettings> {
         },
         child: KeyedSubtree(
           key: Key(i.toString()),
-          child: i == 0 
-            ? _buildMainSettings(context, logic)
-            : i == 1 
-              ? _buildReadingModeSettings(context)
-              : _buildProxySettings(context),
+          child: i == 0
+              ? _buildMainSettings(context, logic)
+              : i == 1
+                  ? _buildReadingModeSettings(context)
+                  : _buildProxySettings(context),
         ),
       ),
     );
@@ -104,7 +102,8 @@ class _ReadingSettingsState extends State<ReadingSettings> {
   Widget _buildMainSettings(BuildContext context, ComicReadingPageLogic logic) {
     var comicId = logic.data.id;
     var sourceKey = logic.data.sourceKey;
-    var isEnabledSpecificSettings = appdata.isComicSpecificSettingsEnabled(comicId, sourceKey);
+    var isEnabledSpecificSettings =
+        appdata.isComicSpecificSettingsEnabled(comicId, sourceKey);
 
     return CustomScrollView(
       slivers: [
@@ -132,7 +131,8 @@ class _ReadingSettingsState extends State<ReadingSettings> {
                 onPressed: () {
                   setState(() {
                     // 清除当前漫画的特定设置
-                    appdata.setEnabledComicSpecificSettings(comicId, sourceKey, false);
+                    appdata.setEnabledComicSpecificSettings(
+                        comicId, sourceKey, false);
                   });
                 },
                 child: Text("清除该漫画的特殊阅读设置".tl),
@@ -148,10 +148,11 @@ class _ReadingSettingsState extends State<ReadingSettings> {
             trailing: Select(
               width: 136,
               initialValue: int.parse(appdata.getReaderSetting(
-                isEnabledSpecificSettings ? comicId : null,
-                isEnabledSpecificSettings ? sourceKey : null,
-                9,
-              )) - 1,
+                    isEnabledSpecificSettings ? comicId : null,
+                    isEnabledSpecificSettings ? sourceKey : null,
+                    9,
+                  )) -
+                  1,
               values: [
                 "从左至右".tl,
                 "从右至左".tl,
@@ -175,15 +176,17 @@ class _ReadingSettingsState extends State<ReadingSettings> {
         ),
         // 首页显示单张图片（双页模式）
         if (appdata.getReaderSetting(
-              isEnabledSpecificSettings ? comicId : null,
-              isEnabledSpecificSettings ? sourceKey : null,
-              9,
-            ) == "5" ||
+                  isEnabledSpecificSettings ? comicId : null,
+                  isEnabledSpecificSettings ? sourceKey : null,
+                  9,
+                ) ==
+                "5" ||
             appdata.getReaderSetting(
-              isEnabledSpecificSettings ? comicId : null,
-              isEnabledSpecificSettings ? sourceKey : null,
-              9,
-            ) == "6")
+                  isEnabledSpecificSettings ? comicId : null,
+                  isEnabledSpecificSettings ? sourceKey : null,
+                  9,
+                ) ==
+                "6")
           SliverToBoxAdapter(
             child: SwitchListTile(
               title: Text("首页显示单张图片".tl),
@@ -201,10 +204,11 @@ class _ReadingSettingsState extends State<ReadingSettings> {
           child: SwitchListTile(
             title: Text("显示章节评论".tl),
             value: appdata.getReaderSetting(
-              isEnabledSpecificSettings ? comicId : null,
-              isEnabledSpecificSettings ? sourceKey : null,
-              92,
-            ) == "1",
+                  isEnabledSpecificSettings ? comicId : null,
+                  isEnabledSpecificSettings ? sourceKey : null,
+                  92,
+                ) ==
+                "1",
             onChanged: (b) {
               setState(() {
                 while (appdata.settings.length <= 92) {
@@ -239,7 +243,9 @@ class _ReadingSettingsState extends State<ReadingSettings> {
           SliverToBoxAdapter(
             child: SwitchListTile(
               title: Text("章节末尾显示评论".tl),
-              value: appdata.settings.length > 99 ? appdata.settings[99] == "1" : false,
+              value: appdata.settings.length > 99
+                  ? appdata.settings[99] == "1"
+                  : false,
               onChanged: (b) {
                 setState(() {
                   while (appdata.settings.length <= 99) {
@@ -261,10 +267,11 @@ class _ReadingSettingsState extends State<ReadingSettings> {
             child: SwitchListTile(
               title: Text("在阅读器中显示时间和电量信息".tl),
               value: appdata.getReaderSetting(
-                isEnabledSpecificSettings ? comicId : null,
-                isEnabledSpecificSettings ? sourceKey : null,
-                98,
-              ) == "1",
+                    isEnabledSpecificSettings ? comicId : null,
+                    isEnabledSpecificSettings ? sourceKey : null,
+                    98,
+                  ) ==
+                  "1",
               onChanged: (b) {
                 setState(() {
                   while (appdata.settings.length <= 98) {
@@ -285,10 +292,11 @@ class _ReadingSettingsState extends State<ReadingSettings> {
           child: SwitchListTile(
             title: Text("宽屏时显示控制按钮".tl),
             value: appdata.getReaderSetting(
-              isEnabledSpecificSettings ? comicId : null,
-              isEnabledSpecificSettings ? sourceKey : null,
-              4,
-            ) == "1",
+                  isEnabledSpecificSettings ? comicId : null,
+                  isEnabledSpecificSettings ? sourceKey : null,
+                  4,
+                ) ==
+                "1",
             onChanged: (b) {
               setState(() {
                 appdata.setReaderSetting(
@@ -310,10 +318,11 @@ class _ReadingSettingsState extends State<ReadingSettings> {
           child: SwitchListTile(
             title: Text("点按翻页".tl),
             value: appdata.getReaderSetting(
-              isEnabledSpecificSettings ? comicId : null,
-              isEnabledSpecificSettings ? sourceKey : null,
-              0,
-            ) == "1",
+                  isEnabledSpecificSettings ? comicId : null,
+                  isEnabledSpecificSettings ? sourceKey : null,
+                  0,
+                ) ==
+                "1",
             onChanged: (b) {
               setState(() {
                 appdata.setReaderSetting(
@@ -333,7 +342,8 @@ class _ReadingSettingsState extends State<ReadingSettings> {
               isEnabledSpecificSettings ? comicId : null,
               isEnabledSpecificSettings ? sourceKey : null,
               0,
-            ) == "1")
+            ) ==
+            "1")
           SliverToBoxAdapter(
             child: ListTile(
               leading: const SizedBox(width: 40),
@@ -377,10 +387,11 @@ class _ReadingSettingsState extends State<ReadingSettings> {
           child: SwitchListTile(
             title: Text("反转点按翻页".tl),
             value: appdata.getReaderSetting(
-              isEnabledSpecificSettings ? comicId : null,
-              isEnabledSpecificSettings ? sourceKey : null,
-              70,
-            ) == "1",
+                  isEnabledSpecificSettings ? comicId : null,
+                  isEnabledSpecificSettings ? sourceKey : null,
+                  70,
+                ) ==
+                "1",
             onChanged: (b) => setState(() {
               appdata.setReaderSetting(
                 isEnabledSpecificSettings ? comicId : null,
@@ -397,10 +408,11 @@ class _ReadingSettingsState extends State<ReadingSettings> {
           child: SwitchListTile(
             title: Text("使用音量键翻页".tl),
             value: appdata.getReaderSetting(
-              isEnabledSpecificSettings ? comicId : null,
-              isEnabledSpecificSettings ? sourceKey : null,
-              7,
-            ) == "1",
+                  isEnabledSpecificSettings ? comicId : null,
+                  isEnabledSpecificSettings ? sourceKey : null,
+                  7,
+                ) ==
+                "1",
             onChanged: (b) {
               setState(() {
                 appdata.setReaderSetting(
@@ -461,10 +473,11 @@ class _ReadingSettingsState extends State<ReadingSettings> {
             child: SwitchListTile(
               title: Text("保持屏幕常亮".tl),
               value: appdata.getReaderSetting(
-                isEnabledSpecificSettings ? comicId : null,
-                isEnabledSpecificSettings ? sourceKey : null,
-                14,
-              ) == "1",
+                    isEnabledSpecificSettings ? comicId : null,
+                    isEnabledSpecificSettings ? sourceKey : null,
+                    14,
+                  ) ==
+                  "1",
               onChanged: (b) {
                 b ? setKeepScreenOn() : cancelKeepScreenOn();
                 setState(() {
@@ -485,10 +498,11 @@ class _ReadingSettingsState extends State<ReadingSettings> {
           child: SwitchListTile(
             title: Text("深色模式下降低图片亮度".tl),
             value: appdata.getReaderSetting(
-              isEnabledSpecificSettings ? comicId : null,
-              isEnabledSpecificSettings ? sourceKey : null,
-              18,
-            ) == "1",
+                  isEnabledSpecificSettings ? comicId : null,
+                  isEnabledSpecificSettings ? sourceKey : null,
+                  18,
+                ) ==
+                "1",
             onChanged: (b) {
               setState(() {
                 appdata.setReaderSetting(
@@ -541,7 +555,8 @@ class _ReadingSettingsState extends State<ReadingSettings> {
                       DeviceOrientation.portraitDown,
                     ]);
                   } else if (App.isMobile) {
-                    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+                    SystemChrome.setPreferredOrientations(
+                        DeviceOrientation.values);
                   }
                   setState(() {});
                 },
@@ -569,7 +584,7 @@ class _ReadingSettingsState extends State<ReadingSettings> {
                     i.toString(),
                   );
                   appdata.updateSettings();
-                  logic.photoViewController.resetWithNewBoxFit(switch(i){
+                  logic.photoViewController.resetWithNewBoxFit(switch (i) {
                     0 => BoxFit.contain,
                     1 => BoxFit.fitWidth,
                     2 => BoxFit.fitHeight,
@@ -584,10 +599,11 @@ class _ReadingSettingsState extends State<ReadingSettings> {
           child: SwitchListTile(
             title: Text("双击缩放".tl),
             value: appdata.getReaderSetting(
-              isEnabledSpecificSettings ? comicId : null,
-              isEnabledSpecificSettings ? sourceKey : null,
-              49,
-            ) == "1",
+                  isEnabledSpecificSettings ? comicId : null,
+                  isEnabledSpecificSettings ? sourceKey : null,
+                  49,
+                ) ==
+                "1",
             onChanged: (value) {
               appdata.setReaderSetting(
                 isEnabledSpecificSettings ? comicId : null,
@@ -607,10 +623,11 @@ class _ReadingSettingsState extends State<ReadingSettings> {
             child: SwitchListTile(
               title: Text("限制图片最大显示宽度".tl),
               value: appdata.getReaderSetting(
-                isEnabledSpecificSettings ? comicId : null,
-                isEnabledSpecificSettings ? sourceKey : null,
-                43,
-              ) == "1",
+                    isEnabledSpecificSettings ? comicId : null,
+                    isEnabledSpecificSettings ? sourceKey : null,
+                    43,
+                  ) ==
+                  "1",
               onChanged: (b) => setState(() {
                 appdata.setReaderSetting(
                   isEnabledSpecificSettings ? comicId : null,
@@ -628,10 +645,11 @@ class _ReadingSettingsState extends State<ReadingSettings> {
           child: SwitchListTile(
             title: Text("长按缩放".tl),
             value: appdata.getReaderSetting(
-              isEnabledSpecificSettings ? comicId : null,
-              isEnabledSpecificSettings ? sourceKey : null,
-              55,
-            ) == "1",
+                  isEnabledSpecificSettings ? comicId : null,
+                  isEnabledSpecificSettings ? sourceKey : null,
+                  55,
+                ) ==
+                "1",
             onChanged: (b) => setState(() {
               appdata.setReaderSetting(
                 isEnabledSpecificSettings ? comicId : null,
@@ -649,10 +667,11 @@ class _ReadingSettingsState extends State<ReadingSettings> {
           child: SwitchListTile(
             title: Text("显示页面信息".tl),
             value: appdata.getReaderSetting(
-              isEnabledSpecificSettings ? comicId : null,
-              isEnabledSpecificSettings ? sourceKey : null,
-              57,
-            ) == "1",
+                  isEnabledSpecificSettings ? comicId : null,
+                  isEnabledSpecificSettings ? sourceKey : null,
+                  57,
+                ) ==
+                "1",
             onChanged: (b) => setState(() {
               appdata.setReaderSetting(
                 isEnabledSpecificSettings ? comicId : null,

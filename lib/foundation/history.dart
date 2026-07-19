@@ -89,21 +89,24 @@ base class History extends LinkedListEntry<History> {
   int? maxPage;
 
   History(this.type, this.time, this.title, this.subtitle, this.cover, this.ep,
-      this.page, this.target,
-      [this.readEpisode = const <int>{}, this.maxPage]);
+      this.page, this.target, [Set<int>? readEpisode, this.maxPage])
+      : readEpisode =
+            readEpisode == null ? <int>{} : Set<int>.from(readEpisode);
 
   History.fromModel(
       {required HistoryMixin model,
       required this.ep,
       required this.page,
-      this.readEpisode = const <int>{},
+      Set<int>? readEpisode,
       DateTime? time})
       : type = model.historyType,
         title = model.title,
         subtitle = model.subTitle ?? '',
         cover = model.cover,
         target = model.target,
-        time = time ?? DateTime.now();
+        time = time ?? DateTime.now(),
+        readEpisode =
+            readEpisode == null ? <int>{} : Set<int>.from(readEpisode);
 
   Map<String, dynamic> toMap() => {
         "type": type.value,
@@ -240,8 +243,10 @@ class HistoryManager {
       skips = 0;
       ImageFavoriteManager.init();
       var newImages0 = db.select("select * from image_favorites;");
-      var newImages = newImages0.map((e) =>
-          ImageFavorite(e["id"], e["cover"], e["title"], e["ep"], e["page"], jsonDecode(e["other"]))).toList();
+      var newImages = newImages0
+          .map((e) => ImageFavorite(e["id"], e["cover"], e["title"], e["ep"],
+              e["page"], jsonDecode(e["other"])))
+          .toList();
       for (var image in newImages) {
         if (ImageFavoriteManager.exist(image.id, image.ep, image.page)) {
           skips++;
@@ -420,7 +425,7 @@ class HistoryManager {
   }
 
   History? findSync(String target) {
-    if(_cachedHistory == null) {
+    if (_cachedHistory == null) {
       updateCache();
     }
     if (!_cachedHistory!.containsKey(target)) {

@@ -25,17 +25,35 @@ abstract class ReadingData {
 
   FavoriteType get favoriteType;
 
+  String get historyTarget => id;
+
+  String get historySubTitle => '';
+
+  String get historyCover => '';
+
+  HistoryType get historyType => switch (type) {
+        ComicType.picacg => HistoryType.picacg,
+        ComicType.ehentai => HistoryType.ehentai,
+        ComicType.jm => HistoryType.jmComic,
+        ComicType.hitomi => HistoryType.hitomi,
+        ComicType.htManga => HistoryType.htmanga,
+        ComicType.nhentai => HistoryType.nhentai,
+        ComicType.other => HistoryType(sourceKey.hashCode),
+        _ => HistoryType(sourceKey.hashCode),
+      };
+
   bool checkEpDownloaded(int ep) {
-    return !hasEp || downloadedEps.contains(ep-1);
+    return !hasEp || downloadedEps.contains(ep - 1);
   }
 
   Future<Res<List<String>>> loadEp(int ep) async {
-    if(downloaded && downloadedEps.isEmpty){
-      downloadedEps = (await DownloadManager().getComicOrNull(downloadId))!.downloadedEps;
+    if (downloaded && downloadedEps.isEmpty) {
+      downloadedEps =
+          (await DownloadManager().getComicOrNull(downloadId))!.downloadedEps;
     }
-    if (downloaded && checkEpDownloaded(ep)){
+    if (downloaded && checkEpDownloaded(ep)) {
       int length;
-      if(hasEp) {
+      if (hasEp) {
         length = await DownloadManager().getEpLength(downloadId, ep);
       } else {
         length = await DownloadManager().getComicLength(downloadId);
@@ -51,18 +69,19 @@ abstract class ReadingData {
   /// [page] starts from 0, [ep] starts from 1
   Stream<DownloadProgress> loadImage(int ep, int page, String url) async* {
     if (downloaded && checkEpDownloaded(ep)) {
-      yield DownloadProgress(
-          1, 1, "", DownloadManager().getImage(downloadId, hasEp ? ep : 0, page).path);
+      yield DownloadProgress(1, 1, "",
+          DownloadManager().getImage(downloadId, hasEp ? ep : 0, page).path);
     } else {
       yield* loadImageNetwork(ep, page, url);
     }
   }
 
-  ImageProvider createImageProvider(int ep, int page, String url){
-    if (downloaded && checkEpDownloaded(ep)){
+  ImageProvider createImageProvider(int ep, int page, String url) {
+    if (downloaded && checkEpDownloaded(ep)) {
       return FileImageProvider(downloadId, hasEp ? ep : 0, page);
     } else {
-      return StreamImageProvider(() => loadImage(ep, page, url), buildImageKey(ep, page, url));
+      return StreamImageProvider(
+          () => loadImage(ep, page, url), buildImageKey(ep, page, url));
     }
   }
 
@@ -80,8 +99,19 @@ class PicacgReadingData extends ReadingData {
   @override
   final String id;
 
-  PicacgReadingData(this.title, this.id, List<String> epsList)
-      : eps = {for (var e in epsList) e: e};
+  PicacgReadingData(
+    this.title,
+    this.id,
+    List<String> epsList, {
+    this.historySubTitle = '',
+    this.historyCover = '',
+  }) : eps = {for (var e in epsList) e: e};
+
+  @override
+  final String historySubTitle;
+
+  @override
+  final String historyCover;
 
   @override
   final Map<String, String> eps;
@@ -136,7 +166,7 @@ class EhReadingData extends ReadingData {
 
   @override
   Stream<DownloadProgress> loadImageNetwork(int ep, int page, String url) {
-    return ImageManager().getEhImageNew(gallery, page+1);
+    return ImageManager().getEhImageNew(gallery, page + 1);
   }
 
   @override
@@ -147,6 +177,12 @@ class EhReadingData extends ReadingData {
 
   @override
   String get title => gallery.title;
+
+  @override
+  String get historySubTitle => gallery.subTitle ?? '';
+
+  @override
+  String get historyCover => gallery.cover;
 
   @override
   String buildImageKey(int ep, int page, String url) => "${gallery.link}$page";
@@ -164,16 +200,26 @@ class JmReadingData extends ReadingData {
 
   int? commentsLength;
 
-  static Map<String, String> generateMap(List<String> epIds, List<String> epNames){
-    if(epIds.length == epNames.length){
+  static Map<String, String> generateMap(
+      List<String> epIds, List<String> epNames) {
+    if (epIds.length == epNames.length) {
       return Map.fromIterables(epIds, epNames);
     } else {
-      return Map.fromIterables(epIds, List.generate(epIds.length, (index) => "第${index+1}章"));
+      return Map.fromIterables(
+          epIds, List.generate(epIds.length, (index) => "第${index + 1}章"));
     }
   }
 
-  JmReadingData(this.title, this.id, List<String> epIds, List<String> epNames)
-      : eps = generateMap(epIds, epNames);
+  JmReadingData(
+    this.title,
+    this.id,
+    List<String> epIds,
+    List<String> epNames, {
+    this.historySubTitle = '',
+  }) : eps = generateMap(epIds, epNames);
+
+  @override
+  final String historySubTitle;
 
   @override
   bool get hasEp => true;
@@ -188,8 +234,12 @@ class JmReadingData extends ReadingData {
   String get downloadId => "jm$id";
 
   @override
-  Future<Res<List<String>>> loadEpNetwork(int ep) async{
-    var res = await JmNetwork().getChapter(eps.keys.elementAtOrNull(ep-1) ?? id);
+  String get historyCover => getJmCoverUrl(id);
+
+  @override
+  Future<Res<List<String>>> loadEpNetwork(int ep) async {
+    var res =
+        await JmNetwork().getChapter(eps.keys.elementAtOrNull(ep - 1) ?? id);
     commentsLength = res.subData;
     return res;
   }
@@ -204,7 +254,7 @@ class JmReadingData extends ReadingData {
       }
     }
     return ImageManager().getJmImage(url, null,
-        epsId: eps.keys.elementAtOrNull(ep-1) ?? id,
+        epsId: eps.keys.elementAtOrNull(ep - 1) ?? id,
         scrambleId: "220980",
         bookId: bookId);
   }
@@ -213,7 +263,8 @@ class JmReadingData extends ReadingData {
   final Map<String, String> eps;
 
   @override
-  String buildImageKey(int ep, int page, String url) => url.replaceAll(RegExp(r"\?.+"), "");
+  String buildImageKey(int ep, int page, String url) =>
+      url.replaceAll(RegExp(r"\?.+"), "");
 
   @override
   FavoriteType get favoriteType => FavoriteType.jm;
@@ -230,7 +281,20 @@ class HitomiReadingData extends ReadingData {
 
   final String link;
 
-  HitomiReadingData(this.title, this.id, this.images, this.link);
+  HitomiReadingData(
+    this.title,
+    this.id,
+    this.images,
+    this.link, {
+    this.historySubTitle = '',
+    this.historyCover = '',
+  });
+
+  @override
+  final String historySubTitle;
+
+  @override
+  final String historyCover;
 
   @override
   Map<String, String>? get eps => null;
@@ -274,7 +338,18 @@ class HtReadingData extends ReadingData {
   @override
   final String id;
 
-  HtReadingData(this.title, this.id,);
+  HtReadingData(
+    this.title,
+    this.id, {
+    this.historySubTitle = '',
+    this.historyCover = '',
+  });
+
+  @override
+  final String historySubTitle;
+
+  @override
+  final String historyCover;
 
   @override
   Map<String, String>? get eps => null;
@@ -312,7 +387,18 @@ class NhentaiReadingData extends ReadingData {
   @override
   final String id;
 
-  NhentaiReadingData(this.title, this.id);
+  NhentaiReadingData(
+    this.title,
+    this.id, {
+    this.historySubTitle = '',
+    this.historyCover = '',
+  });
+
+  @override
+  final String historySubTitle;
+
+  @override
+  final String historyCover;
 
   @override
   Map<String, String>? get eps => null;
@@ -343,8 +429,15 @@ class NhentaiReadingData extends ReadingData {
   FavoriteType get favoriteType => FavoriteType.nhentai;
 }
 
-class CustomReadingData extends ReadingData{
-  CustomReadingData(this.id, this.title, this.source, this._chapters);
+class CustomReadingData extends ReadingData {
+  CustomReadingData(
+    this.id,
+    this.title,
+    this.source,
+    this._chapters, {
+    this.historySubTitle = '',
+    this.historyCover = '',
+  });
 
   final ComicSource? source;
 
@@ -368,12 +461,19 @@ class CustomReadingData extends ReadingData{
   final String title;
 
   @override
+  final String historySubTitle;
+
+  @override
+  final String historyCover;
+
+  @override
   Future<Res<List<String>>> loadEpNetwork(int ep) {
-    if(source == null) {
+    if (source == null) {
       return Future.value(const Res.error("Unknown Comic Source"));
     }
-    if(hasEp){
-      return source!.loadComicPages!(id, eps!.keys.elementAtOrNull(ep-1) ?? id);
+    if (hasEp) {
+      return source!.loadComicPages!(
+          id, eps!.keys.elementAtOrNull(ep - 1) ?? id);
     } else {
       return source!.loadComicPages!(id, null);
     }
@@ -382,11 +482,7 @@ class CustomReadingData extends ReadingData{
   @override
   Stream<DownloadProgress> loadImageNetwork(int ep, int page, String url) {
     return ImageManager().getCustomImage(
-        url,
-        id,
-        eps?.keys.elementAtOrNull(ep-1) ?? id,
-        sourceKey
-    );
+        url, id, eps?.keys.elementAtOrNull(ep - 1) ?? id, sourceKey);
   }
 
   @override
@@ -397,7 +493,7 @@ class CustomReadingData extends ReadingData{
 
   @override
   String buildImageKey(int ep, int page, String url) =>
-      "$sourceKey$id${eps?.keys.elementAtOrNull(ep-1) ?? id}$url";
+      "$sourceKey$id${eps?.keys.elementAtOrNull(ep - 1) ?? id}$url";
 
   @override
   FavoriteType get favoriteType => FavoriteType(source!.intKey);
