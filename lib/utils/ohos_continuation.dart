@@ -31,9 +31,10 @@ class OhosContinuationService {
     }
     _startupPayloadLoaded = true;
     try {
-      final payload = await _channel.invokeMapMethod<String, dynamic>(
+      final rawPayload = await _channel.invokeMethod<Object?>(
         'getInitialContinuation',
       );
+      final payload = _decodePayload(rawPayload);
       if (payload != null) {
         _startupPayload = payload;
         _launchedFromContinuation = true;
@@ -63,9 +64,10 @@ class OhosContinuationService {
     }
     if (!_startupPayloadLoaded) {
       try {
-        final payload = await _channel.invokeMapMethod<String, dynamic>(
+        final rawPayload = await _channel.invokeMethod<Object?>(
           'getInitialContinuation',
         );
+        final payload = _decodePayload(rawPayload);
         if (payload != null) {
           _pendingPayload = payload;
           _launchedFromContinuation = true;
@@ -166,8 +168,36 @@ class OhosContinuationService {
         final payload = _currentReaderPayload;
         return payload == null ? null : jsonEncode(payload);
       case 'onContinuation':
-        final payload = Map<String, dynamic>.from(call.arguments as Map);
-        await _dispatch(payload);
+        final payload = _decodePayload(call.arguments);
+        if (payload != null) {
+          await _dispatch(payload);
+        }
     }
+  }
+
+  Map<String, dynamic>? _decodePayload(Object? rawPayload) {
+    if (rawPayload == null) {
+      return null;
+    }
+    try {
+      if (rawPayload is String) {
+        if (rawPayload.isEmpty) {
+          return null;
+        }
+        return Map<String, dynamic>.from(
+          jsonDecode(rawPayload) as Map,
+        );
+      }
+      if (rawPayload is Map) {
+        return Map<String, dynamic>.from(rawPayload);
+      }
+    } catch (error, stack) {
+      LogManager.addLog(
+        LogLevel.error,
+        'OhosContinuation',
+        'Failed to decode continuation payload: $error\n$stack',
+      );
+    }
+    return null;
   }
 }

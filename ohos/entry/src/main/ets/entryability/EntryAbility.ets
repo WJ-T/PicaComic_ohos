@@ -12,6 +12,7 @@ import ContinuationPlugin, {
   applyContinuationWantParam,
   cacheContinuationWant,
   dispatchContinuationWant,
+  hasContinuationPayload,
 } from '../plugins/continuation/ContinuationPlugin';
 import UrlLauncherPlugin from '../plugins/url_launcher/UrlLauncherPlugin';
 import VolumeKeyPlugin from '../plugins/volume/VolumeKeyPlugin';
@@ -67,8 +68,10 @@ export default class EntryAbility extends FlutterAbility {
       return AbilityConstant.OnContinueResult.REJECT;
     }
     if (!(await applyContinuationWantParam(wantParam))) {
+      hilog.error(DOMAIN, TAG, 'onContinue rejected: no payload');
       return AbilityConstant.OnContinueResult.REJECT;
     }
+    hilog.error(DOMAIN, TAG, 'onContinue agreed');
     return AbilityConstant.OnContinueResult.AGREE;
   }
 
@@ -112,7 +115,16 @@ export default class EntryAbility extends FlutterAbility {
     launchParams: AbilityConstant.LaunchParam,
     dispatchImmediately: boolean,
   ): boolean {
-    if (launchParams.launchReason !== AbilityConstant.LaunchReason.CONTINUATION) {
+    const hasPayload = hasContinuationPayload(want);
+    hilog.error(
+      DOMAIN,
+      TAG,
+      `handleContinuationWant reason=${launchParams.launchReason} hasPayload=${hasPayload} dispatch=${dispatchImmediately}`,
+    );
+    if (
+      launchParams.launchReason !== AbilityConstant.LaunchReason.CONTINUATION &&
+      !hasPayload
+    ) {
       return false;
     }
     if (dispatchImmediately) {

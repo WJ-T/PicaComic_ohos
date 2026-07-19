@@ -25,7 +25,7 @@ export const ENABLE_CONTINUATION: boolean = true;
 type ContinuationPayload = Record<string, Object>;
 
 class ContinuationStore {
-  static pendingPayload: ContinuationPayload | null = null;
+  static pendingPayloadText: string | null = null;
   static activePayload: ContinuationPayload | null = null;
   static plugin: ContinuationPlugin | null = null;
 
@@ -33,18 +33,13 @@ class ContinuationStore {
     const parameters = want?.parameters as Record<string, Object> | undefined;
     const payloadText = ContinuationStore.readPayloadText(parameters);
     if (payloadText.length === 0) {
+      hilog.error(DOMAIN, TAG, 'cacheFromWant skipped: payload is empty');
       return;
     }
-    try {
-      const parsed = JSON.parse(payloadText) as ContinuationPayload;
-      ContinuationStore.pendingPayload = parsed;
-      if (ContinuationStore.plugin != null) {
-        ContinuationStore.plugin.dispatchPayload(parsed);
-      }
-    } catch (error) {
-      const message =
-        (error as BusinessError)?.message ?? JSON.stringify(error);
-      hilog.error(DOMAIN, TAG, `Failed to parse continuation payload: ${message}`);
+    ContinuationStore.pendingPayloadText = payloadText;
+    hilog.error(DOMAIN, TAG, `cacheFromWant payload length=${payloadText.length}`);
+    if (ContinuationStore.plugin != null) {
+      ContinuationStore.plugin.dispatchPayloadText(payloadText);
     }
   }
 
@@ -52,19 +47,14 @@ class ContinuationStore {
     const parameters = want?.parameters as Record<string, Object> | undefined;
     const payloadText = ContinuationStore.readPayloadText(parameters);
     if (payloadText.length === 0) {
+      hilog.error(DOMAIN, TAG, 'dispatchFromWant skipped: payload is empty');
       return;
     }
-    try {
-      const parsed = JSON.parse(payloadText) as ContinuationPayload;
-      if (ContinuationStore.plugin != null) {
-        ContinuationStore.plugin.dispatchPayload(parsed);
-      } else {
-        ContinuationStore.pendingPayload = parsed;
-      }
-    } catch (error) {
-      const message =
-        (error as BusinessError)?.message ?? JSON.stringify(error);
-      hilog.error(DOMAIN, TAG, `Failed to dispatch continuation payload: ${message}`);
+    hilog.error(DOMAIN, TAG, `dispatchFromWant payload length=${payloadText.length}`);
+    if (ContinuationStore.plugin != null) {
+      ContinuationStore.plugin.dispatchPayloadText(payloadText);
+    } else {
+      ContinuationStore.pendingPayloadText = payloadText;
     }
   }
 
@@ -76,6 +66,7 @@ class ContinuationStore {
       payloadText = JSON.stringify(ContinuationStore.activePayload);
     }
     if (payloadText.length === 0) {
+      hilog.error(DOMAIN, TAG, 'applyWantParam rejected: payload is empty');
       return false;
     }
     wantParam[PAYLOAD_KEY] = payloadText as Object;
@@ -83,6 +74,7 @@ class ContinuationStore {
       false as Object;
     wantParam[wantConstant.Params.SUPPORT_CONTINUE_SOURCE_EXIT_KEY] =
       true as Object;
+    hilog.error(DOMAIN, TAG, `applyWantParam accepted: payload length=${payloadText.length}`);
     return true;
   }
 
@@ -107,10 +99,15 @@ class ContinuationStore {
     return '';
   }
 
-  static consumePendingPayload(): ContinuationPayload | null {
-    const payload = ContinuationStore.pendingPayload;
-    ContinuationStore.pendingPayload = null;
-    return payload;
+  static consumePendingPayloadText(): string | null {
+    const payloadText = ContinuationStore.pendingPayloadText;
+    ContinuationStore.pendingPayloadText = null;
+    hilog.error(
+      DOMAIN,
+      TAG,
+      `consumePendingPayloadText length=${payloadText?.length ?? 0}`,
+    );
+    return payloadText;
   }
 }
 
@@ -119,6 +116,14 @@ export function cacheContinuationWant(want: Want | undefined | null): void {
     return;
   }
   ContinuationStore.cacheFromWant(want);
+}
+
+export function hasContinuationPayload(want: Want | undefined | null): boolean {
+  if (!ENABLE_CONTINUATION) {
+    return false;
+  }
+  const parameters = want?.parameters as Record<string, Object> | undefined;
+  return ContinuationStore.readPayloadText(parameters).length > 0;
 }
 
 export function applyContinuationWantParam(
@@ -184,18 +189,18 @@ export default class ContinuationPlugin
         this.handleClearReaderState(result);
         break;
       case 'getInitialContinuation':
-        result.success(ContinuationStore.consumePendingPayload());
+        result.success(ContinuationStore.consumePendingPayloadText());
         break;
       default:
         result.notImplemented();
     }
   }
 
-  dispatchPayload(payload: ContinuationPayload): void {
+  dispatchPayloadText(payloadText: string): void {
     if (this.channel == null) {
       return;
     }
-    this.channel.invokeMethod('onContinuation', payload as Object);
+    this.channel.invokeMethod('onContinuation', payloadText as Object);
   }
 
   requestReaderState(): Promise<string | null> {
@@ -236,6 +241,7 @@ export default class ContinuationPlugin
       return;
     }
     ContinuationStore.activePayload = payload;
+    hilog.error(DOMAIN, TAG, `setReaderState payload keys=${Object.keys(payload).join(',')}`);
     try {
       await this.updateContinueState(AbilityConstant.ContinueState.ACTIVE);
       result.success(true);
