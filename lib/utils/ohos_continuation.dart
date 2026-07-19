@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/services.dart';
 import 'package:pica_comic/foundation/log.dart';
@@ -18,6 +19,7 @@ class OhosContinuationService {
   bool _launchedFromContinuation = false;
   Map<String, dynamic>? _pendingPayload;
   Map<String, dynamic>? _startupPayload;
+  Map<String, dynamic>? _currentReaderPayload;
   Future<void> Function(Map<String, dynamic>)? _handler;
 
   Future<void> preloadInitialPayload() async {
@@ -114,6 +116,7 @@ class OhosContinuationService {
     if (!kEnableOhosContinuation) {
       return;
     }
+    _currentReaderPayload = Map<String, dynamic>.from(payload);
     try {
       await _channel.invokeMethod<void>('setReaderState', {
         'payload': payload,
@@ -131,6 +134,7 @@ class OhosContinuationService {
     if (!kEnableOhosContinuation) {
       return;
     }
+    _currentReaderPayload = null;
     try {
       await _channel.invokeMethod<void>('clearReaderState');
     } catch (error, stack) {
@@ -151,11 +155,14 @@ class OhosContinuationService {
     await handler(payload);
   }
 
-  Future<void> _handleMethodCall(MethodCall call) async {
-    if (call.method != 'onContinuation') {
-      return;
+  Future<dynamic> _handleMethodCall(MethodCall call) async {
+    switch (call.method) {
+      case 'getReaderState':
+        final payload = _currentReaderPayload;
+        return payload == null ? null : jsonEncode(payload);
+      case 'onContinuation':
+        final payload = Map<String, dynamic>.from(call.arguments as Map);
+        await _dispatch(payload);
     }
-    final payload = Map<String, dynamic>.from(call.arguments as Map);
-    await _dispatch(payload);
   }
 }

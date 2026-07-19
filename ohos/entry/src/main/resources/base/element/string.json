@@ -27,6 +27,10 @@
     {
       "name": "perm_read_pasteboard",
       "value": "读取剪贴板内容以识别并打开漫画相关链接。"
+    },
+    {
+      "name": "perm_distributed_datasync",
+      "value": "用于在多设备间接续漫画阅读进度。"
     }
   ]
 }

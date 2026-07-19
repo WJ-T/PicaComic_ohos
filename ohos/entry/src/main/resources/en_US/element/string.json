@@ -11,6 +11,10 @@
     {
       "name": "EntryAbility_label",
       "value": "Pica Comic"
+    },
+    {
+      "name": "perm_distributed_datasync",
+      "value": "Continue comic reading progress across devices."
     }
   ]
 }

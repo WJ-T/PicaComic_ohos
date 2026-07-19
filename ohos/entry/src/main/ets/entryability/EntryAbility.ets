@@ -18,6 +18,7 @@ import AbilityConstant from '@ohos.app.ability.AbilityConstant';
 import type { common, Permissions } from '@kit.AbilityKit';
 import { abilityAccessCtrl } from '@kit.AbilityKit';
 import { BusinessError } from '@ohos.base';
+import window from '@ohos.window';
 
 const TAG: string = 'EntryAbility';
 const DOMAIN: number = 0xD005100;
@@ -25,13 +26,16 @@ const STORAGE_PERMISSIONS: Array<Permissions> = [
   'ohos.permission.READ_MEDIA' as Permissions,
   'ohos.permission.WRITE_MEDIA' as Permissions,
   'ohos.permission.READ_WRITE_DOWNLOAD_DIRECTORY' as Permissions,
+  'ohos.permission.DISTRIBUTED_DATASYNC' as Permissions,
 ];
 
 export default class EntryAbility extends FlutterAbility {
   async onCreate(want: Want, launchParams: AbilityConstant.LaunchParam) {
     await super.onCreate(want, launchParams);
     if (ENABLE_CONTINUATION) {
-      cacheContinuationWant(want);
+      if (this.handleContinuationWant(want, launchParams, false)) {
+        this.context.restoreWindowStage(new LocalStorage());
+      }
       await this.setInitialContinueState();
     }
     await this.requestStoragePermissions();
@@ -40,18 +44,24 @@ export default class EntryAbility extends FlutterAbility {
   onNewWant(want: Want, launchParams: AbilityConstant.LaunchParam): void {
     super.onNewWant(want, launchParams);
     if (ENABLE_CONTINUATION) {
-      dispatchContinuationWant(want);
+      this.handleContinuationWant(want, launchParams, true);
     }
   }
 
-  onContinue(wantParam: Record<string, Object>): AbilityConstant.OnContinueResult {
+  async onContinue(
+    wantParam: Record<string, Object>,
+  ): Promise<AbilityConstant.OnContinueResult> {
     if (!ENABLE_CONTINUATION) {
       return AbilityConstant.OnContinueResult.REJECT;
     }
-    if (!applyContinuationWantParam(wantParam)) {
+    if (!(await applyContinuationWantParam(wantParam))) {
       return AbilityConstant.OnContinueResult.REJECT;
     }
     return AbilityConstant.OnContinueResult.AGREE;
+  }
+
+  onWindowStageRestore(windowStage: window.WindowStage): void {
+    this.onWindowStageCreate(windowStage);
   }
 
   configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -82,6 +92,22 @@ export default class EntryAbility extends FlutterAbility {
         (error as BusinessError)?.message ?? JSON.stringify(error);
       hilog.error(DOMAIN, TAG, `setMissionContinueState failed: ${reason}`);
     }
+  }
+
+  private handleContinuationWant(
+    want: Want,
+    launchParams: AbilityConstant.LaunchParam,
+    dispatchImmediately: boolean,
+  ): boolean {
+    if (launchParams.launchReason !== AbilityConstant.LaunchReason.CONTINUATION) {
+      return false;
+    }
+    if (dispatchImmediately) {
+      dispatchContinuationWant(want);
+    } else {
+      cacheContinuationWant(want);
+    }
+    return true;
   }
 
   private async requestStoragePermissions(): Promise<void> {

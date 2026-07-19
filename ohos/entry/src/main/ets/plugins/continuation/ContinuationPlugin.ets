@@ -1,5 +1,6 @@
 import {
   AbilityPluginBinding,
+  Any,
   BinaryMessenger,
   FlutterPlugin,
   FlutterPluginBinding,
@@ -67,17 +68,30 @@ class ContinuationStore {
     }
   }
 
-  static applyWantParam(wantParam: Record<string, Object>): boolean {
-    if (ContinuationStore.activePayload == null) {
+  static async applyWantParam(
+    wantParam: Record<string, Object>,
+  ): Promise<boolean> {
+    let payloadText = await ContinuationStore.requestCurrentPayloadText();
+    if (payloadText.length === 0 && ContinuationStore.activePayload != null) {
+      payloadText = JSON.stringify(ContinuationStore.activePayload);
+    }
+    if (payloadText.length === 0) {
       return false;
     }
-    wantParam[PAYLOAD_KEY] =
-      JSON.stringify(ContinuationStore.activePayload) as Object;
+    wantParam[PAYLOAD_KEY] = payloadText as Object;
     wantParam[wantConstant.Params.SUPPORT_CONTINUE_PAGE_STACK_KEY] =
       false as Object;
     wantParam[wantConstant.Params.SUPPORT_CONTINUE_SOURCE_EXIT_KEY] =
       true as Object;
     return true;
+  }
+
+  static async requestCurrentPayloadText(): Promise<string> {
+    if (ContinuationStore.plugin == null) {
+      return '';
+    }
+    const payloadText = await ContinuationStore.plugin.requestReaderState();
+    return payloadText ?? '';
   }
 
   static readPayloadText(
@@ -109,9 +123,9 @@ export function cacheContinuationWant(want: Want | undefined | null): void {
 
 export function applyContinuationWantParam(
   wantParam: Record<string, Object>,
-): boolean {
+): Promise<boolean> {
   if (!ENABLE_CONTINUATION) {
-    return false;
+    return Promise.resolve(false);
   }
   return ContinuationStore.applyWantParam(wantParam);
 }
@@ -182,6 +196,34 @@ export default class ContinuationPlugin
       return;
     }
     this.channel.invokeMethod('onContinuation', payload as Object);
+  }
+
+  requestReaderState(): Promise<string | null> {
+    if (this.channel == null) {
+      return Promise.resolve(null);
+    }
+    return new Promise<string | null>((resolve) => {
+      const timer = setTimeout(() => resolve(null), 1500);
+      const callback: MethodResult = {
+        success: (raw: Any) => {
+          clearTimeout(timer);
+          if (typeof raw === 'string' && raw.length > 0) {
+            resolve(raw);
+          } else {
+            resolve(null);
+          }
+        },
+        error: (_code: string, _message: string | undefined, _details: Any) => {
+          clearTimeout(timer);
+          resolve(null);
+        },
+        notImplemented: () => {
+          clearTimeout(timer);
+          resolve(null);
+        },
+      };
+      this.channel!.invokeMethod('getReaderState', null, callback);
+    });
   }
 
   private async handleSetReaderState(
