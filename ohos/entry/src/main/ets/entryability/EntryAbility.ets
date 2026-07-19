@@ -1,4 +1,10 @@
-import { FlutterAbility, FlutterEngine } from '@ohos/flutter_ohos';
+import {
+  FlutterAbility,
+  FlutterEngine,
+  MethodCall,
+  MethodCallHandler,
+  MethodResult,
+} from '@ohos/flutter_ohos';
 import DownloadBridgePlugin from '../plugins/download/DownloadBridgePlugin';
 import BatteryPlugin from '../plugins/battery/BatteryPlugin';
 import ContinuationPlugin, {
@@ -28,6 +34,12 @@ const STORAGE_PERMISSIONS: Array<Permissions> = [
   'ohos.permission.READ_WRITE_DOWNLOAD_DIRECTORY' as Permissions,
   'ohos.permission.DISTRIBUTED_DATASYNC' as Permissions,
 ];
+
+class SafeNavigationHandler implements MethodCallHandler {
+  onMethodCall(call: MethodCall, result: MethodResult): void {
+    result.success(null);
+  }
+}
 
 export default class EntryAbility extends FlutterAbility {
   async onCreate(want: Want, launchParams: AbilityConstant.LaunchParam) {
@@ -66,6 +78,7 @@ export default class EntryAbility extends FlutterAbility {
 
   configureFlutterEngine(flutterEngine: FlutterEngine) {
     super.configureFlutterEngine(flutterEngine);
+    flutterEngine.getNavigationChannel()?.setMethodCallHandler(new SafeNavigationHandler());
     GeneratedPluginRegistrant.registerWith(flutterEngine);
     flutterEngine.getPlugins()?.add(new DownloadBridgePlugin());
     flutterEngine.getPlugins()?.add(new BatteryPlugin());
