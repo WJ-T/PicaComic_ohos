@@ -18,6 +18,7 @@ import UrlLauncherPlugin from '../plugins/url_launcher/UrlLauncherPlugin';
 import VolumeKeyPlugin from '../plugins/volume/VolumeKeyPlugin';
 import OhosDeviceInfoPlugin from '../plugins/device_info/OhosDeviceInfoPlugin';
 import OhosSharePlugin from '../plugins/share/OhosSharePlugin';
+import OhosDecorPlugin from '../plugins/decor/OhosDecorPlugin';
 import { GeneratedPluginRegistrant } from '../plugins/GeneratedPluginRegistrant';
 import hilog from '@ohos.hilog';
 import type Want from '@ohos.app.ability.Want';
@@ -77,6 +78,15 @@ export default class EntryAbility extends FlutterAbility {
     this.onWindowStageCreate(windowStage);
   }
 
+  async onWindowStageCreate(windowStage: window.WindowStage): Promise<void> {
+    super.onWindowStageCreate(windowStage);
+    const mainWindow = windowStage.getMainWindowSync();
+    this.scheduleImmersiveWindowDecor(mainWindow);
+    mainWindow.on('windowStatusChange', () => {
+      this.scheduleImmersiveWindowDecor(mainWindow);
+    });
+  }
+
   configureFlutterEngine(flutterEngine: FlutterEngine) {
     super.configureFlutterEngine(flutterEngine);
     flutterEngine.getNavigationChannel()?.setMethodCallHandler(new SafeNavigationHandler());
@@ -90,6 +100,7 @@ export default class EntryAbility extends FlutterAbility {
     flutterEngine.getPlugins()?.add(new VolumeKeyPlugin());
     flutterEngine.getPlugins()?.add(new OhosDeviceInfoPlugin());
     flutterEngine.getPlugins()?.add(new OhosSharePlugin());
+    flutterEngine.getPlugins()?.add(new OhosDecorPlugin());
   }
 
   private async setInitialContinueState(): Promise<void> {
@@ -140,6 +151,44 @@ export default class EntryAbility extends FlutterAbility {
       const reason =
         (error as BusinessError)?.message ?? JSON.stringify(error);
       hilog.error(DOMAIN, TAG, `requestPermissionsFromUser failed: ${reason}`);
+    }
+  }
+
+  private scheduleImmersiveWindowDecor(mainWindow: window.Window): void {
+    setTimeout(() => {
+      this.applyImmersiveWindowDecor(mainWindow);
+    }, 0);
+    setTimeout(() => {
+      this.applyImmersiveWindowDecor(mainWindow);
+    }, 300);
+    setTimeout(() => {
+      this.applyImmersiveWindowDecor(mainWindow);
+    }, 1000);
+  }
+
+  private async applyImmersiveWindowDecor(mainWindow: window.Window): Promise<void> {
+    try {
+      mainWindow.setWindowDecorVisible(false);
+    } catch (error) {
+      const reason =
+        (error as BusinessError)?.message ?? JSON.stringify(error);
+      hilog.error(DOMAIN, TAG, `setWindowDecorVisible failed: ${reason}`);
+    }
+
+    try {
+      mainWindow.setImmersiveModeEnabledState(true);
+    } catch (error) {
+      const reason =
+        (error as BusinessError)?.message ?? JSON.stringify(error);
+      hilog.error(DOMAIN, TAG, `setImmersiveModeEnabledState failed: ${reason}`);
+    }
+
+    try {
+      await mainWindow.setTitleAndDockHoverShown(true, true);
+    } catch (error) {
+      const reason =
+        (error as BusinessError)?.message ?? JSON.stringify(error);
+      hilog.error(DOMAIN, TAG, `setTitleAndDockHoverShown failed: ${reason}`);
     }
   }
 }

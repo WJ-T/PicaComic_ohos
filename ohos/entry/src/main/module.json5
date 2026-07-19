@@ -21,6 +21,11 @@
         "icon": "$media:icon",
         "label": "$string:EntryAbility_label",
         "continuable": true,
+        "supportWindowMode": [
+          "fullscreen",
+          "split",
+          "floating"
+        ],
         "startWindowIcon": "$media:icon",
         "startWindowBackground": "$color:start_window_background",
         "exported": true,

@@ -50,6 +50,7 @@ import '../../utils/extensions.dart';
 import '../../utils/key_down_event.dart';
 import '../../utils/ohos_continuation.dart';
 import '../../utils/ohos_battery.dart';
+import '../../utils/ohos_decor.dart';
 import '../../utils/ohos_device_info.dart';
 import 'package:pica_comic/network/picacg_network/methods.dart' as picacg;
 import 'package:pica_comic/utils/translations.dart';
@@ -79,6 +80,17 @@ part 'reading_settings.dart';
 part 'reading_data.dart';
 
 part 'continuation.dart';
+
+void _setReaderSystemUi({required bool showBars}) {
+  final alwaysShowStatusBar =
+      appdata.settings.length > 95 && appdata.settings[95] == "1";
+  final mode = showBars || alwaysShowStatusBar
+      ? SystemUiMode.edgeToEdge
+      : (PlatformUtils.isOhos
+          ? SystemUiMode.immersiveSticky
+          : SystemUiMode.immersive);
+  SystemChrome.setEnabledSystemUIMode(mode);
+}
 
 void _restoreAppOrientations() {
   if (App.isAndroid || App.isIOS) {
@@ -284,11 +296,7 @@ class ComicReadingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StateBuilder<ComicReadingPageLogic>(initState: (logic) {
-      final alwaysShowStatusBar =
-          appdata.settings.length > 95 && appdata.settings[95] == "1";
-      SystemChrome.setEnabledSystemUIMode(
-        alwaysShowStatusBar ? SystemUiMode.edgeToEdge : SystemUiMode.immersive,
-      );
+      _setReaderSystemUi(showBars: false);
       if (supportsKeepScreenOn && appdata.settings[14] == "1") {
         setKeepScreenOn();
       }
@@ -312,6 +320,7 @@ class ComicReadingPage extends StatelessWidget {
       };
       logic.addIndexChangeCallback(logic.continuationIndexCallback!);
       unawaited(syncReaderContinuationState(readingData, logic));
+      OhosDecorBridge.holdDecorDark(this);
       if (useDarkBackground) {}
     }, dispose: (logic) {
       //清除缓存并减小最大缓存
@@ -355,109 +364,119 @@ class ComicReadingPage extends StatelessWidget {
           BaseComicPage.tagsStack.last.updateHistory(history);
         }
       });
+      OhosDecorBridge.releaseDecorDark(this);
       if (useDarkBackground) {}
     }, builder: (logic) {
+      Widget reader = Scaffold(
+        backgroundColor: useDarkBackground ? Colors.black : null,
+        endDrawerEnableOpenDragGesture: false,
+        key: _scaffoldKey,
+        endDrawer: Drawer(
+          child: buildEpsView(),
+        ),
+        floatingActionButton: buildEpChangeButton(logic),
+        body: StateBuilder<ComicReadingPageLogic>(builder: (logic) {
+          if (logic.isLoading) {
+            history.readEpisode.add(logic.order);
+            loadInfo(logic);
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          } else if (logic.urls.isNotEmpty) {
+            if (logic.readingMethod == ReadingMethod.topToBottomContinuously &&
+                !logic.haveUsedInitialPage &&
+                initialPage != 0) {
+              Future.microtask(() {
+                logic.jumpToPage(initialPage);
+                logic.haveUsedInitialPage = true;
+              });
+            }
+            //监听音量键
+            if (appdata.settings[7] == "1") {
+              if (logic.listenVolume == null) {
+                logic.listenVolume = ListenVolumeController(
+                    () => logic.jumpToLastPage(), () => logic.jumpToNextPage());
+                logic.listenVolume!.listenVolumeChange();
+              }
+            } else if (logic.listenVolume != null) {
+              logic.listenVolume!.stop();
+              logic.listenVolume = null;
+            }
+
+            if (appdata.settings[9] == "4") {
+              logic.scrollManager ??= ScrollManager(logic);
+            }
+
+            var body = Listener(
+              onPointerMove: TapController.onPointerMove,
+              onPointerUp: TapController.onTapUp,
+              onPointerDown: TapController.onTapDown,
+              behavior: HitTestBehavior.translucent,
+              onPointerCancel: TapController.onTapCancel,
+              child: Stack(
+                children: [
+                  buildComicView(
+                    logic,
+                    context,
+                    readingData.id,
+                  ),
+                  if (MediaQuery.of(context).platformBrightness ==
+                          Brightness.dark &&
+                      appdata.appSettings.reduceBrightnessInDarkMode)
+                    Positioned(
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: IgnorePointer(
+                        child: ColoredBox(
+                          color: Colors.black.withOpacity(0.2),
+                        ),
+                      ),
+                    ),
+                  if (appdata.appSettings.showPageInfoInReader &&
+                      !logic.isOnChapterCommentsPage)
+                    buildPageInfoText(logic, context),
+                  if (appdata.appSettings.enableClockAndBatteryInfoInReader &&
+                      !logic.isOnChapterCommentsPage)
+                    buildStatusInfo(logic, context),
+                  if (!logic.isOnChapterCommentsPage)
+                    buildBottomToolBar(logic, context, readingData.hasEp),
+                  if (!logic.isOnChapterCommentsPage)
+                    ...buildButtons(logic, context),
+                  if (!logic.isOnChapterCommentsPage)
+                    buildTopToolBar(logic, context),
+                ],
+              ),
+            );
+
+            return KeyboardListener(
+              focusNode: logic.focusNode,
+              autofocus: true,
+              onKeyEvent: logic.handleKeyboard,
+              child: body,
+            );
+          } else {
+            return buildErrorView(logic, context);
+          }
+        }),
+      );
+      if (PlatformUtils.isOhos) {
+        reader = MediaQuery.removeViewPadding(
+          context: context,
+          removeTop: true,
+          removeLeft: true,
+          removeRight: true,
+          removeBottom: true,
+          child: reader,
+        );
+      }
       return DefaultTextStyle.merge(
         style: TextStyle(
           color: useDarkBackground ? Colors.white : null,
           fontSize: 16,
         ),
-        child: Scaffold(
-          backgroundColor: useDarkBackground ? Colors.black : null,
-          endDrawerEnableOpenDragGesture: false,
-          key: _scaffoldKey,
-          endDrawer: Drawer(
-            child: buildEpsView(),
-          ),
-          floatingActionButton: buildEpChangeButton(logic),
-          body: StateBuilder<ComicReadingPageLogic>(builder: (logic) {
-            if (logic.isLoading) {
-              history.readEpisode.add(logic.order);
-              loadInfo(logic);
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
-            } else if (logic.urls.isNotEmpty) {
-              if (logic.readingMethod ==
-                      ReadingMethod.topToBottomContinuously &&
-                  !logic.haveUsedInitialPage &&
-                  initialPage != 0) {
-                Future.microtask(() {
-                  logic.jumpToPage(initialPage);
-                  logic.haveUsedInitialPage = true;
-                });
-              }
-              //监听音量键
-              if (appdata.settings[7] == "1") {
-                if (logic.listenVolume == null) {
-                  logic.listenVolume = ListenVolumeController(
-                      () => logic.jumpToLastPage(),
-                      () => logic.jumpToNextPage());
-                  logic.listenVolume!.listenVolumeChange();
-                }
-              } else if (logic.listenVolume != null) {
-                logic.listenVolume!.stop();
-                logic.listenVolume = null;
-              }
-
-              if (appdata.settings[9] == "4") {
-                logic.scrollManager ??= ScrollManager(logic);
-              }
-
-              var body = Listener(
-                onPointerMove: TapController.onPointerMove,
-                onPointerUp: TapController.onTapUp,
-                onPointerDown: TapController.onTapDown,
-                behavior: HitTestBehavior.translucent,
-                onPointerCancel: TapController.onTapCancel,
-                child: Stack(
-                  children: [
-                    buildComicView(
-                      logic,
-                      context,
-                      readingData.id,
-                    ),
-                    if (MediaQuery.of(context).platformBrightness ==
-                            Brightness.dark &&
-                        appdata.appSettings.reduceBrightnessInDarkMode)
-                      Positioned(
-                        top: 0,
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        child: IgnorePointer(
-                          child: ColoredBox(
-                            color: Colors.black.withOpacity(0.2),
-                          ),
-                        ),
-                      ),
-                    if (appdata.appSettings.showPageInfoInReader &&
-                        !logic.isOnChapterCommentsPage)
-                      buildPageInfoText(logic, context),
-                    if (appdata.appSettings.enableClockAndBatteryInfoInReader &&
-                        !logic.isOnChapterCommentsPage)
-                      buildStatusInfo(logic, context),
-                    if (!logic.isOnChapterCommentsPage)
-                      buildBottomToolBar(logic, context, readingData.hasEp),
-                    if (!logic.isOnChapterCommentsPage)
-                      ...buildButtons(logic, context),
-                    if (!logic.isOnChapterCommentsPage)
-                      buildTopToolBar(logic, context),
-                  ],
-                ),
-              );
-
-              return KeyboardListener(
-                focusNode: logic.focusNode,
-                autofocus: true,
-                onKeyEvent: logic.handleKeyboard,
-                child: body,
-              );
-            } else {
-              return buildErrorView(logic, context);
-            }
-          }),
-        ),
+        child: reader,
       );
     });
   }

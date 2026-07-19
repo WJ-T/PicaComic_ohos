@@ -606,13 +606,20 @@ class _SystemUiProvider extends StatelessWidget {
       systemUiStyle = SystemUiOverlayStyle.dark.copyWith(
         statusBarColor: Colors.transparent,
         systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarDividerColor: Colors.transparent,
+        systemStatusBarContrastEnforced: false,
+        systemNavigationBarContrastEnforced: false,
       );
     } else {
       systemUiStyle = SystemUiOverlayStyle.light.copyWith(
         statusBarColor: Colors.transparent,
         systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarDividerColor: Colors.transparent,
+        systemStatusBarContrastEnforced: false,
+        systemNavigationBarContrastEnforced: false,
       );
     }
+    SystemChrome.setSystemUIOverlayStyle(systemUiStyle);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: systemUiStyle,
       child: child,

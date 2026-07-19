@@ -37,13 +37,15 @@ paru -S pica-comic-bin
 This fork is maintained for **OHOS/HarmonyOS development first**.
 If you are onboarding a new device/environment, use this section instead of old cached notes.
 
-### Verified toolchain (2026-02-27)
+### Verified toolchain (2026-07-19)
 
 - Flutter: `3.35.8-ohos-0.0.2`
 - Dart: `3.9.2`
-- HarmonyOS SDK: `6.0.2.130` (API 22)
+- HarmonyOS SDK: `6.1.0.31` (API 23)
 - Node: `18.20.1`
 - ohpm: `6.0.1`
+
+> API 23 is required for the current OHOS host project. The free-window title bar immersive mode is compiled against the API 23 window APIs and the OHOS ability declares `supportWindowMode` for `fullscreen`, `split`, and `floating`.
 
 ### 1. One-time environment setup
 
@@ -66,6 +68,8 @@ flutter config --enable-ohos
 flutter config --ohos-sdk "$HOME/Library/OpenHarmony/Sdk"
 flutter precache --ohos
 ```
+
+Make sure the configured SDK contains API 23. If you keep multiple SDK roots, point Flutter and DevEco/Hvigor at the root that contains the `23` platform before running `flutter build hap`.
 
 If `ohos/har/flutter.har` is missing (both platforms):
 
@@ -170,6 +174,10 @@ ohpm install --all
 
   - Cause: ohpm dependencies not installed or stale cache.
   - Fix: run `where ohpm` (Windows) or `which ohpm` (macOS) to verify ohpm is in PATH, then run `ohpm(.bat) install --all` in `ohos/`, then Sync/Clean/Rebuild in DevEco.
+- Free-window title bar is not immersive on tablet/2in1
+
+  - Cause: stale hap, old SDK target, or the app was not cold-started after reinstall.
+  - Fix: build with API 23, reinstall the release hap, then force-stop and start the app again so `EntryAbility.onWindowStageCreate` reapplies `setWindowDecorVisible(false)`.
 - `MissingPluginException(...file_selector...)` on OHOS
 
   - Cause: old package still running or stale build artifacts.
