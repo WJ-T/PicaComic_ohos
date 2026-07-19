@@ -126,7 +126,7 @@ class OhosContinuationService {
     _currentReaderPayload = Map<String, dynamic>.from(payload);
     try {
       await _channel.invokeMethod<void>('setReaderState', {
-        'payload': payload,
+        'payloadText': jsonEncode(payload),
       });
     } catch (error, stack) {
       LogManager.addLog(

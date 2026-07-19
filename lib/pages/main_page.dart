@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:pica_comic/base.dart';
 import 'package:pica_comic/components/components.dart';
 import 'package:pica_comic/foundation/app_page_route.dart';
-import 'package:pica_comic/foundation/log.dart';
 import 'package:pica_comic/network/webdav.dart';
 import 'package:pica_comic/pages/settings/app_updater.dart';
 import 'package:pica_comic/utils/app_links.dart';
@@ -79,26 +78,11 @@ class MainPageState extends State<MainPage> {
   bool _startupTasksStarted = false;
 
   Future<void> _handleContinuationPayload(Map<String, dynamic> payload) async {
-    LogManager.addLog(
-      LogLevel.error,
-      'OhosContinuation',
-      'handle payload keys=${payload.keys.join(',')} source=${payload['sourceKey']} comic=${payload['comicId']}',
-    );
     if (_handlingContinuation || !mounted) {
-      LogManager.addLog(
-        LogLevel.error,
-        'OhosContinuation',
-        'skip payload: handling=$_handlingContinuation mounted=$mounted',
-      );
       return;
     }
     final page = buildReaderContinuationPage(payload);
     if (page == null) {
-      LogManager.addLog(
-        LogLevel.error,
-        'OhosContinuation',
-        'failed to build reader page from payload=$payload',
-      );
       return;
     }
     _handlingContinuation = true;
@@ -116,20 +100,10 @@ class MainPageState extends State<MainPage> {
               settings: const RouteSettings(name: '/ComicReadingPage'),
             ),
           );
-          LogManager.addLog(
-            LogLevel.error,
-            'OhosContinuation',
-            'reader page pushed from continuation',
-          );
           return;
         }
         await Future.delayed(const Duration(milliseconds: 200));
       }
-      LogManager.addLog(
-        LogLevel.error,
-        'OhosContinuation',
-        'failed to push reader page: navigator not ready',
-      );
     } finally {
       _handlingContinuation = false;
     }
@@ -260,11 +234,6 @@ class MainPageState extends State<MainPage> {
     if (!mounted) {
       return;
     }
-    LogManager.addLog(
-      LogLevel.error,
-      'OhosContinuation',
-      'bootstrap launched=${OhosContinuationService.instance.launchedFromContinuation} pending=${OhosContinuationService.instance.hasPendingPayload}',
-    );
     _runStartupSideEffects(
       suppressDialogs:
           OhosContinuationService.instance.launchedFromContinuation,

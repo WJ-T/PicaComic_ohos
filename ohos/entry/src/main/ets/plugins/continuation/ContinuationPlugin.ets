@@ -22,22 +22,18 @@ const DOMAIN: number = 0xD005105;
 const PAYLOAD_KEY: string = 'pica_comic.continuation_payload';
 export const ENABLE_CONTINUATION: boolean = true;
 
-type ContinuationPayload = Record<string, Object>;
-
 class ContinuationStore {
   static pendingPayloadText: string | null = null;
-  static activePayload: ContinuationPayload | null = null;
+  static activePayloadText: string | null = null;
   static plugin: ContinuationPlugin | null = null;
 
   static cacheFromWant(want: Want | undefined | null): void {
     const parameters = want?.parameters as Record<string, Object> | undefined;
     const payloadText = ContinuationStore.readPayloadText(parameters);
     if (payloadText.length === 0) {
-      hilog.error(DOMAIN, TAG, 'cacheFromWant skipped: payload is empty');
       return;
     }
     ContinuationStore.pendingPayloadText = payloadText;
-    hilog.error(DOMAIN, TAG, `cacheFromWant payload length=${payloadText.length}`);
     if (ContinuationStore.plugin != null) {
       ContinuationStore.plugin.dispatchPayloadText(payloadText);
     }
@@ -47,10 +43,8 @@ class ContinuationStore {
     const parameters = want?.parameters as Record<string, Object> | undefined;
     const payloadText = ContinuationStore.readPayloadText(parameters);
     if (payloadText.length === 0) {
-      hilog.error(DOMAIN, TAG, 'dispatchFromWant skipped: payload is empty');
       return;
     }
-    hilog.error(DOMAIN, TAG, `dispatchFromWant payload length=${payloadText.length}`);
     if (ContinuationStore.plugin != null) {
       ContinuationStore.plugin.dispatchPayloadText(payloadText);
     } else {
@@ -62,11 +56,10 @@ class ContinuationStore {
     wantParam: Record<string, Object>,
   ): Promise<boolean> {
     let payloadText = await ContinuationStore.requestCurrentPayloadText();
-    if (payloadText.length === 0 && ContinuationStore.activePayload != null) {
-      payloadText = JSON.stringify(ContinuationStore.activePayload);
+    if (payloadText.length === 0 && ContinuationStore.activePayloadText != null) {
+      payloadText = ContinuationStore.activePayloadText;
     }
     if (payloadText.length === 0) {
-      hilog.error(DOMAIN, TAG, 'applyWantParam rejected: payload is empty');
       return false;
     }
     wantParam[PAYLOAD_KEY] = payloadText as Object;
@@ -74,7 +67,6 @@ class ContinuationStore {
       false as Object;
     wantParam[wantConstant.Params.SUPPORT_CONTINUE_SOURCE_EXIT_KEY] =
       true as Object;
-    hilog.error(DOMAIN, TAG, `applyWantParam accepted: payload length=${payloadText.length}`);
     return true;
   }
 
@@ -102,11 +94,6 @@ class ContinuationStore {
   static consumePendingPayloadText(): string | null {
     const payloadText = ContinuationStore.pendingPayloadText;
     ContinuationStore.pendingPayloadText = null;
-    hilog.error(
-      DOMAIN,
-      TAG,
-      `consumePendingPayloadText length=${payloadText?.length ?? 0}`,
-    );
     return payloadText;
   }
 }
@@ -235,13 +222,12 @@ export default class ContinuationPlugin
     call: MethodCall,
     result: MethodResult,
   ): Promise<void> {
-    const payload = call.argument('payload') as ContinuationPayload | null;
-    if (payload == null) {
+    const payloadText = call.argument('payloadText') as string | null;
+    if (payloadText == null || payloadText.length === 0) {
       result.error('invalid_args', 'Continuation payload is required', null);
       return;
     }
-    ContinuationStore.activePayload = payload;
-    hilog.error(DOMAIN, TAG, `setReaderState payload keys=${Object.keys(payload).join(',')}`);
+    ContinuationStore.activePayloadText = payloadText;
     try {
       await this.updateContinueState(AbilityConstant.ContinueState.ACTIVE);
       result.success(true);
@@ -254,7 +240,7 @@ export default class ContinuationPlugin
   }
 
   private async handleClearReaderState(result: MethodResult): Promise<void> {
-    ContinuationStore.activePayload = null;
+    ContinuationStore.activePayloadText = null;
     try {
       await this.updateContinueState(AbilityConstant.ContinueState.INACTIVE);
       result.success(true);
