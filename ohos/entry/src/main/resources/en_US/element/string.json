@@ -13,6 +13,14 @@
       "value": "Pica Comic"
     },
     {
+      "name": "history_widget_display_name",
+      "value": "Reading History"
+    },
+    {
+      "name": "history_widget_desc",
+      "value": "Shows recent reading history."
+    },
+    {
       "name": "perm_distributed_datasync",
       "value": "Continue comic reading progress across devices."
     }

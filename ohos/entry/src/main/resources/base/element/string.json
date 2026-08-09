@@ -13,6 +13,14 @@
       "value": "Pica Comic"
     },
     {
+      "name": "history_widget_display_name",
+      "value": "Reading History"
+    },
+    {
+      "name": "history_widget_desc",
+      "value": "Shows recent reading history."
+    },
+    {
       "name": "perm_read_media",
       "value": "读取媒体库以便导入或浏览本地漫画。"
     },

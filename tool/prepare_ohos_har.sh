@@ -21,6 +21,9 @@ if [[ ! -f "${HAR_SOURCE}" ]]; then
   exit 1
 fi
 
+dart "${REPO_ROOT}/tool/patch_ohos_flutter_har.dart"
+
 mkdir -p "${HAR_DIR}"
 cp "${HAR_SOURCE}" "${HAR_DIR}/flutter.har"
+dart "${REPO_ROOT}/tool/patch_ohos_flutter_har.dart" --project-only
 echo "✅ 已复制 ${HAR_SOURCE} -> ${HAR_DIR}/flutter.har"

@@ -9,12 +9,15 @@ import 'package:pica_comic/network/webdav.dart';
 import 'package:pica_comic/pages/settings/app_updater.dart';
 import 'package:pica_comic/utils/app_links.dart';
 import 'package:pica_comic/utils/background_service.dart';
+import 'package:pica_comic/utils/history_reader_launcher.dart';
 import 'package:pica_comic/utils/ohos_continuation.dart';
+import 'package:pica_comic/utils/ohos_widget.dart';
 import 'package:pica_comic/utils/translations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'category_page.dart';
 import 'explore_page.dart';
 import 'favorites/favorites_page.dart';
+import 'history_page.dart';
 import 'pre_search_page.dart';
 import 'settings/settings_page.dart';
 import 'package:pica_comic/foundation/app.dart';
@@ -59,7 +62,9 @@ void checkClipboard() async {
 }
 
 class MainPage extends StatefulWidget {
-  const MainPage({Key? key}) : super(key: key);
+  const MainPage({Key? key, this.initialWidgetAction}) : super(key: key);
+
+  final String? initialWidgetAction;
 
   static MainPageState of(BuildContext context) {
     return context.findAncestorStateOfType<MainPageState>()!;
@@ -73,8 +78,11 @@ class MainPageState extends State<MainPage> {
   GlobalKey<NavigatorState>? _navigatorKey;
 
   late final NaviObserver _observer;
+  Widget Function()? _initialNaviRouteBuilder;
+  String? _initialNaviRouteName;
   int _currentIndex = 0;
   bool _handlingContinuation = false;
+  bool _handlingWidgetAction = false;
   bool _startupTasksStarted = false;
 
   Future<void> _handleContinuationPayload(Map<String, dynamic> payload) async {
@@ -106,6 +114,51 @@ class MainPageState extends State<MainPage> {
       }
     } finally {
       _handlingContinuation = false;
+    }
+  }
+
+  Future<void> _handleWidgetAction(String payload) async {
+    final action = readOhosWidgetActionName(payload);
+    if (_handlingWidgetAction ||
+        !mounted ||
+        (action != 'open_history' && action != 'open_reader')) {
+      return;
+    }
+    _handlingWidgetAction = true;
+    try {
+      for (int i = 0; i < 30; i++) {
+        final context = _navigatorKey?.currentContext;
+        if (context != null && mounted) {
+          if (action == 'open_reader') {
+            final params = readOhosWidgetReaderParams(payload);
+            if (params == null) {
+              return;
+            }
+            App.to(
+              context,
+              () => HistoryReaderLaunchPage(
+                type: params.type,
+                target: params.target,
+                ep: params.ep,
+                page: params.page,
+              ),
+            );
+            return;
+          }
+          if (_observer.routes.isNotEmpty &&
+              _observer.routes.last.settings.name == '/HistoryPage') {
+            return;
+          }
+          App.to(context, () => const HistoryPage());
+          if (mounted) {
+            setState(() {});
+          }
+          return;
+        }
+        await Future.delayed(const Duration(milliseconds: 200));
+      }
+    } finally {
+      _handlingWidgetAction = false;
     }
   }
 
@@ -229,17 +282,25 @@ class MainPageState extends State<MainPage> {
     });
   }
 
-  Future<void> _bootstrapOhosContinuation() async {
-    await OhosContinuationService.instance.initialize();
+  Future<void> _bootstrapOhosIntegrations() async {
+    if (kEnableOhosContinuation) {
+      await OhosContinuationService.instance.initialize();
+    }
+    await OhosWidgetService.instance.initialize();
     if (!mounted) {
       return;
     }
     _runStartupSideEffects(
       suppressDialogs:
-          OhosContinuationService.instance.launchedFromContinuation,
+          OhosContinuationService.instance.launchedFromContinuation ||
+              OhosWidgetService.instance.launchedFromWidget,
     );
-    if (OhosContinuationService.instance.hasPendingPayload) {
+    if (kEnableOhosContinuation &&
+        OhosContinuationService.instance.hasPendingPayload) {
       await OhosContinuationService.instance.dispatchPendingPayload();
+    }
+    if (OhosWidgetService.instance.hasPendingAction) {
+      await OhosWidgetService.instance.dispatchPendingAction();
     }
   }
 
@@ -248,13 +309,17 @@ class MainPageState extends State<MainPage> {
     _navigatorKey = GlobalKey();
     App.mainNavigatorKey = _navigatorKey;
     _observer = NaviObserver();
-    if (PlatformUtils.isOhos && kEnableOhosContinuation) {
-      OhosContinuationService.instance.setHandler(_handleContinuationPayload);
+    _configureInitialWidgetRoute(widget.initialWidgetAction);
+    if (PlatformUtils.isOhos) {
+      if (kEnableOhosContinuation) {
+        OhosContinuationService.instance.setHandler(_handleContinuationPayload);
+      }
+      OhosWidgetService.instance.setHandler(_handleWidgetAction);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) {
           return;
         }
-        unawaited(_bootstrapOhosContinuation());
+        unawaited(_bootstrapOhosIntegrations());
       });
     } else {
       _runStartupSideEffects(suppressDialogs: false);
@@ -266,10 +331,37 @@ class MainPageState extends State<MainPage> {
     super.initState();
   }
 
+  void _configureInitialWidgetRoute(String? payload) {
+    if (payload == null || payload.isEmpty) {
+      return;
+    }
+    final action = readOhosWidgetActionName(payload);
+    if (action == 'open_history') {
+      _initialNaviRouteBuilder = () => const HistoryPage();
+      _initialNaviRouteName = '/HistoryPage';
+      return;
+    }
+    if (action == 'open_reader') {
+      final params = readOhosWidgetReaderParams(payload);
+      if (params == null) {
+        return;
+      }
+      _initialNaviRouteBuilder = () => HistoryReaderLaunchPage(
+            type: params.type,
+            target: params.target,
+            ep: params.ep,
+            page: params.page,
+          );
+      _initialNaviRouteName = '/HistoryReaderLaunchPage';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return NaviPane(
       initialPage: int.parse(appdata.settings[23]),
+      initialRouteBuilder: _initialNaviRouteBuilder,
+      initialRouteName: _initialNaviRouteName,
       observer: _observer,
       navigatorKey: _navigatorKey!,
       paneItems: [

@@ -1,0 +1,72 @@
+{
+  "float": [
+    {
+      "name": "pica_widget_title_font_size",
+      "value": "18fp"
+    },
+    {
+      "name": "pica_widget_title_height",
+      "value": "24vp"
+    },
+    {
+      "name": "pica_widget_title_padding_right",
+      "value": "4vp"
+    },
+    {
+      "name": "pica_widget_badge_font_size",
+      "value": "10fp"
+    },
+    {
+      "name": "pica_widget_badge_width",
+      "value": "40vp"
+    },
+    {
+      "name": "pica_widget_badge_height",
+      "value": "20vp"
+    },
+    {
+      "name": "pica_widget_badge_radius",
+      "value": "10vp"
+    },
+    {
+      "name": "pica_widget_header_padding_bottom",
+      "value": "4vp"
+    },
+    {
+      "name": "pica_widget_mask_height",
+      "value": "24vp"
+    },
+    {
+      "name": "pica_widget_side_padding",
+      "value": "12vp"
+    },
+    {
+      "name": "pica_widget_item_font_size",
+      "value": "12fp"
+    },
+    {
+      "name": "pica_widget_meta_font_size",
+      "value": "12fp"
+    },
+    {
+      "name": "pica_widget_item_text_height",
+      "value": "16vp"
+    },
+    {
+      "name": "pica_widget_item_text_margin",
+      "value": "5vp"
+    },
+    {
+      "name": "pica_widget_divider_margin",
+      "value": "6vp"
+    },
+    {
+      "name": "pica_widget_time_margin",
+      "value": "8vp"
+    },
+    {
+      "name": "pica_widget_item_height",
+      "value": "44vp"
+    }
+  ]
+}

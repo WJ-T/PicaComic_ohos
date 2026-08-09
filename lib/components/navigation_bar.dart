@@ -34,6 +34,8 @@ class NaviPane extends StatefulWidget {
     required this.paneActions,
     required this.pageBuilder,
     this.initialPage = 0,
+    this.initialRouteBuilder,
+    this.initialRouteName,
     this.onPageChanged,
     required this.observer,
     required this.navigatorKey,
@@ -49,6 +51,10 @@ class NaviPane extends StatefulWidget {
   final void Function(int index)? onPageChanged;
 
   final int initialPage;
+
+  final Widget Function()? initialRouteBuilder;
+
+  final String? initialRouteName;
 
   final NaviObserver observer;
 
@@ -109,8 +115,7 @@ class NaviPaneState extends State<NaviPane>
   static const _kDesktopSidebarHysteresis = 48.0;
 
   bool get enableLiquidGlassBottomBar =>
-      appdata.settings.length > 103 &&
-      appdata.settings[103] == "1";
+      appdata.settings.length > 103 && appdata.settings[103] == "1";
 
   bool get shouldUseBottomNavigationLayout =>
       MediaQuery.of(context).size.width <= changePoint;
@@ -207,8 +212,7 @@ class NaviPaneState extends State<NaviPane>
     double target = targetFormContext(context);
     if (controller.value != target || animationTarget != target) {
       final currentTarget = animationTarget ?? controller.value;
-      final crossesLayoutMode =
-          _isCompactLayoutTarget(currentTarget) !=
+      final crossesLayoutMode = _isCompactLayoutTarget(currentTarget) !=
           _isCompactLayoutTarget(target);
       if (controller.isAnimating) {
         if (animationTarget == target) {
@@ -345,8 +349,7 @@ class NaviPaneState extends State<NaviPane>
                   child: buildMainView(),
                 ),
                 Positioned(
-                  left:
-                      _kFoldedSideBarWidth * ((value - 2.0).clamp(-1.0, 0.0)),
+                  left: _kFoldedSideBarWidth * ((value - 2.0).clamp(-1.0, 0.0)),
                   top: 0,
                   bottom: 0,
                   child: RepaintBoundary(
@@ -387,6 +390,28 @@ class NaviPaneState extends State<NaviPane>
             child: Navigator(
               observers: [widget.observer],
               key: widget.navigatorKey,
+              onGenerateInitialRoutes: (navigator, initialRoute) {
+                final routes = <Route<dynamic>>[
+                  AppPageRoute(
+                    preventRebuild: false,
+                    builder: (context) {
+                      return _NaviMainView(state: this);
+                    },
+                  ),
+                ];
+                final initialRouteBuilder = widget.initialRouteBuilder;
+                if (initialRouteBuilder != null) {
+                  routes.add(
+                    AppPageRoute(
+                      builder: (_) => initialRouteBuilder(),
+                      settings: RouteSettings(
+                        name: widget.initialRouteName,
+                      ),
+                    ),
+                  );
+                }
+                return routes;
+              },
               onGenerateRoute: (settings) => AppPageRoute(
                 preventRebuild: false,
                 builder: (context) {
@@ -404,8 +429,7 @@ class NaviPaneState extends State<NaviPane>
     final builders = <TargetPlatform, PageTransitionsBuilder>{};
     for (final platform in TargetPlatform.values) {
       builders[platform] = _InsetPageTransitionsBuilder(
-        baseBuilder:
-            baseTheme.pageTransitionsTheme.builders[platform] ??
+        baseBuilder: baseTheme.pageTransitionsTheme.builders[platform] ??
             const ZoomPageTransitionsBuilder(),
         insetBuilder: () =>
             shouldUseBottomNavigationLayout ? 0 : visibleSideBarWidth,
@@ -712,7 +736,8 @@ class _SideNaviWidgetState extends State<_SideNaviWidget> {
             : (widget.enabled
                 ? colorScheme.primary.withValues(alpha: isDark ? 0.18 : 0.12)
                 : (isDark
-                    ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.18)
+                    ? colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.18)
                     : Colors.white.withValues(alpha: 0.12))),
         content: Listener(
           behavior: HitTestBehavior.translucent,
@@ -725,7 +750,8 @@ class _SideNaviWidgetState extends State<_SideNaviWidget> {
             height: itemHeight,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: widget.enabled ? restingIndicatorColor : Colors.transparent,
+              color:
+                  widget.enabled ? restingIndicatorColor : Colors.transparent,
               borderRadius: BorderRadius.circular(20),
             ),
             child: scaledChild,
@@ -1117,7 +1143,8 @@ class _NaviMainViewState extends State<_NaviMainView> {
       animation: state.controller,
       builder: (context, _) {
         var shouldShowAppBar = state.controller.value < 2;
-        var useLiquidGlassBottomBar = state.shouldUseLiquidGlassBottomNavigation;
+        var useLiquidGlassBottomBar =
+            state.shouldUseLiquidGlassBottomNavigation;
         final mainContent = AnimatedSwitcher(
           duration: _fastAnimationDuration,
           child: state.buildMainViewContent(),
@@ -1130,53 +1157,53 @@ class _NaviMainViewState extends State<_NaviMainView> {
         return Padding(
           padding: EdgeInsets.only(left: leftPadding),
           child: Scaffold(
-          backgroundColor:
-              useLiquidGlassBottomBar ? Colors.transparent : null,
-          extendBody: useLiquidGlassBottomBar,
-          appBar: shouldShowAppBar
-              ? AppBar(
-                  elevation: 0,
-                  scrolledUnderElevation: 0,
-                  toolbarHeight: NaviPaneState._kTopBarHeight,
-                  titleSpacing: 16,
-                  backgroundColor:
-                      Theme.of(context).colorScheme.surface.withValues(
-                            alpha: useLiquidGlassBottomBar ? 0.96 : 0.86,
-                          ),
-                  title: Text(
-                    state.widget.paneItems[state.currentPage].label,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+            backgroundColor:
+                useLiquidGlassBottomBar ? Colors.transparent : null,
+            extendBody: useLiquidGlassBottomBar,
+            appBar: shouldShowAppBar
+                ? AppBar(
+                    elevation: 0,
+                    scrolledUnderElevation: 0,
+                    toolbarHeight: NaviPaneState._kTopBarHeight,
+                    titleSpacing: 16,
+                    backgroundColor:
+                        Theme.of(context).colorScheme.surface.withValues(
+                              alpha: useLiquidGlassBottomBar ? 0.96 : 0.86,
+                            ),
+                    title: Text(
+                      state.widget.paneItems[state.currentPage].label,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  actions: [
-                    for (var action in state.widget.paneActions)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: _GlassPaneActionButton(
-                          entry: action,
+                    actions: [
+                      for (var action in state.widget.paneActions)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 4),
+                          child: _GlassPaneActionButton(
+                            entry: action,
+                          ),
                         ),
-                      ),
-                    const SizedBox(width: 8),
-                  ],
-                )
-              : null,
-          body: Stack(
-                  children: [
-                    Positioned.fill(child: mainContent),
-                    if (useLiquidGlassBottomBar && shouldShowAppBar)
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: state.buildBottom(),
-                      ),
-                  ],
-                ),
-          bottomNavigationBar: shouldShowAppBar && !useLiquidGlassBottomBar
-              ? SafeArea(top: false, bottom: true, child: state.buildBottom())
-              : null,
+                      const SizedBox(width: 8),
+                    ],
+                  )
+                : null,
+            body: Stack(
+              children: [
+                Positioned.fill(child: mainContent),
+                if (useLiquidGlassBottomBar && shouldShowAppBar)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: state.buildBottom(),
+                  ),
+              ],
+            ),
+            bottomNavigationBar: shouldShowAppBar && !useLiquidGlassBottomBar
+                ? SafeArea(top: false, bottom: true, child: state.buildBottom())
+                : null,
           ),
         );
       },

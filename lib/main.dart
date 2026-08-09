@@ -14,6 +14,7 @@ import 'package:pica_comic/base.dart';
 import 'package:pica_comic/components/window_frame.dart';
 import 'package:pica_comic/foundation/app.dart';
 import 'package:pica_comic/foundation/app_page_route.dart';
+import 'package:pica_comic/foundation/history.dart';
 import 'package:pica_comic/foundation/log.dart';
 import 'package:pica_comic/foundation/platform_utils.dart';
 import 'package:pica_comic/init.dart';
@@ -24,6 +25,7 @@ import 'package:pica_comic/pages/welcome_page.dart';
 import 'package:pica_comic/utils/block_screenshot.dart';
 import 'package:pica_comic/utils/mouse_listener.dart';
 import 'package:pica_comic/utils/ohos_device_info.dart';
+import 'package:pica_comic/utils/ohos_widget.dart';
 import 'package:pica_comic/utils/android_first_use_manager.dart';
 import 'package:pica_comic/utils/tags_translation.dart';
 import 'package:window_manager/window_manager.dart';
@@ -45,7 +47,13 @@ void main(List<String> args) {
     };
 
     setNetworkProxy();
-    runApp(const MyApp());
+    String? initialWidgetAction;
+    if (PlatformUtils.isOhos) {
+      await OhosWidgetService.instance.initialize();
+      unawaited(HistoryManager().syncOhosWidgetHistory());
+      initialWidgetAction = OhosWidgetService.instance.takePendingAction();
+    }
+    runApp(MyApp(initialWidgetAction: initialWidgetAction));
     if (App.isDesktop) {
       await windowManager.ensureInitialized();
       windowManager.waitUntilReadyToShow().then((_) async {
@@ -81,9 +89,11 @@ class _CustomScrollBehavior extends MaterialScrollBehavior {
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, this.initialWidgetAction});
 
   static void Function()? updater;
+
+  final String? initialWidgetAction;
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -98,6 +108,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       appdata.settings.length > 103 && appdata.settings[103] == "1";
 
   OverlayEntry? hideContentOverlay;
+  late String? _initialWidgetAction;
 
   void hideContent() {
     if (hideContentOverlay != null) return;
@@ -168,6 +179,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   void initState() {
+    _initialWidgetAction = widget.initialWidgetAction;
     MyApp.updater = () => setState(() => forceRebuild = true);
     time = DateTime.now();
     TagsTranslation.readData();
@@ -239,11 +251,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           return const WelcomePage();
         } else {
           bool isFirstUse = snapshot.data ?? true;
+          final initialWidgetAction = _initialWidgetAction;
+          _initialWidgetAction = null;
           return isFirstUse
               ? const WelcomePage()
               : (appdata.settings[13] == "1"
                   ? const AuthPage()
-                  : const MainPage());
+                  : MainPage(initialWidgetAction: initialWidgetAction));
         }
       },
     );

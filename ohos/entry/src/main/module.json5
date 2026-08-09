@@ -21,6 +21,7 @@
         "icon": "$media:icon",
         "label": "$string:EntryAbility_label",
         "continuable": true,
+        "launchType": "singleton",
         "supportWindowMode": [
           "fullscreen",
           "split",
@@ -37,6 +38,22 @@
             "actions": [
               "action.system.home"
             ]
+          }
+        ]
+      }
+    ],
+    "extensionAbilities": [
+      {
+        "name": "EntryHistoryFormAbility",
+        "srcEntry": "./ets/entryformability/EntryFormAbility.ets",
+        "label": "$string:history_widget_display_name",
+        "description": "$string:history_widget_desc",
+        "type": "form",
+        "exported": true,
+        "metadata": [
+          {
+            "name": "ohos.extension.form",
+            "resource": "$profile:form_config"
           }
         ]
       }

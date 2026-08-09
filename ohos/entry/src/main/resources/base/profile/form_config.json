@@ -1,0 +1,28 @@
+{
+  "forms": [
+    {
+      "name": "history_widget_v10",
+      "displayName": "阅读历史 v10",
+      "description": "$string:history_widget_desc",
+      "src": "./ets/widget/pages/HistoryWidgetCard.ets",
+      "uiSyntax": "arkts",
+      "window": {
+        "designWidth": 720,
+        "autoDesignWidth": true
+      },
+      "colorMode": "auto",
+      "isDynamic": true,
+      "fontScaleFollowSystem": false,
+      "isDefault": true,
+      "updateEnabled": false,
+      "scheduledUpdateTime": "10:30",
+      "updateDuration": 1,
+      "defaultDimension": "2*2",
+      "supportDimensions": [
+        "2*2",
+        "2*4",
+        "4*4"
+      ]
+    }
+  ]
+}

@@ -6,7 +6,9 @@ import 'package:pica_comic/base.dart';
 import 'package:pica_comic/foundation/comic_source/comic_source.dart';
 import 'package:pica_comic/foundation/app.dart';
 import 'package:pica_comic/foundation/log.dart';
+import 'package:pica_comic/foundation/platform_utils.dart';
 import 'package:pica_comic/network/webdav.dart';
+import 'package:pica_comic/utils/ohos_widget.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 part "image_favorites.dart";
@@ -189,6 +191,7 @@ class HistoryManager {
 
   Database? _db;
   bool _dbWarningIssued = false;
+  Timer? _ohosWidgetSyncDebounce;
 
   bool _ensureDbAvailable() {
     if (_db != null) {
@@ -307,6 +310,7 @@ class HistoryManager {
     }
 
     ImageFavoriteManager.init();
+    unawaited(syncOhosWidgetHistory());
   }
 
   void readDataFromJson(List<dynamic> json) {
@@ -319,6 +323,7 @@ class HistoryManager {
       if (findSync(element.target) == null) addHistory(element);
     }
     vacuum();
+    unawaited(syncOhosWidgetHistory());
   }
 
   void saveData() async {
@@ -361,6 +366,7 @@ class HistoryManager {
     }
     saveData();
     updateCache();
+    _scheduleOhosWidgetHistorySync();
   }
 
   ///退出阅读器时调用此函数, 修改阅读位置
@@ -385,6 +391,8 @@ class HistoryManager {
         StateController.findOrNull(tag: "me_page_history")?.update();
       });
     }
+    updateCache();
+    _scheduleOhosWidgetHistorySync();
   }
 
   void clearHistory() {
@@ -393,6 +401,7 @@ class HistoryManager {
     }
     _db!.execute("delete from history;");
     updateCache();
+    _scheduleOhosWidgetHistorySync();
   }
 
   void remove(String id) async {
@@ -404,6 +413,101 @@ class HistoryManager {
       where target == '$id';
     """);
     updateCache();
+    _scheduleOhosWidgetHistorySync();
+  }
+
+  void _scheduleOhosWidgetHistorySync() {
+    unawaited(syncOhosWidgetHistory());
+    if (!PlatformUtils.isOhos) {
+      return;
+    }
+    _ohosWidgetSyncDebounce?.cancel();
+    _ohosWidgetSyncDebounce = Timer(const Duration(milliseconds: 800), () {
+      unawaited(syncOhosWidgetHistory());
+    });
+  }
+
+  Future<void> syncOhosWidgetHistory() async {
+    if (!_ensureDbAvailable()) {
+      await OhosWidgetService.instance.updateHistorySnapshot([]);
+      return;
+    }
+    final items = getRecent().take(6).map((history) {
+      return <String, Object?>{
+        "title": history.title,
+        "subtitle": history.subtitle,
+        "source": history.type.name,
+        "progress": _formatOhosWidgetProgress(history),
+        "time": _formatOhosWidgetTime(history.time),
+        "target": history.target,
+        "type": history.type.value,
+        "ep": history.ep,
+        "page": history.page,
+      };
+    }).toList();
+    if (PlatformUtils.isOhos) {
+      try {
+        final snapshotFile =
+            File("${App.dataPath}/widget_history_snapshot.json");
+        snapshotFile.writeAsStringSync(_asciiJsonEncode(items));
+      } catch (error, stack) {
+        LogManager.addLog(
+          LogLevel.error,
+          "HistoryManager",
+          "Failed to write OHOS widget history snapshot: $error\n$stack",
+        );
+      }
+    }
+    await OhosWidgetService.instance.updateHistorySnapshot(items);
+  }
+
+  String _asciiJsonEncode(Object? value) {
+    final json = jsonEncode(value);
+    final buffer = StringBuffer();
+    for (final rune in json.runes) {
+      if (rune <= 0x7f) {
+        buffer.writeCharCode(rune);
+      } else if (rune <= 0xffff) {
+        buffer.write(r"\u");
+        buffer.write(rune.toRadixString(16).padLeft(4, "0"));
+      } else {
+        final code = rune - 0x10000;
+        final high = 0xd800 + (code >> 10);
+        final low = 0xdc00 + (code & 0x3ff);
+        buffer
+          ..write(r"\u")
+          ..write(high.toRadixString(16).padLeft(4, "0"))
+          ..write(r"\u")
+          ..write(low.toRadixString(16).padLeft(4, "0"));
+      }
+    }
+    return buffer.toString();
+  }
+
+  String _formatOhosWidgetProgress(History history) {
+    final page = history.page <= 0 ? 1 : history.page;
+    final ep = history.ep <= 0 ? 1 : history.ep;
+    if (history.maxPage != null && history.maxPage! > 0) {
+      return "第$ep话 · $page/${history.maxPage}页";
+    }
+    return "第$ep话 · 第$page页";
+  }
+
+  String _formatOhosWidgetTime(DateTime time) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final date = DateTime(time.year, time.month, time.day);
+    final days = today.difference(date).inDays;
+    if (days <= 0) {
+      return "今天";
+    }
+    if (days == 1) {
+      return "昨天";
+    }
+    if (days < 7) {
+      return "$days天前";
+    }
+    return "${time.month}/${time.day}";
   }
 
   Future<History?> find(String target) async {

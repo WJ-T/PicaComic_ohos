@@ -77,6 +77,10 @@ If `ohos/har/flutter.har` is missing (both platforms):
 bash tool/prepare_ohos_har.sh
 ```
 
+`tool/patch_ohos_flutter_har.dart` is required for the current Flutter OHOS
+embedding. It keeps `windowStageEvent` listener failures from blocking
+`windowStage.loadContent`, which is needed for service-card cold starts.
+
 ### 2. Bootstrap project on a new machine
 
 Windows CMD:
@@ -85,6 +89,7 @@ Windows CMD:
 git clone https://github.com/WJ-T/PicaComic_ohos
 cd /d D:\path\to\PicaComic_ohos
 flutter pub get
+dart run tool\patch_ohos_flutter_har.dart
 cd /d ohos
 where ohpm
 ohpm.bat install --all
@@ -97,6 +102,7 @@ macOS (zsh/bash):
 git clone https://github.com/WJ-T/PicaComic_ohos
 cd /path/to/PicaComic_ohos
 flutter pub get
+dart run tool/patch_ohos_flutter_har.dart
 cd ohos
 which ohpm
 ohpm install --all
@@ -111,6 +117,7 @@ Windows CMD:
 cd /d D:\path\to\PicaComic_ohos
 flutter clean
 flutter pub get
+dart run tool\patch_ohos_flutter_har.dart
 cd /d ohos
 ohpm.bat install --all
 cd /d ..
@@ -124,6 +131,7 @@ macOS (zsh/bash):
 cd /path/to/PicaComic_ohos
 flutter clean
 flutter pub get
+dart run tool/patch_ohos_flutter_har.dart
 cd ohos
 ohpm install --all
 cd ..
@@ -161,6 +169,7 @@ ohpm install --all
 ### 5. Tool scripts in this repo
 
 - `tool/prepare_ohos_har.sh`: copies `flutter.har` from Flutter engine cache into `ohos/har/`.
+- `tool/patch_ohos_flutter_har.dart`: patches Flutter OHOS engine HARs so a window-stage event listener error cannot prevent Flutter content from loading during service-card launches. Run it after `flutter precache --ohos` and before release builds.
 - `tool/build_quickjs_ohos.sh`: rebuilds `libflutter_qjs_plugin.so`; run when `flutter_qjs/cxx` changes.
 - `tool/sync_ohos_flutter_assets.sh`: only needed for specific DevEco/hvigor asset-sync workflows; **not required** for normal `flutter build hap`.
 
