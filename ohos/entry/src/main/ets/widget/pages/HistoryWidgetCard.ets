@@ -194,16 +194,6 @@ struct HistoryWidgetCard {
     return 2;
   }
 
-  private get dimensionLabel(): string {
-    if (this.renderMaxItems > 2 || this.renderCardMode === '2') {
-      return '4x4';
-    }
-    if (this.renderCardMode === '1') {
-      return '2x4';
-    }
-    return '2x2';
-  }
-
   private numberValue(value: string, fallback: number): number {
     const parsed = Number(value);
     return Number.isNaN(parsed) ? fallback : parsed;
@@ -342,19 +332,6 @@ struct HistoryWidgetCard {
   }
 
   @Builder
-  private SizeBadge() {
-    Text(this.dimensionLabel)
-      .textAlign(TextAlign.Center)
-      .fontSize($r('app.float.pica_widget_badge_font_size'))
-      .fontWeight(FontWeight.Medium)
-      .fontColor('#777F8B')
-      .backgroundColor('#F1F3F6')
-      .width($r('app.float.pica_widget_badge_width'))
-      .height($r('app.float.pica_widget_badge_height'))
-      .borderRadius($r('app.float.pica_widget_badge_radius'))
-  }
-
-  @Builder
   private EmptyBuilder() {
     Column() {
       Text('暂无阅读历史')
@@ -446,19 +423,14 @@ struct HistoryWidgetCard {
   build() {
     Column({ space: FlexAlign.Start }) {
       Row() {
-        Row() {
-          Text('阅读历史')
-            .fontSize($r('app.float.pica_widget_title_font_size'))
-            .fontWeight(FontWeight.Bold)
-            .height($r('app.float.pica_widget_title_height'))
-            .fontColor('#202124')
-            .padding({ right: $r('app.float.pica_widget_title_padding_right') })
-            .maxLines(MAX_LINES)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-
-          this.SizeBadge()
-        }
-        .layoutWeight(LAYOUT_WEIGHT)
+        Text('阅读历史')
+          .fontSize($r('app.float.pica_widget_title_font_size'))
+          .fontWeight(FontWeight.Bold)
+          .height($r('app.float.pica_widget_title_height'))
+          .fontColor('#202124')
+          .maxLines(MAX_LINES)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .layoutWeight(LAYOUT_WEIGHT)
       }
       .width(FULL_SIZE)
       .alignItems(VerticalAlign.Top)
