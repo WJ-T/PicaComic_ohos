@@ -386,6 +386,17 @@ struct HistoryWidgetCard {
     }
   }
 
+  private compactProgress(item: HistoryWidgetItem): string {
+    const progress = item.progress;
+    if (progress.length === 0) {
+      return `${item.ep}话 ${item.page}页`;
+    }
+    return progress
+      .replace('第', '')
+      .replace('话 · ', '话 ')
+      .replace('话·', '话');
+  }
+
   @Builder
   private CoverImageBuilder(cover: string) {
     if (cover.length > 0) {
@@ -411,6 +422,67 @@ struct HistoryWidgetCard {
     .width($r('app.float.pica_widget_cover_width'))
     .height($r('app.float.pica_widget_cover_height'))
     .margin({ right: $r('app.float.pica_widget_cover_margin_right') })
+  }
+
+  @Builder
+  private CompactHistoryItemBuilder(item: HistoryWidgetItem, index: number) {
+    Column() {
+      Stack() {
+        Column()
+          .width($r('app.float.pica_widget_compact_cover_width'))
+          .height($r('app.float.pica_widget_compact_cover_height'))
+          .borderRadius($r('app.float.pica_widget_cover_radius'))
+          .backgroundColor('#E8ECF1')
+
+        if (this.coverAt(index).length > 0) {
+          Image(this.coverAt(index))
+            .objectFit(ImageFit.Cover)
+            .width($r('app.float.pica_widget_compact_cover_width'))
+            .height($r('app.float.pica_widget_compact_cover_height'))
+            .borderRadius($r('app.float.pica_widget_cover_radius'))
+        }
+      }
+      .width($r('app.float.pica_widget_compact_cover_width'))
+      .height($r('app.float.pica_widget_compact_cover_height'))
+
+      Text(item.source)
+        .maxLines(MAX_LINES)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .fontSize($r('app.float.pica_widget_compact_meta_font_size'))
+        .fontColor('#59636E')
+        .height($r('app.float.pica_widget_compact_meta_line_height'))
+        .width(FULL_SIZE)
+        .textAlign(TextAlign.Center)
+
+      Text(this.compactProgress(item))
+        .maxLines(MAX_LINES)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .fontSize($r('app.float.pica_widget_compact_meta_font_size'))
+        .fontColor('#59636E')
+        .height($r('app.float.pica_widget_compact_meta_line_height'))
+        .width(FULL_SIZE)
+        .textAlign(TextAlign.Center)
+    }
+    .width($r('app.float.pica_widget_compact_cover_width'))
+    .height($r('app.float.pica_widget_compact_item_height'))
+    .alignItems(HorizontalAlign.Center)
+    .justifyContent(FlexAlign.Center)
+    .onClick(() => {
+      this.openReader(item);
+    })
+  }
+
+  @Builder
+  private CompactHistoryListBuilder() {
+    Row({ space: 12 }) {
+      ForEach(this.renderItems.slice(0, 2), (item: HistoryWidgetItem, index?: number) => {
+        this.CompactHistoryItemBuilder(item, index ?? 0)
+      }, (item: HistoryWidgetItem) => `${this.updatedAt}-${item.target}-${item.ep}-${item.page}`)
+    }
+    .width(FULL_SIZE)
+    .height($r('app.float.pica_widget_compact_item_height'))
+    .justifyContent(FlexAlign.Center)
+    .alignItems(VerticalAlign.Center)
   }
 
   @Builder
@@ -473,6 +545,8 @@ struct HistoryWidgetCard {
   private HistoryListBuilder() {
     if (this.renderItems.length === 0) {
       this.EmptyBuilder()
+    } else if (this.renderCardMode === '0') {
+      this.CompactHistoryListBuilder()
     } else {
       ForEach(this.renderItems, (item: HistoryWidgetItem, index?: number) => {
         this.HistoryItemBuilder(item, index ?? 0, this.renderItems.length)
@@ -494,7 +568,7 @@ struct HistoryWidgetCard {
       }
       .width(FULL_SIZE)
       .alignItems(VerticalAlign.Top)
-      .justifyContent(FlexAlign.SpaceBetween)
+    .justifyContent(FlexAlign.Center)
       .padding({ bottom: $r('app.float.pica_widget_header_padding_bottom') })
 
       Column() {

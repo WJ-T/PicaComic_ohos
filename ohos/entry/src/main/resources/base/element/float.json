@@ -63,6 +63,26 @@
     {
       "name": "pica_widget_item_height",
       "value": "44vp"
+    },
+    {
+      "name": "pica_widget_compact_cover_width",
+      "value": "52vp"
+    },
+    {
+      "name": "pica_widget_compact_cover_height",
+      "value": "58vp"
+    },
+    {
+      "name": "pica_widget_compact_item_height",
+      "value": "86vp"
+    },
+    {
+      "name": "pica_widget_compact_meta_font_size",
+      "value": "9fp"
+    },
+    {
+      "name": "pica_widget_compact_meta_line_height",
+      "value": "12vp"
     }
   ]
 }
