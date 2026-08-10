@@ -70,19 +70,27 @@
     },
     {
       "name": "pica_widget_compact_cover_height",
-      "value": "58vp"
+      "value": "74vp"
     },
     {
       "name": "pica_widget_compact_item_height",
-      "value": "86vp"
+      "value": "100vp"
     },
     {
       "name": "pica_widget_compact_meta_font_size",
       "value": "9fp"
     },
     {
+      "name": "pica_widget_compact_source_font_size",
+      "value": "10fp"
+    },
+    {
+      "name": "pica_widget_compact_progress_font_size",
+      "value": "12fp"
+    },
+    {
       "name": "pica_widget_compact_meta_line_height",
-      "value": "12vp"
+      "value": "18vp"
     }
   ]
 }

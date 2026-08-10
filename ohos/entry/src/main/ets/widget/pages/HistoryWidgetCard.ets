@@ -358,7 +358,7 @@ struct HistoryWidgetCard {
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .fontSize($r('app.float.pica_widget_meta_font_size'))
         .fontWeight(FontWeight.Regular)
-        .fontColor('#8B949E')
+        .fontColor('#59636E')
         .height($r('app.float.pica_widget_item_text_height'))
         .margin({ top: $r('app.float.pica_widget_item_text_margin') })
     }
@@ -389,12 +389,13 @@ struct HistoryWidgetCard {
   private compactProgress(item: HistoryWidgetItem): string {
     const progress = item.progress;
     if (progress.length === 0) {
-      return `${item.ep}话 ${item.page}页`;
+      return `${item.page}页`;
     }
-    return progress
-      .replace('第', '')
-      .replace('话 · ', '话 ')
-      .replace('话·', '话');
+    const parts = progress.split('·');
+    if (parts.length > 1) {
+      return parts[parts.length - 1].trim();
+    }
+    return progress;
   }
 
   @Builder
@@ -445,23 +446,15 @@ struct HistoryWidgetCard {
       .width($r('app.float.pica_widget_compact_cover_width'))
       .height($r('app.float.pica_widget_compact_cover_height'))
 
-      Text(item.source)
-        .maxLines(MAX_LINES)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
-        .fontSize($r('app.float.pica_widget_compact_meta_font_size'))
-        .fontColor('#59636E')
-        .height($r('app.float.pica_widget_compact_meta_line_height'))
-        .width(FULL_SIZE)
-        .textAlign(TextAlign.Center)
-
       Text(this.compactProgress(item))
         .maxLines(MAX_LINES)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
-        .fontSize($r('app.float.pica_widget_compact_meta_font_size'))
+        .fontSize($r('app.float.pica_widget_compact_progress_font_size'))
         .fontColor('#59636E')
         .height($r('app.float.pica_widget_compact_meta_line_height'))
         .width(FULL_SIZE)
         .textAlign(TextAlign.Center)
+        .margin({ top: 5 })
     }
     .width($r('app.float.pica_widget_compact_cover_width'))
     .height($r('app.float.pica_widget_compact_item_height'))
