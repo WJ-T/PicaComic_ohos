@@ -3,6 +3,8 @@ import formBindingData from '@ohos.app.form.formBindingData';
 import formInfo from '@ohos.app.form.formInfo';
 import type Want from '@ohos.app.ability.Want';
 import type common from '@ohos.app.ability.common';
+import type { Configuration } from '@kit.AbilityKit';
+import ConfigurationConstant from '@ohos.app.ability.ConfigurationConstant';
 import { BusinessError } from '@ohos.base';
 import hilog from '@ohos.hilog';
 import {
@@ -75,6 +77,18 @@ function dimensionFromCardMode(cardMode: string): number {
 }
 
 export default class EntryFormAbility extends FormExtensionAbility {
+  onConfigurationUpdate(newConfig: Configuration): void {
+    const context = this.context as common.Context;
+    hilog.error(DOMAIN, TAG, `onConfigurationUpdate colorMode=${newConfig.colorMode}`);
+    updateAllHistoryForms(
+      context,
+      undefined,
+      newConfig.colorMode ?? ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET,
+    ).catch((error: BusinessError) => {
+      hilog.error(DOMAIN, TAG, `update forms for configuration failed: ${error.message}`);
+    });
+  }
+
   onAddForm(want: Want): formBindingData.FormBindingData {
     const formId = readStringParameter(want, formInfo.FormParam.IDENTITY_KEY);
     const dimension = readNumberParameter(want, formInfo.FormParam.DIMENSION_KEY);

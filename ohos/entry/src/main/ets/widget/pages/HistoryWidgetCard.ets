@@ -8,6 +8,11 @@ class HistoryWidgetStorageDefaults {
   historyCardMode: string = '0';
   historyMaxItems: string = '2';
   historyCount: string = '0';
+  cardBackground: string = '';
+  cardPrimaryText: string = '';
+  cardSecondaryText: string = '';
+  cardTertiaryText: string = '';
+  cardDivider: string = '';
   updatedAt: string = '0';
   title0: string = '';
   subtitle0: string = '';
@@ -118,6 +123,11 @@ struct HistoryWidgetCard {
   @LocalStorageProp('historyCardMode') @Watch('reloadRenderItems') historyCardMode: string = '0';
   @LocalStorageProp('historyMaxItems') @Watch('reloadRenderItems') historyMaxItems: string = '2';
   @LocalStorageProp('historyCount') @Watch('reloadRenderItems') historyCount: string = '0';
+  @LocalStorageProp('cardBackground') cardBackground: string = '';
+  @LocalStorageProp('cardPrimaryText') cardPrimaryText: string = '';
+  @LocalStorageProp('cardSecondaryText') cardSecondaryText: string = '';
+  @LocalStorageProp('cardTertiaryText') cardTertiaryText: string = '';
+  @LocalStorageProp('cardDivider') cardDivider: string = '';
   @LocalStorageProp('updatedAt') @Watch('reloadRenderItems') updatedAt: string = '0';
   @LocalStorageProp('title0') @Watch('reloadRenderItems') title0: string = '';
   @LocalStorageProp('subtitle0') subtitle0: string = '';
@@ -351,14 +361,14 @@ struct HistoryWidgetCard {
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .fontSize($r('app.float.pica_widget_item_font_size'))
         .fontWeight(FontWeight.Medium)
-        .fontColor('#59636E')
+        .fontColor($r('app.color.pica_widget_secondary_text'))
         .height($r('app.float.pica_widget_item_text_height'))
       Text('打开漫画后会显示在这里')
         .maxLines(MAX_LINES)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .fontSize($r('app.float.pica_widget_meta_font_size'))
         .fontWeight(FontWeight.Regular)
-        .fontColor('#59636E')
+        .fontColor($r('app.color.pica_widget_secondary_text'))
         .height($r('app.float.pica_widget_item_text_height'))
         .margin({ top: $r('app.float.pica_widget_item_text_margin') })
     }
@@ -416,7 +426,7 @@ struct HistoryWidgetCard {
         .width($r('app.float.pica_widget_cover_width'))
         .height($r('app.float.pica_widget_cover_height'))
         .borderRadius($r('app.float.pica_widget_cover_radius'))
-        .backgroundColor('#E8ECF1')
+        .backgroundColor($r('app.color.pica_widget_cover_placeholder'))
 
       this.CoverImageBuilder(this.coverAt(index))
     }
@@ -433,7 +443,7 @@ struct HistoryWidgetCard {
           .width($r('app.float.pica_widget_compact_cover_width'))
           .height($r('app.float.pica_widget_compact_cover_height'))
           .borderRadius($r('app.float.pica_widget_cover_radius'))
-          .backgroundColor('#E8ECF1')
+          .backgroundColor($r('app.color.pica_widget_cover_placeholder'))
 
         if (this.coverAt(index).length > 0) {
           Image(this.coverAt(index))
@@ -450,7 +460,7 @@ struct HistoryWidgetCard {
         .maxLines(MAX_LINES)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .fontSize($r('app.float.pica_widget_compact_progress_font_size'))
-        .fontColor('#59636E')
+        .fontColor($r('app.color.pica_widget_secondary_text'))
         .height($r('app.float.pica_widget_compact_meta_line_height'))
         .width(FULL_SIZE)
         .textAlign(TextAlign.Center)
@@ -467,7 +477,7 @@ struct HistoryWidgetCard {
 
   @Builder
   private CompactHistoryListBuilder() {
-    Row({ space: 12 }) {
+    Row({ space: 8 }) {
       ForEach(this.renderItems.slice(0, 2), (item: HistoryWidgetItem, index?: number) => {
         this.CompactHistoryItemBuilder(item, index ?? 0)
       }, (item: HistoryWidgetItem) => `${this.updatedAt}-${item.target}-${item.ep}-${item.page}`)
@@ -490,7 +500,7 @@ struct HistoryWidgetCard {
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .fontSize($r('app.float.pica_widget_item_font_size'))
             .fontWeight(FontWeight.Medium)
-            .fontColor('#202124')
+            .fontColor($r('app.color.pica_widget_primary_text'))
             .height($r('app.float.pica_widget_item_text_height'))
             .layoutWeight(LAYOUT_WEIGHT)
 
@@ -499,7 +509,7 @@ struct HistoryWidgetCard {
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .fontSize($r('app.float.pica_widget_meta_font_size'))
             .fontWeight(FontWeight.Regular)
-            .fontColor('#8B949E')
+            .fontColor($r('app.color.pica_widget_tertiary_text'))
             .height($r('app.float.pica_widget_item_text_height'))
             .margin({ left: $r('app.float.pica_widget_time_margin') })
         }
@@ -511,7 +521,7 @@ struct HistoryWidgetCard {
           .fontSize($r('app.float.pica_widget_meta_font_size'))
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .fontWeight(FontWeight.Regular)
-          .fontColor('#59636E')
+          .fontColor($r('app.color.pica_widget_secondary_text'))
           .height($r('app.float.pica_widget_item_text_height'))
           .margin({ top: $r('app.float.pica_widget_item_text_margin') })
 
@@ -519,7 +529,7 @@ struct HistoryWidgetCard {
           Divider()
             .strokeWidth(STROKE_WIDTH)
             .lineCap(LineCapStyle.Square)
-            .color('#E6EAEE')
+            .color($r('app.color.pica_widget_divider'))
             .margin({ top: $r('app.float.pica_widget_divider_margin') })
         }
       }
@@ -554,7 +564,7 @@ struct HistoryWidgetCard {
           .fontSize($r('app.float.pica_widget_title_font_size'))
           .fontWeight(FontWeight.Bold)
           .height($r('app.float.pica_widget_title_height'))
-          .fontColor('#202124')
+          .fontColor($r('app.color.pica_widget_primary_text'))
           .maxLines(MAX_LINES)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .layoutWeight(LAYOUT_WEIGHT)
@@ -573,7 +583,7 @@ struct HistoryWidgetCard {
     }
     .width(FULL_SIZE)
     .height(FULL_SIZE)
-    .backgroundColor('#F8FAFC')
+    .backgroundColor($r('app.color.pica_widget_card_background'))
     .padding({
       top: $r('app.float.pica_widget_side_padding'),
       bottom: $r('app.float.pica_widget_side_padding'),

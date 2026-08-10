@@ -2,31 +2,31 @@
   "color": [
     {
       "name": "start_window_background",
-      "value": "#FFFFFF"
+      "value": "#000000"
     },
     {
       "name": "pica_widget_card_background",
-      "value": "#FFFBFE"
+      "value": "#1A1B1F"
     },
     {
       "name": "pica_widget_cover_placeholder",
-      "value": "#E8ECF1"
+      "value": "#252A30"
     },
     {
       "name": "pica_widget_primary_text",
-      "value": "#202124"
+      "value": "#FFFFFF"
     },
     {
       "name": "pica_widget_secondary_text",
-      "value": "#59636E"
+      "value": "#C7CDD4"
     },
     {
       "name": "pica_widget_tertiary_text",
-      "value": "#8B949E"
+      "value": "#9AA3AD"
     },
     {
       "name": "pica_widget_divider",
-      "value": "#E6EAEE"
+      "value": "#30363D"
     }
   ]
 }

@@ -4,6 +4,7 @@ import formBindingData from '@ohos.app.form.formBindingData';
 import formProvider from '@ohos.app.form.formProvider';
 import formInfo from '@ohos.app.form.formInfo';
 import type common from '@ohos.app.ability.common';
+import resourceManager from '@ohos.resourceManager';
 import { BusinessError } from '@ohos.base';
 import fs from '@ohos.file.fs';
 import hilog from '@ohos.hilog';
@@ -13,6 +14,7 @@ const TAG: string = 'WidgetBridge';
 const DOMAIN: number = 0xD005108;
 const PREFS_NAME: string = 'pica_comic_widget';
 const HISTORY_KEY: string = 'history_snapshot';
+const THEME_COLORS_KEY: string = 'theme_colors';
 const FORM_RECORDS_KEY: string = 'form_records';
 const PENDING_ACTION_KEY: string = 'pending_widget_action';
 const EMPTY_HISTORY: string = '[]';
@@ -176,6 +178,34 @@ interface HistoryDbCandidate {
   config: relationalStore.StoreConfig;
 }
 
+export interface WidgetThemePalette {
+  background: string;
+  primary: string;
+  secondary: string;
+  tertiary: string;
+  divider: string;
+}
+
+export interface WidgetThemeColors {
+  light: WidgetThemePalette;
+  dark: WidgetThemePalette;
+  themeMode: string;
+}
+
+const EMPTY_WIDGET_THEME_PALETTE: WidgetThemePalette = {
+  background: '',
+  primary: '',
+  secondary: '',
+  tertiary: '',
+  divider: '',
+};
+
+const DEFAULT_WIDGET_THEME: WidgetThemeColors = {
+  light: EMPTY_WIDGET_THEME_PALETTE,
+  dark: EMPTY_WIDGET_THEME_PALETTE,
+  themeMode: '0',
+};
+
 async function getPrefs(context: common.Context): Promise<preferences.Preferences> {
   return preferences.getPreferences(context, { name: PREFS_NAME });
 }
@@ -206,6 +236,66 @@ function cardModeForDimension(dimension: number): number {
     return 1;
   }
   return 0;
+}
+
+async function readStoredThemeColors(context: common.Context): Promise<WidgetThemeColors> {
+  try {
+    const prefs = await getPrefs(context);
+    const raw = await prefs.get(THEME_COLORS_KEY, '');
+    if (typeof raw !== 'string' || raw.length === 0) {
+      return DEFAULT_WIDGET_THEME;
+    }
+    const parsed = JSON.parse(raw) as Record<string, Object>;
+    const legacy: WidgetThemePalette = {
+      background: typeof parsed.background === 'string' ? parsed.background : '',
+      primary: typeof parsed.primary === 'string' ? parsed.primary : '',
+      secondary: typeof parsed.secondary === 'string' ? parsed.secondary : '',
+      tertiary: typeof parsed.tertiary === 'string' ? parsed.tertiary : '',
+      divider: typeof parsed.divider === 'string' ? parsed.divider : '',
+    };
+    const readPalette = (key: string): WidgetThemePalette => {
+      const value = parsed[key];
+      if (value == null || typeof value !== 'object') {
+        return legacy;
+      }
+      const palette = value as Record<string, Object>;
+      return {
+        background: typeof palette.background === 'string' ? palette.background : '',
+        primary: typeof palette.primary === 'string' ? palette.primary : '',
+        secondary: typeof palette.secondary === 'string' ? palette.secondary : '',
+        tertiary: typeof palette.tertiary === 'string' ? palette.tertiary : '',
+        divider: typeof palette.divider === 'string' ? palette.divider : '',
+      };
+    };
+    return {
+      light: readPalette('light'),
+      dark: readPalette('dark'),
+      themeMode: typeof parsed.themeMode === 'string' ? parsed.themeMode : '0',
+    };
+  } catch (_) {
+    return DEFAULT_WIDGET_THEME;
+  }
+}
+
+function currentSystemColorMode(context: common.Context): number {
+  return context.resourceManager.getConfigurationSync().colorMode;
+}
+
+function selectWidgetTheme(
+  context: common.Context,
+  colors: WidgetThemeColors,
+  systemColorMode?: number,
+): WidgetThemePalette {
+  if (colors.themeMode === '1') {
+    return colors.light;
+  }
+  if (colors.themeMode === '2') {
+    return colors.dark;
+  }
+  const colorMode = systemColorMode ?? currentSystemColorMode(context);
+  return colorMode === resourceManager.ColorMode.DARK
+    ? colors.dark
+    : colors.light;
 }
 
 function limitHistorySnapshot(snapshot: string, maxItems: number): string {
@@ -401,6 +491,8 @@ export function createHistoryWidgetBinding(
   context: common.Context,
   historyItems: string,
   dimension: number,
+  themeColors: WidgetThemeColors = DEFAULT_WIDGET_THEME,
+  systemColorMode?: number,
 ): formBindingData.FormBindingData {
   const maxItems = maxItemsForDimension(dimension);
   const items = parseHistorySnapshotItems(historyItems, maxItems);
@@ -411,6 +503,14 @@ export function createHistoryWidgetBinding(
   binding.historyCardMode = cardModeForDimension(dimension).toString();
   binding.historyMaxItems = maxItems.toString();
   binding.historyCount = items.length.toString();
+  // Theme colors are supplied by Flutter so the card follows the app's
+  // selected theme instead of only following the device color mode.
+  const activeTheme = selectWidgetTheme(context, themeColors, systemColorMode);
+  binding.cardBackground = activeTheme.background;
+  binding.cardPrimaryText = activeTheme.primary;
+  binding.cardSecondaryText = activeTheme.secondary;
+  binding.cardTertiaryText = activeTheme.tertiary;
+  binding.cardDivider = activeTheme.divider;
   binding.updatedAt = Date.now().toString();
   binding.title0 = items[0]?.title ?? '';
   binding.subtitle0 = items[0]?.subtitle ?? '';
@@ -692,6 +792,16 @@ export async function saveHistorySnapshot(
   await updateAllHistoryForms(context, normalizedSnapshot);
 }
 
+export async function saveWidgetTheme(
+  context: common.Context,
+  colors: WidgetThemeColors,
+): Promise<void> {
+  const prefs = await getPrefs(context);
+  await prefs.put(THEME_COLORS_KEY, JSON.stringify(colors));
+  await prefs.flush();
+  await updateAllHistoryForms(context);
+}
+
 export async function savePendingWidgetAction(
   context: common.Context,
   action: string,
@@ -759,11 +869,13 @@ export async function updateHistoryForm(
   formId: string,
   historyItems: string,
   dimension: number,
+  systemColorMode?: number,
 ): Promise<void> {
   const count = snapshotItemCount(historyItems);
+  const themeColors = await readStoredThemeColors(context);
   await formProvider.updateForm(
     formId,
-    createHistoryWidgetBinding(context, historyItems, dimension),
+    createHistoryWidgetBinding(context, historyItems, dimension, themeColors, systemColorMode),
   );
   hilog.error(DOMAIN, TAG, `updateForm success formId=${formId} dimension=${dimension} count=${count}`);
 }
@@ -771,6 +883,7 @@ export async function updateHistoryForm(
 export async function updateAllHistoryForms(
   context: common.Context,
   historyItems?: string,
+  systemColorMode?: number,
 ): Promise<void> {
   const snapshot = historyItems ?? await readHistorySnapshot(context);
   const storedRecords = await readFormRecords(context);
@@ -779,7 +892,7 @@ export async function updateAllHistoryForms(
   let changed = false;
   for (const record of records) {
     try {
-      await updateHistoryForm(context, record.formId, snapshot, record.dimension);
+      await updateHistoryForm(context, record.formId, snapshot, record.dimension, systemColorMode);
       aliveRecords.push(record);
     } catch (error) {
       const message = (error as BusinessError)?.message ?? JSON.stringify(error);

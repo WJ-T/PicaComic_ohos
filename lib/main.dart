@@ -405,6 +405,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     }
     return DynamicColorBuilder(builder: (light, dark) {
       var (lightColor, darkColor) = _generateColorSchemes(light, dark);
+      if (PlatformUtils.isOhos) {
+        unawaited(OhosWidgetService.instance.updateThemeColors(
+          lightScheme: lightColor,
+          darkScheme: darkColor,
+          themeMode: appdata.appSettings.darkMode,
+        ));
+      }
       if (appdata.settings.length > 91 && appdata.settings[91] == "1") {
         Widget app = fluent.FluentApp(
           title: 'Pica Comic',

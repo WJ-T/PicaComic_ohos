@@ -14,6 +14,8 @@ import { BusinessError } from '@ohos.base';
 import hilog from '@ohos.hilog';
 import {
   saveHistorySnapshot,
+  saveWidgetTheme,
+  WidgetThemeColors,
   savePendingWidgetAction,
   takePendingWidgetAction,
 } from './WidgetBridge';
@@ -44,6 +46,11 @@ function readStringField(record: Record<string, Object>, key: string): string {
 
 function isWidgetAction(action: string): boolean {
   return action === ACTION_OPEN_HISTORY || action === ACTION_OPEN_READER;
+}
+
+function readThemeColorArgument(call: MethodCall, key: string): string {
+  const value: Object = call.argument(key) as Object;
+  return typeof value === 'string' ? value : '';
 }
 
 class WidgetActionStore {
@@ -215,6 +222,9 @@ export default class OhosWidgetPlugin implements FlutterPlugin, MethodCallHandle
       case 'updateHistorySnapshot':
         await this.handleUpdateHistorySnapshot(call, result);
         break;
+      case 'updateWidgetTheme':
+        await this.handleUpdateWidgetTheme(call, result);
+        break;
       default:
         result.notImplemented();
         break;
@@ -266,6 +276,42 @@ export default class OhosWidgetPlugin implements FlutterPlugin, MethodCallHandle
       return Array.isArray(parsed) ? parsed.length : 0;
     } catch (_) {
       return -1;
+    }
+  }
+
+  private async handleUpdateWidgetTheme(
+    call: MethodCall,
+    result: MethodResult,
+  ): Promise<void> {
+    const colors: WidgetThemeColors = {
+      light: {
+        background: readThemeColorArgument(call, 'lightBackground'),
+        primary: readThemeColorArgument(call, 'lightPrimary'),
+        secondary: readThemeColorArgument(call, 'lightSecondary'),
+        tertiary: readThemeColorArgument(call, 'lightTertiary'),
+        divider: readThemeColorArgument(call, 'lightDivider'),
+      },
+      dark: {
+        background: readThemeColorArgument(call, 'darkBackground'),
+        primary: readThemeColorArgument(call, 'darkPrimary'),
+        secondary: readThemeColorArgument(call, 'darkSecondary'),
+        tertiary: readThemeColorArgument(call, 'darkTertiary'),
+        divider: readThemeColorArgument(call, 'darkDivider'),
+      },
+      themeMode: readThemeColorArgument(call, 'themeMode'),
+    };
+    if (colors.light.background.length === 0 || colors.dark.background.length === 0) {
+      result.error('invalid_args', 'Widget theme colors are required', null);
+      return;
+    }
+    try {
+      const context = this.abilityContext ?? (getContext() as common.UIAbilityContext);
+      await saveWidgetTheme(context, colors);
+      result.success(true);
+    } catch (error) {
+      const message = (error as BusinessError)?.message ?? JSON.stringify(error);
+      hilog.error(DOMAIN, TAG, `updateWidgetTheme failed: ${message}`);
+      result.error('widget_error', message, null);
     }
   }
 }

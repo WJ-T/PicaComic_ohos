@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pica_comic/foundation/log.dart';
 import 'package:pica_comic/foundation/platform_utils.dart';
@@ -17,6 +18,7 @@ class OhosWidgetService {
   String? _pendingAction;
   List<Map<String, Object?>>? _pendingHistorySnapshot;
   Future<void> Function(String action)? _handler;
+  String? _lastThemePayload;
 
   bool get launchedFromWidget => PlatformUtils.isOhos && _launchedFromWidget;
 
@@ -87,6 +89,59 @@ class OhosWidgetService {
       return;
     }
     await _sendHistorySnapshot(items);
+  }
+
+  Future<void> updateThemeColors({
+    required ColorScheme lightScheme,
+    required ColorScheme darkScheme,
+    required int themeMode,
+  }) async {
+    if (!PlatformUtils.isOhos || !_initialized) {
+      return;
+    }
+    final colors = <String, Object>{
+      ..._palette('light', lightScheme),
+      ..._palette('dark', darkScheme),
+      'themeMode': themeMode.toString(),
+    };
+    final payload = jsonEncode(colors);
+    if (payload == _lastThemePayload) {
+      return;
+    }
+    _lastThemePayload = payload;
+    try {
+      await _channel.invokeMethod<void>('updateWidgetTheme', colors);
+    } catch (error, stack) {
+      LogManager.addLog(
+        LogLevel.error,
+        'OhosWidget',
+        'Failed to update widget theme: $error\n$stack',
+      );
+    }
+  }
+
+  Map<String, String> _palette(String prefix, ColorScheme scheme) {
+    final onSurface = scheme.onSurface;
+    return <String, String>{
+      '${prefix}Background': _toHex(scheme.surface),
+      '${prefix}Primary': _toHex(onSurface),
+      '${prefix}Secondary': _toHex(Color.alphaBlend(
+        onSurface.withValues(alpha: 0.72),
+        scheme.surface,
+      )),
+      '${prefix}Tertiary': _toHex(Color.alphaBlend(
+        onSurface.withValues(alpha: 0.56),
+        scheme.surface,
+      )),
+      '${prefix}Divider': _toHex(scheme.surfaceContainerHighest),
+    };
+  }
+
+  String _toHex(Color color) {
+    return '#${color.red.toRadixString(16).padLeft(2, '0')}'
+            '${color.green.toRadixString(16).padLeft(2, '0')}'
+            '${color.blue.toRadixString(16).padLeft(2, '0')}'
+        .toUpperCase();
   }
 
   Future<void> _flushPendingHistorySnapshot() async {
