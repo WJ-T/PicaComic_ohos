@@ -90,6 +90,26 @@ class HistoryWidgetBinding {
   type5: string;
   ep5: string;
   page5: string;
+  title6: string;
+  subtitle6: string;
+  cover6: string;
+  source6: string;
+  progress6: string;
+  time6: string;
+  target6: string;
+  type6: string;
+  ep6: string;
+  page6: string;
+  title7: string;
+  subtitle7: string;
+  cover7: string;
+  source7: string;
+  progress7: string;
+  time7: string;
+  target7: string;
+  type7: string;
+  ep7: string;
+  page7: string;
 
   constructor() {
     this.title0 = '';
@@ -152,12 +172,33 @@ class HistoryWidgetBinding {
     this.type5 = '0';
     this.ep5 = '1';
     this.page5 = '1';
+    this.title6 = '';
+    this.subtitle6 = '';
+    this.cover6 = '';
+    this.source6 = '';
+    this.progress6 = '';
+    this.time6 = '';
+    this.target6 = '';
+    this.type6 = '0';
+    this.ep6 = '1';
+    this.page6 = '1';
+    this.title7 = '';
+    this.subtitle7 = '';
+    this.cover7 = '';
+    this.source7 = '';
+    this.progress7 = '';
+    this.time7 = '';
+    this.target7 = '';
+    this.type7 = '0';
+    this.ep7 = '1';
+    this.page7 = '1';
   }
 }
 
 export interface WidgetFormRecord {
   formId: string;
   dimension: number;
+  height: number;
 }
 
 interface NativeHistorySnapshotItem {
@@ -224,8 +265,20 @@ function normalizeHistorySnapshot(snapshot: string): string {
   return EMPTY_HISTORY;
 }
 
-function maxItemsForDimension(dimension: number): number {
-  return dimension === formInfo.FormDimension.Dimension_4_4 || dimension === 4 ? 6 : 2;
+function maxItemsForDimension(dimension: number, height: number = 0): number {
+  if (height <= 0) {
+    // Newly created cards may not report their size until the first update.
+    return dimension === formInfo.FormDimension.Dimension_4_4 || dimension === 4 ? 6 : 2;
+  }
+
+  // FormParam.HEIGHT_KEY is reported in px while the card layout uses vp.
+  // Keep the conversion tied to the actual layout constants: the current
+  // form scale is 2.6 px per vp, 52vp is occupied by padding and the header,
+  // and each list row needs 44vp. This lets larger cards naturally expose
+  // more rows instead of assigning a fixed count to a form dimension.
+  const formHeightInVp = height / 2.6;
+  const availableListHeight = formHeightInVp - 52;
+  return Math.max(2, Math.min(8, Math.floor(availableListHeight / 44)));
 }
 
 function cardModeForDimension(dimension: number): number {
@@ -461,7 +514,7 @@ function formatHistoryTime(timestamp: number): string {
 }
 
 function serializeRecords(records: Array<WidgetFormRecord>): Array<string> {
-  return records.map((record: WidgetFormRecord) => `${record.formId}:${record.dimension}`);
+  return records.map((record: WidgetFormRecord) => `${record.formId}:${record.dimension}:${record.height}`);
 }
 
 function deserializeRecords(rawValue: preferences.ValueType): Array<WidgetFormRecord> {
@@ -472,7 +525,7 @@ function deserializeRecords(rawValue: preferences.ValueType): Array<WidgetFormRe
   const records: Array<WidgetFormRecord> = [];
   for (const rawRecord of rawRecords) {
     const parts = rawRecord.split(':');
-    if (parts.length !== 2) {
+    if (parts.length !== 2 && parts.length !== 3) {
       continue;
     }
     const dimension = Number(parts[1]);
@@ -482,6 +535,7 @@ function deserializeRecords(rawValue: preferences.ValueType): Array<WidgetFormRe
     records.push({
       formId: parts[0],
       dimension,
+      height: parts.length === 3 && !Number.isNaN(Number(parts[2])) ? Number(parts[2]) : 0,
     });
   }
   return records;
@@ -493,8 +547,9 @@ export function createHistoryWidgetBinding(
   dimension: number,
   themeColors: WidgetThemeColors = DEFAULT_WIDGET_THEME,
   systemColorMode?: number,
+  formHeight: number = 0,
 ): formBindingData.FormBindingData {
-  const maxItems = maxItemsForDimension(dimension);
+  const maxItems = maxItemsForDimension(dimension, formHeight);
   const items = parseHistorySnapshotItems(historyItems, maxItems);
   const revision = Date.now().toString();
   const images: Record<string, number> = {};
@@ -572,6 +627,26 @@ export function createHistoryWidgetBinding(
   binding.type5 = (items[5]?.type ?? 0).toString();
   binding.ep5 = (items[5]?.ep ?? 1).toString();
   binding.page5 = (items[5]?.page ?? 1).toString();
+  binding.title6 = items[6]?.title ?? '';
+  binding.subtitle6 = items[6]?.subtitle ?? '';
+  binding.cover6 = historyCoverBindingValue(context, items[6], 6, revision, images);
+  binding.source6 = items[6]?.source ?? '';
+  binding.progress6 = items[6]?.progress ?? '';
+  binding.time6 = items[6]?.time ?? '';
+  binding.target6 = items[6]?.target ?? '';
+  binding.type6 = (items[6]?.type ?? 0).toString();
+  binding.ep6 = (items[6]?.ep ?? 1).toString();
+  binding.page6 = (items[6]?.page ?? 1).toString();
+  binding.title7 = items[7]?.title ?? '';
+  binding.subtitle7 = items[7]?.subtitle ?? '';
+  binding.cover7 = historyCoverBindingValue(context, items[7], 7, revision, images);
+  binding.source7 = items[7]?.source ?? '';
+  binding.progress7 = items[7]?.progress ?? '';
+  binding.time7 = items[7]?.time ?? '';
+  binding.target7 = items[7]?.target ?? '';
+  binding.type7 = (items[7]?.type ?? 0).toString();
+  binding.ep7 = (items[7]?.ep ?? 1).toString();
+  binding.page7 = (items[7]?.page ?? 1).toString();
   hilog.error(DOMAIN, TAG,
     `binding dimension=${dimension} max=${maxItems} count=${items.length} title0=${items[0]?.title.length ?? 0} cover0=${items[0]?.cover.length ?? 0} title2=${items[2]?.title.length ?? 0} cover2=${items[2]?.cover.length ?? 0} title4=${items[4]?.title.length ?? 0} cover4=${items[4]?.cover.length ?? 0} title5=${items[5]?.title.length ?? 0} cover5=${items[5]?.cover.length ?? 0}`);
   binding.formImages = images;
@@ -839,6 +914,7 @@ export async function saveFormRecord(
   context: common.Context,
   formId: string,
   dimension: number,
+  height: number = 0,
 ): Promise<void> {
   if (formId.length === 0) {
     return;
@@ -847,7 +923,7 @@ export async function saveFormRecord(
   const rawRecords = await prefs.get(FORM_RECORDS_KEY, [] as Array<string>);
   const records = deserializeRecords(rawRecords)
     .filter((record: WidgetFormRecord) => record.formId !== formId);
-  records.push({ formId, dimension });
+  records.push({ formId, dimension, height });
   await prefs.put(FORM_RECORDS_KEY, serializeRecords(records));
   await prefs.flush();
 }
@@ -870,14 +946,16 @@ export async function updateHistoryForm(
   historyItems: string,
   dimension: number,
   systemColorMode?: number,
+  formHeight: number = 0,
 ): Promise<void> {
   const count = snapshotItemCount(historyItems);
   const themeColors = await readStoredThemeColors(context);
   await formProvider.updateForm(
     formId,
-    createHistoryWidgetBinding(context, historyItems, dimension, themeColors, systemColorMode),
+    createHistoryWidgetBinding(context, historyItems, dimension, themeColors, systemColorMode, formHeight),
   );
-  hilog.error(DOMAIN, TAG, `updateForm success formId=${formId} dimension=${dimension} count=${count}`);
+  hilog.error(DOMAIN, TAG,
+    `updateForm success formId=${formId} dimension=${dimension} height=${formHeight} count=${count}`);
 }
 
 export async function updateAllHistoryForms(
@@ -892,7 +970,7 @@ export async function updateAllHistoryForms(
   let changed = false;
   for (const record of records) {
     try {
-      await updateHistoryForm(context, record.formId, snapshot, record.dimension, systemColorMode);
+      await updateHistoryForm(context, record.formId, snapshot, record.dimension, systemColorMode, record.height);
       aliveRecords.push(record);
     } catch (error) {
       const message = (error as BusinessError)?.message ?? JSON.stringify(error);
@@ -933,6 +1011,7 @@ async function mergeRunningFormRecords(
       merged.set(runningForm.formId, {
         formId: runningForm.formId,
         dimension: runningForm.dimension,
+        height: merged.get(runningForm.formId)?.height ?? 0,
       });
     }
     if (runningForms.length > 0) {

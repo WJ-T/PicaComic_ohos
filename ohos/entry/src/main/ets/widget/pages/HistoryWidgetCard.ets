@@ -74,6 +74,26 @@ class HistoryWidgetStorageDefaults {
   type5: string = '0';
   ep5: string = '1';
   page5: string = '1';
+  title6: string = '';
+  subtitle6: string = '';
+  cover6: string = '';
+  source6: string = '';
+  progress6: string = '';
+  time6: string = '';
+  target6: string = '';
+  type6: string = '0';
+  ep6: string = '1';
+  page6: string = '1';
+  title7: string = '';
+  subtitle7: string = '';
+  cover7: string = '';
+  source7: string = '';
+  progress7: string = '';
+  time7: string = '';
+  target7: string = '';
+  type7: string = '0';
+  ep7: string = '1';
+  page7: string = '1';
 }
 
 const historyWidgetStorage = new LocalStorage(new HistoryWidgetStorageDefaults());
@@ -189,6 +209,26 @@ struct HistoryWidgetCard {
   @LocalStorageProp('type5') type5: string = '0';
   @LocalStorageProp('ep5') ep5: string = '1';
   @LocalStorageProp('page5') page5: string = '1';
+  @LocalStorageProp('title6') @Watch('reloadRenderItems') title6: string = '';
+  @LocalStorageProp('subtitle6') subtitle6: string = '';
+  @LocalStorageProp('cover6') @Watch('reloadRenderItems') cover6: string = '';
+  @LocalStorageProp('source6') source6: string = '';
+  @LocalStorageProp('progress6') progress6: string = '';
+  @LocalStorageProp('time6') time6: string = '';
+  @LocalStorageProp('target6') target6: string = '';
+  @LocalStorageProp('type6') type6: string = '0';
+  @LocalStorageProp('ep6') ep6: string = '1';
+  @LocalStorageProp('page6') page6: string = '1';
+  @LocalStorageProp('title7') @Watch('reloadRenderItems') title7: string = '';
+  @LocalStorageProp('subtitle7') subtitle7: string = '';
+  @LocalStorageProp('cover7') @Watch('reloadRenderItems') cover7: string = '';
+  @LocalStorageProp('source7') source7: string = '';
+  @LocalStorageProp('progress7') progress7: string = '';
+  @LocalStorageProp('time7') time7: string = '';
+  @LocalStorageProp('target7') target7: string = '';
+  @LocalStorageProp('type7') type7: string = '0';
+  @LocalStorageProp('ep7') ep7: string = '1';
+  @LocalStorageProp('page7') page7: string = '1';
 
   @State renderItems: Array<HistoryWidgetItem> = [];
   @State renderMaxItems: number = 2;
@@ -210,10 +250,10 @@ struct HistoryWidgetCard {
 
   private resolveMaxItems(): number {
     const parsed = this.numberValue(this.historyMaxItems, this.historyCardMode === '2' ? 6 : 2);
-    if (parsed >= 6 || this.historyCardMode === '2') {
-      return 6;
+    if (this.historyCardMode === '0') {
+      return 2;
     }
-    return 2;
+    return Math.max(2, Math.min(8, parsed));
   }
 
   private numberValue(value: string, fallback: number): number {
@@ -247,7 +287,7 @@ struct HistoryWidgetCard {
 
   private collectBoundItems(): Array<HistoryWidgetItem> {
     const items: Array<HistoryWidgetItem> = [];
-    for (let index = 0; index < 6; index++) {
+    for (let index = 0; index < 8; index++) {
       const item = this.boundItemAt(index);
       if (item.title.length > 0) {
         items.push(item);
@@ -276,6 +316,12 @@ struct HistoryWidgetCard {
       case 5:
         return this.createItem(this.title5, this.subtitle5, this.source5, this.progress5, this.time5,
           this.target5, this.type5, this.ep5, this.page5);
+      case 6:
+        return this.createItem(this.title6, this.subtitle6, this.source6, this.progress6, this.time6,
+          this.target6, this.type6, this.ep6, this.page6);
+      case 7:
+        return this.createItem(this.title7, this.subtitle7, this.source7, this.progress7, this.time7,
+          this.target7, this.type7, this.ep7, this.page7);
       default:
         return this.emptyItem();
     }
@@ -391,6 +437,10 @@ struct HistoryWidgetCard {
         return this.cover4;
       case 5:
         return this.cover5;
+      case 6:
+        return this.cover6;
+      case 7:
+        return this.cover7;
       default:
         return '';
     }
@@ -440,21 +490,21 @@ struct HistoryWidgetCard {
     Column() {
       Stack() {
         Column()
-          .width($r('app.float.pica_widget_compact_cover_width'))
-          .height($r('app.float.pica_widget_compact_cover_height'))
+          .width(FULL_SIZE)
+          .layoutWeight(LAYOUT_WEIGHT)
           .borderRadius($r('app.float.pica_widget_cover_radius'))
           .backgroundColor($r('app.color.pica_widget_cover_placeholder'))
 
         if (this.coverAt(index).length > 0) {
           Image(this.coverAt(index))
             .objectFit(ImageFit.Cover)
-            .width($r('app.float.pica_widget_compact_cover_width'))
-            .height($r('app.float.pica_widget_compact_cover_height'))
+            .width(FULL_SIZE)
+            .height(FULL_SIZE)
             .borderRadius($r('app.float.pica_widget_cover_radius'))
         }
       }
-      .width($r('app.float.pica_widget_compact_cover_width'))
-      .height($r('app.float.pica_widget_compact_cover_height'))
+      .width(FULL_SIZE)
+      .layoutWeight(LAYOUT_WEIGHT)
 
       Text(this.compactProgress(item))
         .maxLines(MAX_LINES)
@@ -466,10 +516,11 @@ struct HistoryWidgetCard {
         .textAlign(TextAlign.Center)
         .margin({ top: 5 })
     }
-    .width($r('app.float.pica_widget_compact_cover_width'))
-    .height($r('app.float.pica_widget_compact_item_height'))
+    .width(FULL_SIZE)
+    .height(FULL_SIZE)
     .alignItems(HorizontalAlign.Center)
     .justifyContent(FlexAlign.Center)
+    .layoutWeight(LAYOUT_WEIGHT)
     .onClick(() => {
       this.openReader(item);
     })
@@ -483,7 +534,7 @@ struct HistoryWidgetCard {
       }, (item: HistoryWidgetItem) => `${this.updatedAt}-${item.target}-${item.ep}-${item.page}`)
     }
     .width(FULL_SIZE)
-    .height($r('app.float.pica_widget_compact_item_height'))
+    .height(FULL_SIZE)
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
   }
@@ -538,7 +589,9 @@ struct HistoryWidgetCard {
     }
     .alignItems(VerticalAlign.Center)
     .width(FULL_SIZE)
-    .height($r('app.float.pica_widget_item_height'))
+    // Share the available list height between the actual records so unused
+    // tablet space does not become a large blank block below the list.
+    .layoutWeight(LAYOUT_WEIGHT)
     .onClick(() => {
       this.openReader(item);
     })
@@ -579,6 +632,7 @@ struct HistoryWidgetCard {
       }
       .width(FULL_SIZE)
       .layoutWeight(LAYOUT_WEIGHT)
+      .justifyContent(FlexAlign.Center)
       .clip(true)
     }
     .width(FULL_SIZE)

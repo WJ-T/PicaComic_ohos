@@ -39,7 +39,7 @@ function readStringParameter(want: Want, key: string): string {
   return '';
 }
 
-function readNumberParameter(want: Want, key: string): number {
+function readNumberParameter(want: Want, key: string, fallback: number): number {
   const parameters = want.parameters as Record<string, Object> | undefined;
   const rawValue = parameters?.[key];
   if (typeof rawValue === 'number') {
@@ -48,7 +48,7 @@ function readNumberParameter(want: Want, key: string): number {
   if (rawValue instanceof Number) {
     return rawValue.valueOf();
   }
-  return formInfo.FormDimension.Dimension_2_2;
+  return fallback;
 }
 
 function readMessageString(message: string, key: string): string {
@@ -91,14 +91,17 @@ export default class EntryFormAbility extends FormExtensionAbility {
 
   onAddForm(want: Want): formBindingData.FormBindingData {
     const formId = readStringParameter(want, formInfo.FormParam.IDENTITY_KEY);
-    const dimension = readNumberParameter(want, formInfo.FormParam.DIMENSION_KEY);
+    const dimension = readNumberParameter(want, formInfo.FormParam.DIMENSION_KEY,
+      formInfo.FormDimension.Dimension_2_2);
+    const formHeight = readNumberParameter(want, formInfo.FormParam.HEIGHT_KEY, 0);
     const context = this.context as common.Context;
-    hilog.error(DOMAIN, TAG, `onAddForm formId=${formId} dimension=${dimension}`);
-    saveFormRecord(context, formId, dimension).catch((error: BusinessError) => {
+    hilog.error(DOMAIN, TAG, `onAddForm formId=${formId} dimension=${dimension} height=${formHeight}`);
+    saveFormRecord(context, formId, dimension, formHeight).catch((error: BusinessError) => {
       hilog.error(DOMAIN, TAG, `saveFormRecord failed: ${error.message}`);
     });
-    this.refreshForm(context, formId, dimension);
-    return createHistoryWidgetBinding(context, readHistorySnapshotSync(context), dimension);
+    this.refreshForm(context, formId, dimension, formHeight);
+    return createHistoryWidgetBinding(context, readHistorySnapshotSync(context), dimension,
+      undefined, undefined, formHeight);
   }
 
   async onUpdateForm(formId: string): Promise<void> {
@@ -106,10 +109,12 @@ export default class EntryFormAbility extends FormExtensionAbility {
     const records = await readFormRecords(context);
     const record = records.find((item) => item.formId === formId);
     const dimension = record?.dimension ?? formInfo.FormDimension.Dimension_2_2;
+    const formHeight = record?.height ?? 0;
     const snapshot = await readHistorySnapshot(context);
     try {
-      await updateHistoryForm(context, formId, snapshot, dimension);
-      hilog.error(DOMAIN, TAG, `onUpdateForm updated formId=${formId} dimension=${dimension}`);
+      await updateHistoryForm(context, formId, snapshot, dimension, undefined, formHeight);
+      hilog.error(DOMAIN, TAG,
+        `onUpdateForm updated formId=${formId} dimension=${dimension} height=${formHeight}`);
     } catch (error) {
       const message = (error as BusinessError)?.message ?? JSON.stringify(error);
       hilog.error(DOMAIN, TAG, `onUpdateForm failed: ${message}`);
@@ -157,14 +162,16 @@ export default class EntryFormAbility extends FormExtensionAbility {
     context: common.Context,
     formId: string,
     dimension: number,
+    formHeight: number = 0,
   ): Promise<void> {
     if (formId.length === 0) {
       return;
     }
     try {
       const snapshot = await readHistorySnapshot(context);
-      await updateHistoryForm(context, formId, snapshot, dimension);
-      hilog.error(DOMAIN, TAG, `refreshForm updated formId=${formId} dimension=${dimension}`);
+      await updateHistoryForm(context, formId, snapshot, dimension, undefined, formHeight);
+      hilog.error(DOMAIN, TAG,
+        `refreshForm updated formId=${formId} dimension=${dimension} height=${formHeight}`);
     } catch (error) {
       const message = (error as BusinessError)?.message ?? JSON.stringify(error);
       hilog.error(DOMAIN, TAG, `refreshForm failed: ${message}`);

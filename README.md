@@ -69,7 +69,7 @@ flutter config --ohos-sdk "$HOME/Library/OpenHarmony/Sdk"
 flutter precache --ohos
 ```
 
-Make sure the configured SDK contains API 23. If you keep multiple SDK roots, point Flutter and DevEco/Hvigor at the root that contains the `23` platform before running `flutter build hap`.
+Make sure the configured SDK contains API 23. If you keep multiple SDK roots, point Flutter and DevEco/Hvigor at the root that contains the `23` platform before running the release build script.
 
 If `ohos/har/flutter.har` is missing (both platforms):
 
@@ -109,23 +109,9 @@ ohpm install --all
 cd ..
 ```
 
-### 3. Build release hap (recommended path)
+### 3. Build and install release HAP (required path)
 
-Windows CMD:
-
-```bat
-cd /d D:\path\to\PicaComic_ohos
-flutter clean
-flutter pub get
-dart run tool\patch_ohos_flutter_har.dart
-cd /d ohos
-ohpm.bat install --all
-cd /d ..
-flutter build hap --release --target-platform=ohos-arm64
-hdc install -r ohos\entry\build\default\outputs\default\entry-default-signed.hap
-```
-
-macOS (zsh/bash):
+macOS/Linux/Git Bash/WSL:
 
 ```bash
 cd /path/to/PicaComic_ohos
@@ -135,8 +121,21 @@ dart run tool/patch_ohos_flutter_har.dart
 cd ohos
 ohpm install --all
 cd ..
-flutter build hap --release --target-platform=ohos-arm64
+tool/build_ohos_hap.sh
 hdc install -r ohos/entry/build/default/outputs/default/entry-default-signed.hap
+```
+
+`tool/build_ohos_hap.sh` must be used for the final release build. Do not use
+`flutter build hap` as the HAP to install: Flutter's OHOS builder normalizes
+`4.8.3-beta2` to `4.8.32` while generating its intermediate HAP. The script
+uses Flutter to generate the runtime files, then runs the final Hvigor package
+step with the exact version from `ohos/AppScope/app.json5`.
+
+On Windows, run the same commands from Git Bash or WSL. The script also
+supports a custom Hvigor executable path when needed:
+
+```bash
+HVIGORW=/path/to/hvigorw tool/build_ohos_hap.sh
 ```
 
 Output:
@@ -171,6 +170,7 @@ ohpm install --all
 - `tool/prepare_ohos_har.sh`: copies `flutter.har` from Flutter engine cache into `ohos/har/`.
 - `tool/patch_ohos_flutter_har.dart`: patches Flutter OHOS engine HARs so a window-stage event listener error cannot prevent Flutter content from loading during service-card launches. Run it after `flutter precache --ohos` and before release builds.
 - `tool/build_quickjs_ohos.sh`: rebuilds `libflutter_qjs_plugin.so`; run when `flutter_qjs/cxx` changes.
+- `tool/build_ohos_hap.sh`: builds the final signed HAP with the exact OHOS version from `ohos/AppScope/app.json5`. Use it instead of `flutter build hap` when installing a release build; Flutter otherwise normalizes `4.8.3-beta2` to `4.8.32` during its intermediate build.
 - `tool/sync_ohos_flutter_assets.sh`: only needed for specific DevEco/hvigor asset-sync workflows; **not required** for normal `flutter build hap`.
 
 ### 6. Common issues
