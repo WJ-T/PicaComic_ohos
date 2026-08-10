@@ -11,6 +11,7 @@ class HistoryWidgetStorageDefaults {
   updatedAt: string = '0';
   title0: string = '';
   subtitle0: string = '';
+  cover0: string = '';
   source0: string = '';
   progress0: string = '';
   time0: string = '';
@@ -20,6 +21,7 @@ class HistoryWidgetStorageDefaults {
   page0: string = '1';
   title1: string = '';
   subtitle1: string = '';
+  cover1: string = '';
   source1: string = '';
   progress1: string = '';
   time1: string = '';
@@ -29,6 +31,7 @@ class HistoryWidgetStorageDefaults {
   page1: string = '1';
   title2: string = '';
   subtitle2: string = '';
+  cover2: string = '';
   source2: string = '';
   progress2: string = '';
   time2: string = '';
@@ -38,6 +41,7 @@ class HistoryWidgetStorageDefaults {
   page2: string = '1';
   title3: string = '';
   subtitle3: string = '';
+  cover3: string = '';
   source3: string = '';
   progress3: string = '';
   time3: string = '';
@@ -47,6 +51,7 @@ class HistoryWidgetStorageDefaults {
   page3: string = '1';
   title4: string = '';
   subtitle4: string = '';
+  cover4: string = '';
   source4: string = '';
   progress4: string = '';
   time4: string = '';
@@ -56,6 +61,7 @@ class HistoryWidgetStorageDefaults {
   page4: string = '1';
   title5: string = '';
   subtitle5: string = '';
+  cover5: string = '';
   source5: string = '';
   progress5: string = '';
   time5: string = '';
@@ -115,6 +121,7 @@ struct HistoryWidgetCard {
   @LocalStorageProp('updatedAt') @Watch('reloadRenderItems') updatedAt: string = '0';
   @LocalStorageProp('title0') @Watch('reloadRenderItems') title0: string = '';
   @LocalStorageProp('subtitle0') subtitle0: string = '';
+  @LocalStorageProp('cover0') @Watch('reloadRenderItems') cover0: string = '';
   @LocalStorageProp('source0') source0: string = '';
   @LocalStorageProp('progress0') progress0: string = '';
   @LocalStorageProp('time0') time0: string = '';
@@ -124,6 +131,7 @@ struct HistoryWidgetCard {
   @LocalStorageProp('page0') page0: string = '1';
   @LocalStorageProp('title1') @Watch('reloadRenderItems') title1: string = '';
   @LocalStorageProp('subtitle1') subtitle1: string = '';
+  @LocalStorageProp('cover1') @Watch('reloadRenderItems') cover1: string = '';
   @LocalStorageProp('source1') source1: string = '';
   @LocalStorageProp('progress1') progress1: string = '';
   @LocalStorageProp('time1') time1: string = '';
@@ -133,6 +141,7 @@ struct HistoryWidgetCard {
   @LocalStorageProp('page1') page1: string = '1';
   @LocalStorageProp('title2') @Watch('reloadRenderItems') title2: string = '';
   @LocalStorageProp('subtitle2') subtitle2: string = '';
+  @LocalStorageProp('cover2') @Watch('reloadRenderItems') cover2: string = '';
   @LocalStorageProp('source2') source2: string = '';
   @LocalStorageProp('progress2') progress2: string = '';
   @LocalStorageProp('time2') time2: string = '';
@@ -142,6 +151,7 @@ struct HistoryWidgetCard {
   @LocalStorageProp('page2') page2: string = '1';
   @LocalStorageProp('title3') @Watch('reloadRenderItems') title3: string = '';
   @LocalStorageProp('subtitle3') subtitle3: string = '';
+  @LocalStorageProp('cover3') @Watch('reloadRenderItems') cover3: string = '';
   @LocalStorageProp('source3') source3: string = '';
   @LocalStorageProp('progress3') progress3: string = '';
   @LocalStorageProp('time3') time3: string = '';
@@ -151,6 +161,7 @@ struct HistoryWidgetCard {
   @LocalStorageProp('page3') page3: string = '1';
   @LocalStorageProp('title4') @Watch('reloadRenderItems') title4: string = '';
   @LocalStorageProp('subtitle4') subtitle4: string = '';
+  @LocalStorageProp('cover4') @Watch('reloadRenderItems') cover4: string = '';
   @LocalStorageProp('source4') source4: string = '';
   @LocalStorageProp('progress4') progress4: string = '';
   @LocalStorageProp('time4') time4: string = '';
@@ -160,6 +171,7 @@ struct HistoryWidgetCard {
   @LocalStorageProp('page4') page4: string = '1';
   @LocalStorageProp('title5') @Watch('reloadRenderItems') title5: string = '';
   @LocalStorageProp('subtitle5') subtitle5: string = '';
+  @LocalStorageProp('cover5') @Watch('reloadRenderItems') cover5: string = '';
   @LocalStorageProp('source5') source5: string = '';
   @LocalStorageProp('progress5') progress5: string = '';
   @LocalStorageProp('time5') time5: string = '';
@@ -182,7 +194,7 @@ struct HistoryWidgetCard {
     this.renderMaxItems = this.resolveMaxItems();
     const jsonItems = this.parseItems();
     const boundItems = this.collectBoundItems();
-    const sourceItems = jsonItems.length >= boundItems.length ? jsonItems : boundItems;
+    const sourceItems = boundItems.length > 0 ? boundItems : jsonItems;
     this.renderItems = sourceItems.slice(0, this.renderMaxItems);
   }
 
@@ -355,9 +367,57 @@ struct HistoryWidgetCard {
     .height($r('app.float.pica_widget_item_height'))
   }
 
+  private coverAt(index: number): string {
+    switch (index) {
+      case 0:
+        return this.cover0;
+      case 1:
+        return this.cover1;
+      case 2:
+        return this.cover2;
+      case 3:
+        return this.cover3;
+      case 4:
+        return this.cover4;
+      case 5:
+        return this.cover5;
+      default:
+        return '';
+    }
+  }
+
+  @Builder
+  private CoverImageBuilder(cover: string) {
+    if (cover.length > 0) {
+      Image(cover)
+        .objectFit(ImageFit.Cover)
+        .width($r('app.float.pica_widget_cover_width'))
+        .height($r('app.float.pica_widget_cover_height'))
+        .borderRadius($r('app.float.pica_widget_cover_radius'))
+    }
+  }
+
+  @Builder
+  private CoverBuilder(index: number) {
+    Stack() {
+      Column()
+        .width($r('app.float.pica_widget_cover_width'))
+        .height($r('app.float.pica_widget_cover_height'))
+        .borderRadius($r('app.float.pica_widget_cover_radius'))
+        .backgroundColor('#E8ECF1')
+
+      this.CoverImageBuilder(this.coverAt(index))
+    }
+    .width($r('app.float.pica_widget_cover_width'))
+    .height($r('app.float.pica_widget_cover_height'))
+    .margin({ right: $r('app.float.pica_widget_cover_margin_right') })
+  }
+
   @Builder
   private HistoryItemBuilder(item: HistoryWidgetItem, index: number, total: number) {
     Row() {
+      this.CoverBuilder(index)
+
       Column() {
         Row() {
           Text(item.title)

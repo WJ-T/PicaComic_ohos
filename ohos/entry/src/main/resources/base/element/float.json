@@ -45,6 +45,22 @@
       "value": "8vp"
     },
     {
+      "name": "pica_widget_cover_width",
+      "value": "30vp"
+    },
+    {
+      "name": "pica_widget_cover_height",
+      "value": "40vp"
+    },
+    {
+      "name": "pica_widget_cover_radius",
+      "value": "5vp"
+    },
+    {
+      "name": "pica_widget_cover_margin_right",
+      "value": "8vp"
+    },
+    {
       "name": "pica_widget_item_height",
       "value": "44vp"
     }

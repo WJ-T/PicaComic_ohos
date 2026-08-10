@@ -84,7 +84,7 @@ export default class EntryFormAbility extends FormExtensionAbility {
       hilog.error(DOMAIN, TAG, `saveFormRecord failed: ${error.message}`);
     });
     this.refreshForm(context, formId, dimension);
-    return createHistoryWidgetBinding(readHistorySnapshotSync(context), dimension);
+    return createHistoryWidgetBinding(context, readHistorySnapshotSync(context), dimension);
   }
 
   async onUpdateForm(formId: string): Promise<void> {
@@ -94,7 +94,7 @@ export default class EntryFormAbility extends FormExtensionAbility {
     const dimension = record?.dimension ?? formInfo.FormDimension.Dimension_2_2;
     const snapshot = await readHistorySnapshot(context);
     try {
-      await updateHistoryForm(formId, snapshot, dimension);
+      await updateHistoryForm(context, formId, snapshot, dimension);
       hilog.error(DOMAIN, TAG, `onUpdateForm updated formId=${formId} dimension=${dimension}`);
     } catch (error) {
       const message = (error as BusinessError)?.message ?? JSON.stringify(error);
@@ -149,7 +149,7 @@ export default class EntryFormAbility extends FormExtensionAbility {
     }
     try {
       const snapshot = await readHistorySnapshot(context);
-      await updateHistoryForm(formId, snapshot, dimension);
+      await updateHistoryForm(context, formId, snapshot, dimension);
       hilog.error(DOMAIN, TAG, `refreshForm updated formId=${formId} dimension=${dimension}`);
     } catch (error) {
       const message = (error as BusinessError)?.message ?? JSON.stringify(error);

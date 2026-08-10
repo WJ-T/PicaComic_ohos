@@ -13,7 +13,6 @@ import 'package:pica_comic/utils/history_reader_launcher.dart';
 import 'package:pica_comic/utils/ohos_continuation.dart';
 import 'package:pica_comic/utils/ohos_widget.dart';
 import 'package:pica_comic/utils/translations.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'category_page.dart';
 import 'explore_page.dart';
 import 'favorites/favorites_page.dart';
@@ -25,7 +24,6 @@ import 'me_page.dart';
 import 'package:pica_comic/network/picacg_network/methods.dart';
 import 'package:pica_comic/utils/android_first_use_manager.dart';
 import 'package:pica_comic/foundation/platform_utils.dart';
-import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'reader/comic_reading_page.dart';
 
 bool _haveClipboardDialog = false;
@@ -127,21 +125,24 @@ class MainPageState extends State<MainPage> {
     _handlingWidgetAction = true;
     try {
       for (int i = 0; i < 30; i++) {
-        final context = _navigatorKey?.currentContext;
-        if (context != null && mounted) {
+        final navigator = _navigatorKey?.currentState;
+        if (navigator != null && mounted) {
           if (action == 'open_reader') {
             final params = readOhosWidgetReaderParams(payload);
             if (params == null) {
               return;
             }
-            App.to(
-              context,
-              () => HistoryReaderLaunchPage(
-                type: params.type,
-                target: params.target,
-                ep: params.ep,
-                page: params.page,
+            navigator.pushAndRemoveUntil(
+              AppPageRoute(
+                builder: (_) => HistoryReaderLaunchPage(
+                  type: params.type,
+                  target: params.target,
+                  ep: params.ep,
+                  page: params.page,
+                ),
+                settings: const RouteSettings(name: '/HistoryReaderLaunchPage'),
               ),
+              (route) => route.isFirst,
             );
             return;
           }
@@ -149,7 +150,12 @@ class MainPageState extends State<MainPage> {
               _observer.routes.last.settings.name == '/HistoryPage') {
             return;
           }
-          App.to(context, () => const HistoryPage());
+          navigator.push(
+            AppPageRoute(
+              builder: (_) => const HistoryPage(),
+              settings: const RouteSettings(name: '/HistoryPage'),
+            ),
+          );
           if (mounted) {
             setState(() {});
           }
@@ -188,7 +194,7 @@ class MainPageState extends State<MainPage> {
 
   List<Widget> get _pages => [
         const MePage(),
-        FavoritesPage(),
+        const FavoritesPage(),
         ExplorePage(
           key: Key(appdata.appSettings.explorePages.length.toString()),
         ),

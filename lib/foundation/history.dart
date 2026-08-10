@@ -2,11 +2,17 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
+import 'package:flutter/foundation.dart';
+import 'package:image/image.dart' as image;
 import 'package:pica_comic/base.dart';
 import 'package:pica_comic/foundation/comic_source/comic_source.dart';
 import 'package:pica_comic/foundation/app.dart';
+import 'package:pica_comic/foundation/image_manager.dart';
 import 'package:pica_comic/foundation/log.dart';
 import 'package:pica_comic/foundation/platform_utils.dart';
+import 'package:pica_comic/network/jm_network/jm_image.dart';
+import 'package:pica_comic/network/eh_network/eh_main_network.dart';
 import 'package:pica_comic/network/webdav.dart';
 import 'package:pica_comic/utils/ohos_widget.dart';
 import 'package:sqlite3/sqlite3.dart';
@@ -192,6 +198,7 @@ class HistoryManager {
   Database? _db;
   bool _dbWarningIssued = false;
   Timer? _ohosWidgetSyncDebounce;
+  final Map<String, String> _ohosWidgetCoverDataCache = {};
 
   bool _ensureDbAvailable() {
     if (_db != null) {
@@ -432,10 +439,24 @@ class HistoryManager {
       await OhosWidgetService.instance.updateHistorySnapshot([]);
       return;
     }
-    final items = getRecent().take(6).map((history) {
+    final histories = getRecent().take(6).toList();
+    final existingCovers = _readOhosWidgetCoverSnapshotCache();
+    final covers = await Future.wait(
+      histories.map(
+        (history) => _buildOhosWidgetCoverData(history).timeout(
+          const Duration(seconds: 6),
+          onTimeout: () => '',
+        ),
+      ),
+    );
+    final items =
+        List<Map<String, Object?>>.generate(histories.length, (index) {
+      final history = histories[index];
+      final fallbackCover = existingCovers[_ohosWidgetCoverCacheKey(history)];
       return <String, Object?>{
         "title": history.title,
         "subtitle": history.subtitle,
+        "cover": covers[index].isNotEmpty ? covers[index] : fallbackCover ?? '',
         "source": history.type.name,
         "progress": _formatOhosWidgetProgress(history),
         "time": _formatOhosWidgetTime(history.time),
@@ -444,7 +465,7 @@ class HistoryManager {
         "ep": history.ep,
         "page": history.page,
       };
-    }).toList();
+    });
     if (PlatformUtils.isOhos) {
       try {
         final snapshotFile =
@@ -459,6 +480,114 @@ class HistoryManager {
       }
     }
     await OhosWidgetService.instance.updateHistorySnapshot(items);
+  }
+
+  String _resolveOhosWidgetCoverUrl(History history) {
+    if (history.cover.isNotEmpty) {
+      return history.cover;
+    }
+    if (history.type == HistoryType.jmComic) {
+      return getJmCoverUrl(history.target);
+    }
+    return '';
+  }
+
+  Future<String> _buildOhosWidgetCoverData(History history) async {
+    if (!PlatformUtils.isOhos) {
+      return '';
+    }
+    final coverUrl = _resolveOhosWidgetCoverUrl(history);
+    final sourceKey = history.type.comicSource?.key;
+    if (coverUrl.isEmpty) {
+      return '';
+    }
+    final cacheKey = _ohosWidgetCoverCacheKey(history);
+    final cached = _ohosWidgetCoverDataCache[cacheKey];
+    if (cached != null) {
+      return cached;
+    }
+    try {
+      DownloadProgress? finishedProgress;
+      final stream = sourceKey == null
+          ? ImageManager().getImage(coverUrl)
+          : sourceKey == 'ehentai'
+              ? await _getEhentaiWidgetCoverStream(coverUrl)
+              : ImageManager().getCustomThumbnail(coverUrl, sourceKey);
+      await for (final progress in stream) {
+        if (progress.finished) {
+          finishedProgress = progress;
+        }
+      }
+      final imageBytes = finishedProgress?.data ??
+          await finishedProgress?.getFile().readAsBytes();
+      if (imageBytes == null || imageBytes.isEmpty) {
+        return '';
+      }
+      final dataUri = await compute(_encodeOhosWidgetCoverDataUri, imageBytes);
+      if (dataUri.isNotEmpty) {
+        _ohosWidgetCoverDataCache[cacheKey] = dataUri;
+      }
+      return dataUri;
+    } catch (error, stack) {
+      LogManager.addLog(
+        LogLevel.warning,
+        "HistoryManager",
+        "Failed to prepare OHOS widget cover: $coverUrl\n$error\n$stack",
+      );
+      return '';
+    }
+  }
+
+  Future<Stream<DownloadProgress>> _getEhentaiWidgetCoverStream(
+      String coverUrl) async {
+    await EhNetwork().getCookies(false, coverUrl);
+    return ImageManager().getImage(
+      '$coverUrl#widget_cover',
+      {
+        'Cookie': EhNetwork().cookiesStr,
+        'User-Agent': webUA,
+        'Referer': EhNetwork().ehBaseUrl,
+      },
+    );
+  }
+
+  String _ohosWidgetCoverCacheKey(History history) =>
+      '${history.type.value}:${history.target}';
+
+  Map<String, String> _readOhosWidgetCoverSnapshotCache() {
+    if (!PlatformUtils.isOhos) {
+      return const {};
+    }
+    try {
+      final snapshotFile = File("${App.dataPath}/widget_history_snapshot.json");
+      if (!snapshotFile.existsSync()) {
+        return const {};
+      }
+      final parsed = jsonDecode(snapshotFile.readAsStringSync());
+      if (parsed is! List) {
+        return const {};
+      }
+      final covers = <String, String>{};
+      for (final item in parsed) {
+        if (item is! Map) {
+          continue;
+        }
+        final target = item['target'];
+        final type = item['type'];
+        final cover = item['cover'];
+        if (target is String &&
+            target.isNotEmpty &&
+            type is num &&
+            cover is String &&
+            cover.isNotEmpty) {
+          covers['${type.toInt()}:$target'] = cover;
+        }
+      }
+      _ohosWidgetCoverDataCache.addAll(covers);
+      return covers;
+    } catch (_) {
+      return const {};
+    }
   }
 
   String _asciiJsonEncode(Object? value) {
@@ -647,4 +776,33 @@ class HistoryManager {
     appdata.writeSearchHistory();
     appdata.writeHistory();
   }
+}
+
+String _encodeOhosWidgetCoverDataUri(Uint8List bytes) {
+  final decoded = image.decodeImage(bytes);
+  if (decoded == null) {
+    return '';
+  }
+  final oriented = image.bakeOrientation(decoded);
+  const targetWidth = 90;
+  const targetHeight = 120;
+  final scale = max(
+    targetWidth / oriented.width,
+    targetHeight / oriented.height,
+  );
+  final resized = image.copyResize(
+    oriented,
+    width: (oriented.width * scale).ceil(),
+    height: (oriented.height * scale).ceil(),
+    interpolation: image.Interpolation.average,
+  );
+  final cropped = image.copyCrop(
+    resized,
+    x: max(0, (resized.width - targetWidth) ~/ 2),
+    y: max(0, (resized.height - targetHeight) ~/ 2),
+    width: targetWidth,
+    height: targetHeight,
+  );
+  final encoded = image.encodeJpg(cropped, quality: 68);
+  return 'data:image/jpeg;base64,${base64Encode(encoded)}';
 }

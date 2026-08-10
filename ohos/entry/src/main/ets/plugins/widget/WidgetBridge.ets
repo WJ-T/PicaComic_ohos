@@ -7,6 +7,7 @@ import type common from '@ohos.app.ability.common';
 import { BusinessError } from '@ohos.base';
 import fs from '@ohos.file.fs';
 import hilog from '@ohos.hilog';
+import util from '@ohos.util';
 
 const TAG: string = 'WidgetBridge';
 const DOMAIN: number = 0xD005108;
@@ -29,6 +30,7 @@ class HistoryWidgetBinding {
   updatedAt: string = '0';
   title0: string;
   subtitle0: string;
+  cover0: string;
   source0: string;
   progress0: string;
   time0: string;
@@ -38,6 +40,7 @@ class HistoryWidgetBinding {
   page0: string;
   title1: string;
   subtitle1: string;
+  cover1: string;
   source1: string;
   progress1: string;
   time1: string;
@@ -47,6 +50,7 @@ class HistoryWidgetBinding {
   page1: string;
   title2: string;
   subtitle2: string;
+  cover2: string;
   source2: string;
   progress2: string;
   time2: string;
@@ -56,6 +60,7 @@ class HistoryWidgetBinding {
   page2: string;
   title3: string;
   subtitle3: string;
+  cover3: string;
   source3: string;
   progress3: string;
   time3: string;
@@ -65,6 +70,7 @@ class HistoryWidgetBinding {
   page3: string;
   title4: string;
   subtitle4: string;
+  cover4: string;
   source4: string;
   progress4: string;
   time4: string;
@@ -74,6 +80,7 @@ class HistoryWidgetBinding {
   page4: string;
   title5: string;
   subtitle5: string;
+  cover5: string;
   source5: string;
   progress5: string;
   time5: string;
@@ -85,6 +92,7 @@ class HistoryWidgetBinding {
   constructor() {
     this.title0 = '';
     this.subtitle0 = '';
+    this.cover0 = '';
     this.source0 = '';
     this.progress0 = '';
     this.time0 = '';
@@ -94,6 +102,7 @@ class HistoryWidgetBinding {
     this.page0 = '1';
     this.title1 = '';
     this.subtitle1 = '';
+    this.cover1 = '';
     this.source1 = '';
     this.progress1 = '';
     this.time1 = '';
@@ -103,6 +112,7 @@ class HistoryWidgetBinding {
     this.page1 = '1';
     this.title2 = '';
     this.subtitle2 = '';
+    this.cover2 = '';
     this.source2 = '';
     this.progress2 = '';
     this.time2 = '';
@@ -112,6 +122,7 @@ class HistoryWidgetBinding {
     this.page2 = '1';
     this.title3 = '';
     this.subtitle3 = '';
+    this.cover3 = '';
     this.source3 = '';
     this.progress3 = '';
     this.time3 = '';
@@ -121,6 +132,7 @@ class HistoryWidgetBinding {
     this.page3 = '1';
     this.title4 = '';
     this.subtitle4 = '';
+    this.cover4 = '';
     this.source4 = '';
     this.progress4 = '';
     this.time4 = '';
@@ -130,6 +142,7 @@ class HistoryWidgetBinding {
     this.page4 = '1';
     this.title5 = '';
     this.subtitle5 = '';
+    this.cover5 = '';
     this.source5 = '';
     this.progress5 = '';
     this.time5 = '';
@@ -148,6 +161,7 @@ export interface WidgetFormRecord {
 interface NativeHistorySnapshotItem {
   title: string;
   subtitle: string;
+  cover: string;
   source: string;
   progress: string;
   time: string;
@@ -243,6 +257,7 @@ function parseHistorySnapshotItems(snapshot: string, maxItems: number): Array<Na
       return {
         title: readStringObjectField(record, 'title'),
         subtitle: readStringObjectField(record, 'subtitle'),
+        cover: readStringObjectField(record, 'cover'),
         source: readStringObjectField(record, 'source'),
         progress: readStringObjectField(record, 'progress'),
         time: readStringObjectField(record, 'time'),
@@ -254,6 +269,46 @@ function parseHistorySnapshotItems(snapshot: string, maxItems: number): Array<Na
     }).filter((item: NativeHistorySnapshotItem) => item.title.length > 0);
   } catch (_) {
     return [];
+  }
+}
+
+function historyCoverBindingValue(
+  context: common.Context,
+  item: NativeHistorySnapshotItem | undefined,
+  index: number,
+  revision: string,
+  images: Record<string, number>,
+): string {
+  if (item == null || item.cover.length === 0) {
+    return '';
+  }
+  const marker = 'base64,';
+  if (!item.cover.startsWith('data:image/') || item.cover.indexOf(marker) < 0) {
+    return '';
+  }
+  let file: fs.File | undefined;
+  try {
+    const base64 = item.cover.substring(item.cover.indexOf(marker) + marker.length);
+    const bytes = new util.Base64Helper().decodeSync(base64, util.Type.BASIC);
+    const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+    const imageName = `history_cover_${index}_${revision}`;
+    const filePath = `${context.getApplicationContext().tempDir}/${imageName}.jpg`;
+    file = fs.openSync(filePath, fs.OpenMode.CREATE | fs.OpenMode.READ_WRITE | fs.OpenMode.TRUNC);
+    fs.writeSync(file.fd, buffer);
+    images[imageName] = file.fd;
+    const memoryUri = `memory://${imageName}`;
+    hilog.info(DOMAIN, TAG, `form image prepared index=${index} bytes=${bytes.byteLength} uri=${memoryUri}`);
+    return memoryUri;
+  } catch (error) {
+    const message = (error as BusinessError)?.message ?? JSON.stringify(error);
+    hilog.error(DOMAIN, TAG, `form image prepare failed index=${index}: ${message}`);
+    if (file != null) {
+      try {
+        fs.closeSync(file.fd);
+      } catch (_) {
+      }
+    }
+    return '';
   }
 }
 
@@ -343,12 +398,15 @@ function deserializeRecords(rawValue: preferences.ValueType): Array<WidgetFormRe
 }
 
 export function createHistoryWidgetBinding(
+  context: common.Context,
   historyItems: string,
   dimension: number,
 ): formBindingData.FormBindingData {
   const maxItems = maxItemsForDimension(dimension);
   const items = parseHistorySnapshotItems(historyItems, maxItems);
-  const binding: Record<string, string> = {};
+  const revision = Date.now().toString();
+  const images: Record<string, number> = {};
+  const binding: Record<string, Object> = {};
   binding.historyItems = limitHistorySnapshot(historyItems, maxItems);
   binding.historyCardMode = cardModeForDimension(dimension).toString();
   binding.historyMaxItems = maxItems.toString();
@@ -356,6 +414,7 @@ export function createHistoryWidgetBinding(
   binding.updatedAt = Date.now().toString();
   binding.title0 = items[0]?.title ?? '';
   binding.subtitle0 = items[0]?.subtitle ?? '';
+  binding.cover0 = historyCoverBindingValue(context, items[0], 0, revision, images);
   binding.source0 = items[0]?.source ?? '';
   binding.progress0 = items[0]?.progress ?? '';
   binding.time0 = items[0]?.time ?? '';
@@ -365,6 +424,7 @@ export function createHistoryWidgetBinding(
   binding.page0 = (items[0]?.page ?? 1).toString();
   binding.title1 = items[1]?.title ?? '';
   binding.subtitle1 = items[1]?.subtitle ?? '';
+  binding.cover1 = historyCoverBindingValue(context, items[1], 1, revision, images);
   binding.source1 = items[1]?.source ?? '';
   binding.progress1 = items[1]?.progress ?? '';
   binding.time1 = items[1]?.time ?? '';
@@ -374,6 +434,7 @@ export function createHistoryWidgetBinding(
   binding.page1 = (items[1]?.page ?? 1).toString();
   binding.title2 = items[2]?.title ?? '';
   binding.subtitle2 = items[2]?.subtitle ?? '';
+  binding.cover2 = historyCoverBindingValue(context, items[2], 2, revision, images);
   binding.source2 = items[2]?.source ?? '';
   binding.progress2 = items[2]?.progress ?? '';
   binding.time2 = items[2]?.time ?? '';
@@ -383,6 +444,7 @@ export function createHistoryWidgetBinding(
   binding.page2 = (items[2]?.page ?? 1).toString();
   binding.title3 = items[3]?.title ?? '';
   binding.subtitle3 = items[3]?.subtitle ?? '';
+  binding.cover3 = historyCoverBindingValue(context, items[3], 3, revision, images);
   binding.source3 = items[3]?.source ?? '';
   binding.progress3 = items[3]?.progress ?? '';
   binding.time3 = items[3]?.time ?? '';
@@ -392,6 +454,7 @@ export function createHistoryWidgetBinding(
   binding.page3 = (items[3]?.page ?? 1).toString();
   binding.title4 = items[4]?.title ?? '';
   binding.subtitle4 = items[4]?.subtitle ?? '';
+  binding.cover4 = historyCoverBindingValue(context, items[4], 4, revision, images);
   binding.source4 = items[4]?.source ?? '';
   binding.progress4 = items[4]?.progress ?? '';
   binding.time4 = items[4]?.time ?? '';
@@ -401,6 +464,7 @@ export function createHistoryWidgetBinding(
   binding.page4 = (items[4]?.page ?? 1).toString();
   binding.title5 = items[5]?.title ?? '';
   binding.subtitle5 = items[5]?.subtitle ?? '';
+  binding.cover5 = historyCoverBindingValue(context, items[5], 5, revision, images);
   binding.source5 = items[5]?.source ?? '';
   binding.progress5 = items[5]?.progress ?? '';
   binding.time5 = items[5]?.time ?? '';
@@ -409,7 +473,8 @@ export function createHistoryWidgetBinding(
   binding.ep5 = (items[5]?.ep ?? 1).toString();
   binding.page5 = (items[5]?.page ?? 1).toString();
   hilog.error(DOMAIN, TAG,
-    `binding dimension=${dimension} max=${maxItems} count=${items.length} title0=${binding.title0.length} title2=${binding.title2.length} title4=${binding.title4.length} title5=${binding.title5.length}`);
+    `binding dimension=${dimension} max=${maxItems} count=${items.length} title0=${items[0]?.title.length ?? 0} cover0=${items[0]?.cover.length ?? 0} title2=${items[2]?.title.length ?? 0} cover2=${items[2]?.cover.length ?? 0} title4=${items[4]?.title.length ?? 0} cover4=${items[4]?.cover.length ?? 0} title5=${items[5]?.title.length ?? 0} cover5=${items[5]?.cover.length ?? 0}`);
+  binding.formImages = images;
   return formBindingData.createFormBindingData(binding);
 }
 
@@ -551,6 +616,7 @@ async function readHistorySnapshotFromDatabaseCandidate(
         target,
         coalesce(title, '') as title,
         coalesce(subtitle, '') as subtitle,
+        coalesce(cover, '') as cover,
         coalesce(time, 0) as time,
         coalesce(type, 0) as type,
         coalesce(ep, 1) as ep,
@@ -563,6 +629,7 @@ async function readHistorySnapshotFromDatabaseCandidate(
     const targetColumn = resultSet.getColumnIndex('target');
     const titleColumn = resultSet.getColumnIndex('title');
     const subtitleColumn = resultSet.getColumnIndex('subtitle');
+    const coverColumn = resultSet.getColumnIndex('cover');
     const timeColumn = resultSet.getColumnIndex('time');
     const typeColumn = resultSet.getColumnIndex('type');
     const epColumn = resultSet.getColumnIndex('ep');
@@ -577,6 +644,7 @@ async function readHistorySnapshotFromDatabaseCandidate(
         target: resultSet.getString(targetColumn),
         title: resultSet.getString(titleColumn),
         subtitle: resultSet.getString(subtitleColumn),
+        cover: resultSet.getString(coverColumn),
         source: historyTypeName(type),
         progress: formatHistoryProgress(ep, page, resultSet.getLong(maxPageColumn)),
         time: formatHistoryTime(resultSet.getLong(timeColumn)),
@@ -687,6 +755,7 @@ export async function removeFormRecord(
 }
 
 export async function updateHistoryForm(
+  context: common.Context,
   formId: string,
   historyItems: string,
   dimension: number,
@@ -694,7 +763,7 @@ export async function updateHistoryForm(
   const count = snapshotItemCount(historyItems);
   await formProvider.updateForm(
     formId,
-    createHistoryWidgetBinding(historyItems, dimension),
+    createHistoryWidgetBinding(context, historyItems, dimension),
   );
   hilog.error(DOMAIN, TAG, `updateForm success formId=${formId} dimension=${dimension} count=${count}`);
 }
@@ -710,7 +779,7 @@ export async function updateAllHistoryForms(
   let changed = false;
   for (const record of records) {
     try {
-      await updateHistoryForm(record.formId, snapshot, record.dimension);
+      await updateHistoryForm(context, record.formId, snapshot, record.dimension);
       aliveRecords.push(record);
     } catch (error) {
       const message = (error as BusinessError)?.message ?? JSON.stringify(error);
