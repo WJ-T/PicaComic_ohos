@@ -1,6 +1,6 @@
 # Pica Comic (OHOS Fork)
 
-[![flutter](https://img.shields.io/badge/flutter-3.35.8--ohos-blue)](https://flutter.dev/)
+[![flutter](https://img.shields.io/badge/flutter-3.41.10--ohos-blue)](https://flutter.dev/)
 [![License](https://img.shields.io/github/license/nimmi114514/PicaComic_ohos)](https://github.com/nimmi114514/PicaComic_ohos/blob/master/LICENSE)
 [![Download](https://img.shields.io/github/v/release/nimmi114514/PicaComic_ohos)](https://github.com/nimmi114514/PicaComic_ohos/releases)
 [![stars](https://img.shields.io/github/stars/nimmi114514/PicaComic_ohos)](https://github.com/nimmi114514/PicaComic_ohos/stargazers)
@@ -39,8 +39,8 @@ If you are onboarding a new device/environment, use this section instead of old 
 
 ### Verified toolchain (2026-07-19)
 
-- Flutter: `3.35.8-ohos-0.0.2`
-- Dart: `3.9.2`
+- Flutter: `3.41.10-ohos-0.0.2-beta`
+- Dart: `3.11.5`
 - HarmonyOS SDK: `6.1.0.31` (API 23)
 - Node: `18.20.1`
 - ohpm: `6.0.1`
@@ -84,6 +84,12 @@ It also disables the OHOS embedding's runtime `updateDpiScale` path. That path
 changes Flutter's root `devicePixelRatio` while the app is running and can
 scale the entire page, including overlays, during scrolling. Real window-size
 and display-density changes remain handled by the embedding.
+
+The patcher updates both the project copy at `ohos/har/flutter.har` and the
+generated OHPM module under `ohos/oh_modules/.ohpm/@ohos+flutter_ohos@*/`.
+Hvigor packages the installed OHPM module, so patching the HAR alone is not
+enough. `tool/build_ohos_hap.sh` reapplies the patch after `flutter build hap`,
+because that Flutter command regenerates the OHOS Flutter artifacts.
 
 ### 2. Bootstrap project on a new machine
 
@@ -131,7 +137,7 @@ hdc install -r ohos/entry/build/default/outputs/default/entry-default-signed.hap
 
 `tool/build_ohos_hap.sh` must be used for the final release build. Do not use
 `flutter build hap` as the HAP to install: Flutter's OHOS builder normalizes
-`4.8.3-beta2` to `4.8.32` while generating its intermediate HAP. The script
+`4.8.3-beta3` to `4.8.33` while generating its intermediate HAP. The script
 uses Flutter to generate the runtime files, then runs the final Hvigor package
 step with the exact version from `ohos/AppScope/app.json5`.
 
@@ -172,9 +178,9 @@ ohpm install --all
 ### 5. Tool scripts in this repo
 
 - `tool/prepare_ohos_har.sh`: copies `flutter.har` from Flutter engine cache into `ohos/har/`.
-- `tool/patch_ohos_flutter_har.dart`: patches Flutter OHOS engine HARs so a window-stage event listener error cannot prevent Flutter content from loading during service-card launches. Run it after `flutter precache --ohos` and before release builds.
+- `tool/patch_ohos_flutter_har.dart`: patches the project Flutter OHOS HAR and the generated installed OHPM Flutter module. It keeps a window-stage event listener error from preventing Flutter content from loading during service-card launches and keeps runtime viewport DPI stable. Run it after `flutter precache --ohos`; the final build script runs it again after Flutter regenerates the artifacts.
 - `tool/build_quickjs_ohos.sh`: rebuilds `libflutter_qjs_plugin.so`; run when `flutter_qjs/cxx` changes.
-- `tool/build_ohos_hap.sh`: builds the final signed HAP with the exact OHOS version from `ohos/AppScope/app.json5`. Use it instead of `flutter build hap` when installing a release build; Flutter otherwise normalizes `4.8.3-beta2` to `4.8.32` during its intermediate build.
+- `tool/build_ohos_hap.sh`: builds the final signed HAP with the exact OHOS version from `ohos/AppScope/app.json5`. Use it instead of `flutter build hap` when installing a release build; Flutter otherwise normalizes `4.8.3-beta3` to `4.8.33` during its intermediate build.
 - `tool/sync_ohos_flutter_assets.sh`: only needed for specific DevEco/hvigor asset-sync workflows; **not required** for normal `flutter build hap`.
 
 ### 6. Common issues

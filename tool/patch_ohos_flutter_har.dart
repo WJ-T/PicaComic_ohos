@@ -132,6 +132,48 @@ const String _newWindowDpiBlock =
     // not change devicePixelRatio, otherwise the whole Flutter tree is scaled.
     // Update lastHeight''';
 
+const String _oldDisplayChangeDpiBlock =
+    r'''    this.displayInfo = display.getDefaultDisplaySync();
+    this.flutterEngine?.getTextInputChannel()?.setDevicePixelRatio(this.displayInfo.densityPixels);
+    let devicePixelRatio: number = this.displayInfo?.densityPixels;
+    Log.i(TAG, "Display on: " + JSON.stringify(this.displayInfo) + ". Display id:" + JSON.stringify(data))
+    if (devicePixelRatio != this.viewportMetrics.devicePixelRatio) {
+      this.viewportMetrics.devicePixelRatio = devicePixelRatio;
+      this.needSetViewport = true;
+      this.onAreaChange(null);
+    }
+    this.flutterEngine?.getFlutterNapi()?.updateRefreshRate(this.displayInfo?.refreshRate);''';
+
+const String _newDisplayChangeDpiBlock =
+    r'''    this.displayInfo = display.getDefaultDisplaySync();
+    this.flutterEngine?.getTextInputChannel()?.setDevicePixelRatio(this.displayInfo.densityPixels);
+    Log.i(TAG, "Display on: " + JSON.stringify(this.displayInfo) + ". Display id:" + JSON.stringify(data));
+    // Keep the viewport DPI stable. Only the refresh rate is display-dependent;
+    // changing devicePixelRatio here rescales the entire Flutter tree.
+    this.flutterEngine?.getFlutterNapi()?.updateRefreshRate(this.displayInfo?.refreshRate);''';
+
+const String _oldWindowDpiBlock341 = r'''    // Only handle when height changes
+    if (this.lastHeight !== data.height) {
+      try {
+        // If DPI has been customized, do not process system DPI changes
+        this.displayInfo = display.getDefaultDisplaySync();
+        this.flutterEngine?.getTextInputChannel()?.setDevicePixelRatio(this.displayInfo.densityPixels);
+
+        let devicePixelRatio: number = this.displayInfo.densityPixels;
+        Log.i(TAG, `windowSizeChangeCallback devicePixelRatio: ${devicePixelRatio}, viewportMetrics.devicePixelRatio: ${this.viewportMetrics.devicePixelRatio}`);
+
+        if (devicePixelRatio !== this.viewportMetrics.devicePixelRatio) {
+          this.viewportMetrics.devicePixelRatio = devicePixelRatio;
+          Log.i(TAG, `windowSizeChangeCallback: Updated devicePixelRatio to ${devicePixelRatio}`);
+          this.needSetViewport = true;
+        }
+      } catch (e) {
+        Log.e(TAG, `windowSizeChangeCallback error: ${JSON.stringify(e)}`);
+      }
+    }
+
+    // Update lastHeight''';
+
 const String _oldDisplayMetricsDpiCase = r'''        case "updateDpiScale":
           let dpiScaleFactor: number = call.argument('dpiScale');
           Log.i(TAG, "Received dpiScaleFactor '" + dpiScaleFactor + "' message.");
@@ -142,6 +184,18 @@ const String _oldDisplayMetricsDpiCase = r'''        case "updateDpiScale":
 const String _newDisplayMetricsDpiCase = r'''        case "updateDpiScale":
           let dpiScaleFactor: number = call.argument('dpiScale');
           Log.i(TAG, "Ignoring updateDpiScale to keep the Flutter viewport stable: " + dpiScaleFactor);
+          result.success(true);
+          break;''';
+
+const String _oldDisplayMetricsDpiCase341 = r'''        case "updateDpiScale":
+          if (this.customDpiActive && this.currentUri) {
+            result.success(true);
+            Log.i(TAG, "Custom DPI for this page" + this.currentUri);
+            break;
+          }
+          let dpiScaleFactor: number = call.argument('dpiScale');
+          Log.i(TAG, "Received dpiScaleFactor '" + dpiScaleFactor + "' message.");
+          this.context.eventHub.emit('changeDevicePixelRatio', dpiScaleFactor)
           result.success(true);
           break;''';
 
@@ -199,6 +253,11 @@ void main(List<String> args) {
       stderr.writeln('Failed to patch $path: $error');
     }
   }
+
+  // Hvigor packages the installed OHOS module from oh_modules, not only the
+  // project HAR. Patch that generated dependency as well so the final HAP
+  // uses the same stable viewport implementation.
+  _patchInstalledFlutterModules(repoRoot);
 
   if (failed) {
     exitCode = 1;
@@ -270,51 +329,11 @@ void _patchHar(File har) {
       }
     }
 
-    var changed = false;
-    var abilityContent = flutterAbility.readAsStringSync();
-    if (!abilityContent.contains(_patchedMarker)) {
-      if (!abilityContent.contains(_oldWindowStageBlock)) {
-        throw StateError('target FlutterAbility block not found');
-      }
-      abilityContent = abilityContent.replaceFirst(
-          _oldWindowStageBlock, _newWindowStageBlock);
-      flutterAbility.writeAsStringSync(abilityContent);
-      changed = true;
-    }
-
-    var viewContent = flutterView.readAsStringSync();
-    // Engine HARs can differ only in whitespace on otherwise identical blank
-    // lines. Normalize those lines so the source patch remains portable.
-    viewContent = viewContent.replaceAll(
-      RegExp(r'^[ \t]+$', multiLine: true),
-      '',
+    final changed = _patchFlutterSources(
+      flutterAbility: flutterAbility,
+      flutterView: flutterView,
+      displayMetricsChannel: displayMetricsChannel,
     );
-    if (!viewContent.contains(_flutterViewPatchedMarker)) {
-      if (!viewContent.contains(_oldDynamicDpiCallback)) {
-        throw StateError('target FlutterView DPI callback not found');
-      }
-      if (!viewContent.contains(_oldWindowDpiBlock)) {
-        throw StateError('target FlutterView window DPI block not found');
-      }
-      viewContent = viewContent
-          .replaceFirst(_oldDynamicDpiCallback, _newDynamicDpiCallback)
-          .replaceFirst(_oldWindowDpiBlock, _newWindowDpiBlock);
-      flutterView.writeAsStringSync(viewContent);
-      changed = true;
-    }
-
-    var displayMetricsContent = displayMetricsChannel.readAsStringSync();
-    if (!displayMetricsContent.contains(_displayMetricsPatchedMarker)) {
-      if (!displayMetricsContent.contains(_oldDisplayMetricsDpiCase)) {
-        throw StateError('target DisplayMetricsChannel DPI case not found');
-      }
-      displayMetricsContent = displayMetricsContent.replaceFirst(
-        _oldDisplayMetricsDpiCase,
-        _newDisplayMetricsDpiCase,
-      );
-      displayMetricsChannel.writeAsStringSync(displayMetricsContent);
-      changed = true;
-    }
 
     _runTar(<String>['-czf', har.path, '-C', tempDir.path, 'package']);
     stdout.writeln('${changed ? 'Patched' : 'Already patched'}: ${har.path}');
@@ -322,6 +341,105 @@ void _patchHar(File har) {
     try {
       tempDir.deleteSync(recursive: true);
     } catch (_) {}
+  }
+}
+
+bool _patchFlutterSources({
+  required File flutterAbility,
+  required File flutterView,
+  required File displayMetricsChannel,
+}) {
+  var changed = false;
+  var abilityContent = flutterAbility.readAsStringSync();
+  if (!abilityContent.contains(_patchedMarker)) {
+    if (!abilityContent.contains(_oldWindowStageBlock)) {
+      throw StateError('target FlutterAbility block not found');
+    }
+    abilityContent = abilityContent.replaceFirst(
+      _oldWindowStageBlock,
+      _newWindowStageBlock,
+    );
+    flutterAbility.writeAsStringSync(abilityContent);
+    changed = true;
+  }
+
+  var viewContent = flutterView.readAsStringSync().replaceAll(
+        RegExp(r'^[ \t]+$', multiLine: true),
+        '',
+      );
+  if (!viewContent.contains(_flutterViewPatchedMarker)) {
+    if (!viewContent.contains(_oldDynamicDpiCallback)) {
+      throw StateError('target FlutterView DPI callback not found');
+    }
+    final windowDpiBlock = viewContent.contains(_oldWindowDpiBlock)
+        ? _oldWindowDpiBlock
+        : _oldWindowDpiBlock341;
+    if (!viewContent.contains(windowDpiBlock)) {
+      throw StateError('target FlutterView window DPI block not found');
+    }
+    viewContent = viewContent
+        .replaceFirst(_oldDynamicDpiCallback, _newDynamicDpiCallback)
+        .replaceFirst(windowDpiBlock, _newWindowDpiBlock);
+    changed = true;
+  }
+  if (viewContent.contains(_oldDisplayChangeDpiBlock)) {
+    viewContent = viewContent.replaceFirst(
+      _oldDisplayChangeDpiBlock,
+      _newDisplayChangeDpiBlock,
+    );
+    changed = true;
+  }
+  if (changed) {
+    flutterView.writeAsStringSync(viewContent);
+  }
+
+  var displayMetricsContent = displayMetricsChannel.readAsStringSync();
+  if (!displayMetricsContent.contains(_displayMetricsPatchedMarker)) {
+    final displayMetricsDpiCase =
+        displayMetricsContent.contains(_oldDisplayMetricsDpiCase)
+            ? _oldDisplayMetricsDpiCase
+            : _oldDisplayMetricsDpiCase341;
+    if (!displayMetricsContent.contains(displayMetricsDpiCase)) {
+      throw StateError('target DisplayMetricsChannel DPI case not found');
+    }
+    displayMetricsContent = displayMetricsContent.replaceFirst(
+      displayMetricsDpiCase,
+      _newDisplayMetricsDpiCase,
+    );
+    displayMetricsChannel.writeAsStringSync(displayMetricsContent);
+    changed = true;
+  }
+  return changed;
+}
+
+void _patchInstalledFlutterModules(Directory repoRoot) {
+  final ohpmRoot = Directory('${repoRoot.path}/ohos/oh_modules/.ohpm');
+  if (!ohpmRoot.existsSync()) return;
+  var found = false;
+  for (final entry in ohpmRoot.listSync()) {
+    if (entry is! Directory || !entry.path.contains('@ohos+flutter_ohos@')) {
+      continue;
+    }
+    final module = Directory('${entry.path}/oh_modules/@ohos/flutter_ohos');
+    final ability =
+        File('${module.path}/src/main/ets/embedding/ohos/FlutterAbility.ets');
+    final view = File('${module.path}/src/main/ets/view/FlutterView.ets');
+    final metrics = File(
+        '${module.path}/src/main/ets/embedding/engine/systemchannels/DisplayMetricsChannel.ets');
+    if (!ability.existsSync() || !view.existsSync() || !metrics.existsSync()) {
+      continue;
+    }
+    found = true;
+    final changed = _patchFlutterSources(
+      flutterAbility: ability,
+      flutterView: view,
+      displayMetricsChannel: metrics,
+    );
+    stdout
+        .writeln('${changed ? 'Patched' : 'Already patched'}: ${module.path}');
+  }
+  if (!found) {
+    stderr.writeln('No installed @ohos/flutter_ohos module found to patch.');
   }
 }
 

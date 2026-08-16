@@ -96,12 +96,51 @@ class NaviPaneState extends State<NaviPane>
 
   final _naviItemTapListeners = <NaviItemTapListener>[];
 
+  // The main navigator contains the home pages and every pushed page such as
+  // search, downloads, and history. Keep positions by route so a status-bar
+  // tap targets the route that is actually visible.
+  final _routeScrollPositions = <Route<dynamic>, ScrollPosition>{};
+  ScrollPosition? _lastScrollPosition;
+
+  late final StatusBarTapObserver _statusBarTapObserver;
+
   void addNaviItemTapListener(NaviItemTapListener listener) {
     _naviItemTapListeners.add(listener);
   }
 
   void removeNaviItemTapListener(NaviItemTapListener listener) {
     _naviItemTapListeners.remove(listener);
+  }
+
+  bool _recordScrollPosition(ScrollNotification notification) {
+    if (notification.metrics.axis != Axis.vertical) {
+      return false;
+    }
+    final context = notification.context;
+    if (context != null) {
+      final position = Scrollable.of(context).position;
+      _lastScrollPosition = position;
+      final route = ModalRoute.of(context);
+      if (route != null) {
+        _routeScrollPositions[route] = position;
+      }
+    }
+    return false;
+  }
+
+  void _scrollCurrentPageToTop() {
+    final route =
+        widget.observer.routes.isEmpty ? null : widget.observer.routes.last;
+    final position = (route == null ? null : _routeScrollPositions[route]) ??
+        _lastScrollPosition;
+    if (position == null || !position.hasPixels) {
+      return;
+    }
+    position.animateTo(
+      position.minScrollExtent,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   static const _kBottomBarHeight = 58.0;
@@ -156,9 +195,6 @@ class NaviPaneState extends State<NaviPane>
     if (widget.observer.routes.length > 1) {
       widget.navigatorKey.currentState!.popUntil((route) => route.isFirst);
     }
-    if (currentPage == index) {
-      return;
-    }
     setState(() {
       currentPage = index;
     });
@@ -174,11 +210,14 @@ class NaviPaneState extends State<NaviPane>
       vsync: this,
     );
     widget.observer.addListener(onNavigatorStateChange);
+    _statusBarTapObserver =
+        StatusBarTapObserver(onTap: _scrollCurrentPageToTop).register();
     super.initState();
   }
 
   @override
   void dispose() {
+    _statusBarTapObserver.dispose();
     controller.dispose();
     widget.observer.removeListener(onNavigatorStateChange);
     super.dispose();
@@ -387,36 +426,39 @@ class NaviPaneState extends State<NaviPane>
             data: theme.copyWith(
               pageTransitionsTheme: _buildInsetPageTransitionsTheme(theme),
             ),
-            child: Navigator(
-              observers: [widget.observer],
-              key: widget.navigatorKey,
-              onGenerateInitialRoutes: (navigator, initialRoute) {
-                final routes = <Route<dynamic>>[
-                  AppPageRoute(
-                    preventRebuild: false,
-                    builder: (context) {
-                      return _NaviMainView(state: this);
-                    },
-                  ),
-                ];
-                final initialRouteBuilder = widget.initialRouteBuilder;
-                if (initialRouteBuilder != null) {
-                  routes.add(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: _recordScrollPosition,
+              child: Navigator(
+                observers: [widget.observer],
+                key: widget.navigatorKey,
+                onGenerateInitialRoutes: (navigator, initialRoute) {
+                  final routes = <Route<dynamic>>[
                     AppPageRoute(
-                      builder: (_) => initialRouteBuilder(),
-                      settings: RouteSettings(
-                        name: widget.initialRouteName,
-                      ),
+                      preventRebuild: false,
+                      builder: (context) {
+                        return _NaviMainView(state: this);
+                      },
                     ),
-                  );
-                }
-                return routes;
-              },
-              onGenerateRoute: (settings) => AppPageRoute(
-                preventRebuild: false,
-                builder: (context) {
-                  return _NaviMainView(state: this);
+                  ];
+                  final initialRouteBuilder = widget.initialRouteBuilder;
+                  if (initialRouteBuilder != null) {
+                    routes.add(
+                      AppPageRoute(
+                        builder: (_) => initialRouteBuilder(),
+                        settings: RouteSettings(
+                          name: widget.initialRouteName,
+                        ),
+                      ),
+                    );
+                  }
+                  return routes;
                 },
+                onGenerateRoute: (settings) => AppPageRoute(
+                  preventRebuild: false,
+                  builder: (context) {
+                    return _NaviMainView(state: this);
+                  },
+                ),
               ),
             ),
           ),

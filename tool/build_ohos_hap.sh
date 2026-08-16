@@ -68,6 +68,11 @@ cd "${PROJECT_ROOT}"
 # writes the normalized versionName during this step.
 "${FLUTTER_BIN}" build hap --"${BUILD_MODE}" --target-platform="${TARGET_PLATFORM}"
 
+# Flutter regenerates ohos/har/flutter.har during the build. Reapply the
+# viewport-stability patch after that generation and before Hvigor packages
+# the final HAP.
+dart run tool/patch_ohos_flutter_har.dart --project-only
+
 export VERSION_NAME VERSION_CODE
 perl -0pi -e 's/("versionName"\s*:\s*")[^"]*(")/$1$ENV{VERSION_NAME}$2/' "${APP_JSON}"
 

@@ -37,6 +37,7 @@ import 'package:pica_comic/utils/io_tools.dart';
 import 'package:pica_comic/utils/io.dart';
 import 'package:pica_comic/utils/tags_translation.dart';
 import 'package:pica_comic/utils/translations.dart';
+import 'package:pica_comic/utils/status_bar_tap.dart';
 import '../base.dart';
 import '../bean/dialog/dialog_helper.dart';
 import '../foundation/ui_mode.dart';

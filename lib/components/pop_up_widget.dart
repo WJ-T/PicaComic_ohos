@@ -88,8 +88,10 @@ class PopupIndicatorWidget extends InheritedWidget {
   }
 }
 
-Future<T> showPopUpWidget<T>(BuildContext context, Widget widget, {bool dismissible = true}) async {
-  return await Navigator.of(context).push(PopUpWidget(widget, dismissible: dismissible));
+Future<T> showPopUpWidget<T>(BuildContext context, Widget widget,
+    {bool dismissible = true}) async {
+  return await Navigator.of(context)
+      .push(PopUpWidget(widget, dismissible: dismissible));
 }
 
 class PopUpWidgetScaffold extends StatefulWidget {
@@ -106,6 +108,62 @@ class PopUpWidgetScaffold extends StatefulWidget {
 
 class _PopUpWidgetScaffoldState extends State<PopUpWidgetScaffold> {
   bool top = true;
+  ScrollPosition? _scrollPosition;
+  late final StatusBarTapObserver _statusBarTapObserver;
+
+  @override
+  void initState() {
+    super.initState();
+    _statusBarTapObserver =
+        StatusBarTapObserver(onTap: _scrollToTop).register();
+  }
+
+  void _scrollToTop() {
+    final position = _scrollPosition;
+    if (position == null ||
+        !position.hasPixels ||
+        !position.hasContentDimensions) {
+      return;
+    }
+    position.animateTo(
+      position.minScrollExtent,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  bool _recordScrollPosition(ScrollNotification notification) {
+    if (notification.metrics.axis == Axis.vertical &&
+        notification.context != null) {
+      _scrollPosition = Scrollable.of(notification.context!).position;
+    }
+    if (notification.metrics.pixels == notification.metrics.minScrollExtent &&
+        !top) {
+      setState(() {
+        top = true;
+      });
+    } else if (notification.metrics.pixels !=
+            notification.metrics.minScrollExtent &&
+        top) {
+      setState(() {
+        top = false;
+      });
+    }
+    return false;
+  }
+
+  @override
+  void dispose() {
+    _statusBarTapObserver.dispose();
+    super.dispose();
+  }
+
+  Widget _trackScroll(Widget child) {
+    return NotificationListener<ScrollNotification>(
+      onNotification: _recordScrollPosition,
+      child: child,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +184,7 @@ class _PopUpWidgetScaffoldState extends State<PopUpWidgetScaffold> {
                 : App.globalBack(),
           ),
         ),
-        content: widget.body,
+        content: _trackScroll(widget.body),
       );
     }
     return Material(
@@ -168,24 +226,8 @@ class _PopUpWidgetScaffoldState extends State<PopUpWidgetScaffold> {
               ],
             ),
           ),
-          NotificationListener<ScrollNotification>(
-            onNotification: (notifications) {
-              if (notifications.metrics.pixels ==
-                      notifications.metrics.minScrollExtent &&
-                  !top) {
-                setState(() {
-                  top = true;
-                });
-              } else if (notifications.metrics.pixels !=
-                      notifications.metrics.minScrollExtent &&
-                  top) {
-                setState(() {
-                  top = false;
-                });
-              }
-              return false;
-            },
-            child: MediaQuery.removePadding(
+          _trackScroll(
+            MediaQuery.removePadding(
               removeTop: true,
               context: context,
               child: Expanded(child: widget.body),
