@@ -80,6 +80,10 @@ bash tool/prepare_ohos_har.sh
 `tool/patch_ohos_flutter_har.dart` is required for the current Flutter OHOS
 embedding. It keeps `windowStageEvent` listener failures from blocking
 `windowStage.loadContent`, which is needed for service-card cold starts.
+It also disables the OHOS embedding's runtime `updateDpiScale` path. That path
+changes Flutter's root `devicePixelRatio` while the app is running and can
+scale the entire page, including overlays, during scrolling. Real window-size
+and display-density changes remain handled by the embedding.
 
 ### 2. Bootstrap project on a new machine
 
