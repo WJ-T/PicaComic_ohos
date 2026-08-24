@@ -8,7 +8,8 @@ import 'package:pica_comic/request/clients/download_http_client.dart';
 import 'package:pica_comic/request/config/api_endpoints.dart';
 import 'package:pica_comic/services/logging/logger.dart';
 import 'package:pica_comic/utils/date_time.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:pica_comic/utils/app_url_launcher.dart';
+import 'package:pica_comic/foundation/platform_utils.dart';
 
 import '../../bean/dialog/dialog_helper.dart';
 import 'app_updater.dart';
@@ -168,7 +169,9 @@ class _AppUpdaterHistoryPageState extends State<AppUpdaterHistoryPage> {
     }
 
     try {
-      if (Platform.isWindows) {
+      if (PlatformUtils.isOhos) {
+        addIfAvailable(InstallationType.ohos);
+      } else if (Platform.isWindows) {
         addIfAvailable(InstallationType.windowsMsix);
         addIfAvailable(InstallationType.windowsPortable);
       } else if (Platform.isMacOS) {
@@ -177,8 +180,8 @@ class _AppUpdaterHistoryPageState extends State<AppUpdaterHistoryPage> {
         addIfAvailable(InstallationType.androidApk);
       }
     } catch (e) {
-      KazumiLogger().w('Update history: detect downloadable types failed',
-          error: e);
+      KazumiLogger()
+          .w('Update history: detect downloadable types failed', error: e);
     }
 
     return types;
@@ -200,6 +203,8 @@ class _AppUpdaterHistoryPageState extends State<AppUpdaterHistoryPage> {
         return 'Android APK';
       case InstallationType.ios:
         return 'iOS ipa';
+      case InstallationType.ohos:
+        return 'OHOS HAP';
       case InstallationType.unknown:
         return '未知安装类型';
     }
@@ -227,7 +232,8 @@ class _AppUpdaterHistoryPageState extends State<AppUpdaterHistoryPage> {
 
   Future<void> _showReleaseDetails(_ReleaseHistoryItem release) async {
     final downloadableTypes = _downloadableTypes(release.assets);
-    final releaseOnly = Platform.isLinux || Platform.isIOS;
+    final releaseOnly =
+        PlatformUtils.isOhos || Platform.isLinux || Platform.isIOS;
     final description =
         release.description.isEmpty ? '暂无更新说明' : release.description;
 
@@ -267,8 +273,7 @@ class _AppUpdaterHistoryPageState extends State<AppUpdaterHistoryPage> {
                         children: [
                           if (_isCurrentVersion(release.version))
                             const _InfoChip(label: '当前版本'),
-                          if (release.prerelease)
-                            const _InfoChip(label: '预发布'),
+                          if (release.prerelease) const _InfoChip(label: '预发布'),
                         ],
                       ),
                     ],
@@ -308,8 +313,8 @@ class _AppUpdaterHistoryPageState extends State<AppUpdaterHistoryPage> {
                                             downloadableTypes,
                                         assets: release.assets,
                                       );
-                                      AutoUpdater().downloadRelease(
-                                          updateInfo, type);
+                                      AutoUpdater()
+                                          .downloadRelease(updateInfo, type);
                                     },
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
@@ -331,9 +336,9 @@ class _AppUpdaterHistoryPageState extends State<AppUpdaterHistoryPage> {
                                           const SizedBox(width: 8),
                                           Expanded(
                                             child: Text(
-                                              _installationTypeDescription(type),
-                                              style:
-                                                  theme.textTheme.bodySmall,
+                                              _installationTypeDescription(
+                                                  type),
+                                              style: theme.textTheme.bodySmall,
                                             ),
                                           ),
                                           Icon(
@@ -381,10 +386,7 @@ class _AppUpdaterHistoryPageState extends State<AppUpdaterHistoryPage> {
             if (release.htmlUrl.isNotEmpty)
               TextButton(
                 onPressed: () {
-                  launchUrl(
-                    Uri.parse(release.htmlUrl),
-                    mode: LaunchMode.externalApplication,
-                  );
+                  AppUrlLauncher.launchExternalUrl(release.htmlUrl);
                 },
                 child: Text(releaseOnly ? '前往下载' : '查看详情'),
               ),

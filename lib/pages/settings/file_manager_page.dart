@@ -4,8 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:pica_comic/components/components.dart';
-import 'package:share_plus/share_plus.dart' as s;
 import 'package:pica_comic/foundation/app.dart';
+import 'package:pica_comic/utils/app_share.dart';
 import 'package:pica_comic/utils/translations.dart';
 
 class FileManagerPage extends StatefulWidget {
@@ -60,7 +60,9 @@ class _FileManagerPageState extends State<FileManagerPage> {
         final aIsDir = a is Directory;
         final bIsDir = b is Directory;
         if (aIsDir != bIsDir) return aIsDir ? -1 : 1;
-        return a.path.split(Platform.pathSeparator).last
+        return a.path
+            .split(Platform.pathSeparator)
+            .last
             .compareTo(b.path.split(Platform.pathSeparator).last);
       });
       entries = list;
@@ -106,7 +108,9 @@ class _FileManagerPageState extends State<FileManagerPage> {
     try {
       await for (final e in dir.list(recursive: true)) {
         if (e is File) {
-          try { total += await e.length(); } catch (_) {}
+          try {
+            total += await e.length();
+          } catch (_) {}
         }
       }
     } catch (_) {}
@@ -214,7 +218,7 @@ class _FileManagerPageState extends State<FileManagerPage> {
                 title: Text('分享'.tl),
                 onTap: () {
                   Navigator.pop(ctx);
-                  s.Share.shareXFiles([s.XFile((e as File).path)]);
+                  AppShare.shareFile((e as File).path);
                 },
               ),
             ListTile(
@@ -235,16 +239,41 @@ class _FileManagerPageState extends State<FileManagerPage> {
   bool _isTextFile(File file) {
     final ext = file.path.split('.').last.toLowerCase();
     return {
-      'txt', 'json', 'xml', 'yaml', 'yml', 'csv', 'log', 'md',
-      'ini', 'cfg', 'conf', 'properties', 'html', 'css', 'js',
-      'ts', 'dart', 'java', 'py', 'sh', 'bat', 'sql',
+      'txt',
+      'json',
+      'xml',
+      'yaml',
+      'yml',
+      'csv',
+      'log',
+      'md',
+      'ini',
+      'cfg',
+      'conf',
+      'properties',
+      'html',
+      'css',
+      'js',
+      'ts',
+      'dart',
+      'java',
+      'py',
+      'sh',
+      'bat',
+      'sql',
     }.contains(ext);
   }
 
   bool _isImageFile(File file) {
     final ext = file.path.split('.').last.toLowerCase();
     return {
-      'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg',
+      'jpg',
+      'jpeg',
+      'png',
+      'gif',
+      'webp',
+      'bmp',
+      'svg',
     }.contains(ext);
   }
 
@@ -325,7 +354,9 @@ class _FileManagerPageState extends State<FileManagerPage> {
           contentPadding: const EdgeInsets.all(16),
           title: Row(
             children: [
-              Expanded(child: Text(_entityName(file), style: const TextStyle(fontSize: 14))),
+              Expanded(
+                  child: Text(_entityName(file),
+                      style: const TextStyle(fontSize: 14))),
               Text('${content.length} chars',
                   style: TextStyle(fontSize: 12, color: Colors.grey[600])),
             ],
@@ -406,7 +437,9 @@ class _FileManagerPageState extends State<FileManagerPage> {
   List<FileSystemEntity> get _filteredEntries {
     if (searchQuery.isEmpty) return entries;
     final query = searchQuery.toLowerCase();
-    return entries.where((e) => _entityName(e).toLowerCase().contains(query)).toList();
+    return entries
+        .where((e) => _entityName(e).toLowerCase().contains(query))
+        .toList();
   }
 
   Widget _buildBreadcrumb() {
@@ -421,13 +454,18 @@ class _FileManagerPageState extends State<FileManagerPage> {
           final dir = navigationStack[index];
           final isLast = index == navigationStack.length - 1;
           final name = index == 0
-              ? (App.isAndroid ? 'data' : dir.path.split(Platform.pathSeparator).last)
+              ? (App.isAndroid
+                  ? 'data'
+                  : dir.path.split(Platform.pathSeparator).last)
               : _entityName(dir);
           return InkWell(
-            onTap: isLast ? null : () {
-              navigationStack.removeRange(index + 1, navigationStack.length);
-              _loadDirectory(dir);
-            },
+            onTap: isLast
+                ? null
+                : () {
+                    navigationStack.removeRange(
+                        index + 1, navigationStack.length);
+                    _loadDirectory(dir);
+                  },
             child: Center(
               child: Text(
                 name,
@@ -472,7 +510,9 @@ class _FileManagerPageState extends State<FileManagerPage> {
                             return ListTile(
                               leading: Icon(
                                 isDir ? Icons.folder : _fileIcon(e as File),
-                                color: isDir ? Colors.amber[700] : Colors.blue[400],
+                                color: isDir
+                                    ? Colors.amber[700]
+                                    : Colors.blue[400],
                               ),
                               title: Text(_entityName(e)),
                               subtitle: FutureBuilder<String>(

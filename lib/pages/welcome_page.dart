@@ -1,10 +1,14 @@
+import 'dart:io';
+//import 'package:file_picker_ohos/file_picker_ohos.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:pica_comic/base.dart';
 import 'package:pica_comic/foundation/comic_source/comic_source.dart';
 import 'package:pica_comic/components/components.dart';
 import 'package:pica_comic/pages/main_page.dart';
 import 'package:pica_comic/foundation/app.dart';
+import 'package:pica_comic/foundation/log.dart';
 import 'package:pica_comic/utils/translations.dart';
 import 'package:pica_comic/utils/io_tools.dart';
 import '../utils/font_manager.dart';
@@ -118,15 +122,23 @@ mixin class _WelcomePageComponents {
           Button.filled(
               padding: const EdgeInsets.fromLTRB(24, 6, 12, 6),
               onPressed: () async {
-                await ComicSource.reload();
-                if (context.mounted) {
-                  context.to(() => const MainPage());
-                  var route = ModalRoute.of(context);
-                  Future.delayed(const Duration(milliseconds: 500), () {
-                    if(route != null && route.isActive) {
-                      Navigator.of(context).removeRoute(route);
-                    }
-                  });
+
+                bool reloadSuccess = true;
+                try {
+                  await ComicSource.reload();
+                } catch (e, s) {
+                  reloadSuccess = false;
+                  LogManager.addLog(LogLevel.error, "WelcomePage",
+                      "Failed to reload comic sources: $e\n$s");
+                }
+                if (!context.mounted) return;
+                appdata.firstUse[3] = "1";
+                appdata.writeFirstUse();
+                App.off(context, () => const MainPage());
+                if (!reloadSuccess) {
+                  context.showMessage(
+                      message: "刷新漫画源失败，部分功能可能异常，请查看日志。");
+
                 }
               },
               disabled: !canNext,
@@ -576,16 +588,53 @@ class _More extends StatelessWidget with _WelcomePageComponents {
             leading: const Icon(Icons.add_circle_outline),
             title: Text("导入字体".tl),
             onTap: () async {
-              FilePickerResult? result = await FilePicker.platform.pickFiles(
-                type: FileType.custom,
-                allowedExtensions: ['ttf', 'otf'],
-              );
-
-              if (result != null && result.files.single.path != null) {
-                var name =
-                    await FontManager().addFont(result.files.single.path!);
+              try {
+                FilePickerResult? result = await FilePicker.platform.pickFiles(
+                  type: FileType.custom,
+                  allowedExtensions: const ['ttf', 'otf'],
+                  withData: true,
+                  allowMultiple: false,
+                );
+                // 如果第一次因路径问题失败，再尝试一次不带后缀过滤
+                if (result == null) {
+                  try {
+                    result = await FilePicker.platform.pickFiles(
+                      withData: true,
+                      allowMultiple: false,
+                    );
+                  } on PlatformException {
+                    // ignore and fall through
+                  }
+                }
+                if (result == null || result.files.isEmpty) return;
+                final file = result.files.single;
+                final lowerName = file.name.toLowerCase();
+                if (!(lowerName.endsWith('.ttf') || lowerName.endsWith('.otf'))) {
+                  if (context.mounted) {
+                    context.showMessage(message: "仅支持 .ttf / .otf 字体文件".tl);
+                  }
+                  return;
+                }
+                String tempPath = file.path ?? '';
+                if ((tempPath.isEmpty || !File(tempPath).existsSync()) &&
+                    file.bytes != null &&
+                    file.bytes!.isNotEmpty) {
+                  final tmp = File(
+                      '${App.dataPath}/fonts/tmp_${DateTime.now().millisecondsSinceEpoch}_${file.name}');
+                  tmp.createSync(recursive: true);
+                  tmp.writeAsBytesSync(file.bytes!, flush: true);
+                  tempPath = tmp.path;
+                }
+                final name = await FontManager().addFont(tempPath);
                 if (name != null) {
                   MyApp.updater?.call();
+                }
+              } on PlatformException catch (e) {
+                if (e.code == 'unknown_activity' || e.code == 'unknown_activity_error') {
+                  return;
+                }
+                if (context.mounted) {
+                  context.showMessage(message: "导入字体失败: ${e.code}".tl);
                 }
               }
             },

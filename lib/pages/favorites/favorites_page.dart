@@ -35,6 +35,14 @@ const _kLeftBarWidth = 256.0;
 
 const _kTwoPanelChangeWidth = 720.0;
 
+double _favoriteFloatingButtonBottom(BuildContext context) {
+  final naviPane = context.findAncestorStateOfType<NaviPaneState>();
+  if (naviPane?.enableLiquidGlassBottomBar ?? false) {
+    return 16 + naviPane!.liquidGlassBottomBarHeight;
+  }
+  return MediaQuery.of(context).padding.bottom + 16;
+}
+
 class FavoritesPage extends StatefulWidget {
   const FavoritesPage({super.key});
 
@@ -121,7 +129,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
       barrierDismissible: true,
       fullscreenDialog: true,
       opaque: false,
-      barrierColor: Colors.black.withOpacity(0.36),
+      barrierColor: Colors.black.withValues(alpha: 0.36),
       pageBuilder: (context, animation, secondary) {
         return Align(
           alignment: Alignment.centerLeft,

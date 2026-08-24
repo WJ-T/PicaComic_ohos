@@ -6,6 +6,18 @@
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+
+    <!-- Android 11+ 包可见性：允许解析并打开系统文件管理器（DocumentsUI） -->
+    <queries>
+        <package android:name="com.android.documentsui" />
+        <package android:name="com.google.android.documentsui" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="content" android:host="com.android.externalstorage.documents" />
+        </intent>
+    </queries>
+
    <application
         android:label="Pica Comic"
         android:name="${applicationName}"
@@ -54,6 +66,17 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <receiver
+            android:name=".HistoryWidgetReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/history_widget_info" />
+        </receiver>
     </application>
 
 </manifest>

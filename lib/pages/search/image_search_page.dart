@@ -8,9 +8,9 @@ import 'package:pica_comic/bean/card/network_img_layer.dart';
 import 'package:pica_comic/bean/dialog/dialog_helper.dart';
 import 'package:pica_comic/pages/search/image_search_module.dart';
 import 'package:pica_comic/pages/search/search_controller.dart';
+import 'package:pica_comic/utils/app_url_launcher.dart';
 import 'package:pica_comic/utils/constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:pica_comic/components/components.dart';
 
 class ImageSearchPage extends StatefulWidget {
@@ -189,9 +189,7 @@ class _ImageSearchPageState extends State<ImageSearchPage> {
   }
 
   Future<void> _startSearch() async {
-    final selectedDatabases = _selectedDatabaseIndexes
-        .toList()
-      ..sort();
+    final selectedDatabases = _selectedDatabaseIndexes.toList()..sort();
     final selectedDatabaseValues = selectedDatabases
         .map((index) => _databaseValues[index])
         .toList(growable: false);
@@ -1042,10 +1040,8 @@ class _ImageSearchPageState extends State<ImageSearchPage> {
               alignment: PlaceholderAlignment.baseline,
               baseline: TextBaseline.alphabetic,
               child: GestureDetector(
-                onTap: () => launchUrl(
-                  Uri.parse('https://saucenao.com'),
-                  mode: LaunchMode.externalApplication,
-                ),
+                onTap: () =>
+                    AppUrlLauncher.launchExternalUrl('https://saucenao.com'),
                 child: Text('SauceNAO', style: linkStyle),
               ),
             ),

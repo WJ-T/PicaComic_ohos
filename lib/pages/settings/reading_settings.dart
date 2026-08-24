@@ -58,7 +58,9 @@ class _ReadingSettingsState extends State<ReadingSettings> {
           leading: const Icon(Icons.comment),
           title: Text("显示章节评论".tl),
           trailing: AdaptiveSwitch(
-            value: appdata.settings.length > 92 ? appdata.settings[92] == "1" : true,
+            value: appdata.settings.length > 92
+                ? appdata.settings[92] == "1"
+                : true,
             onChanged: (b) {
               setState(() {
                 while (appdata.settings.length <= 92) {
@@ -81,7 +83,9 @@ class _ReadingSettingsState extends State<ReadingSettings> {
             leading: const Icon(Icons.comment_bank),
             title: Text("章节末尾显示评论".tl),
             trailing: AdaptiveSwitch(
-              value: appdata.settings.length > 99 ? appdata.settings[99] == "1" : false,
+              value: appdata.settings.length > 99
+                  ? appdata.settings[99] == "1"
+                  : false,
               onChanged: (b) {
                 setState(() {
                   while (appdata.settings.length <= 99) {
@@ -93,64 +97,67 @@ class _ReadingSettingsState extends State<ReadingSettings> {
               },
             ),
           ),
-
-           ListTile(
-            leading: const Icon(Icons.save),
-            title: Text("下载时保存章节评论".tl),
-            subtitle: Text("断网时也可查看已保存的章节评论".tl),
-            trailing: AdaptiveSwitch(
-              value: appdata.settings.length > 102 ? appdata.settings[102] == "1" : false,
-              onChanged: (b) {
-                setState(() {
-                  while (appdata.settings.length <= 102) {
-                    appdata.settings.add("0");
-                  }
-                  appdata.settings[102] = b ? "1" : "0";
-                });
-                appdata.updateSettings();
-              },
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.folder),
-            title: Text("管理已保存的章节评论".tl),
-            subtitle: Text("查看或删除已保存的评论文件".tl),
-            onTap: () {
-              context.to(() => const ChapterCommentsManagerPage());
+        ListTile(
+          leading: const Icon(Icons.save),
+          title: Text("下载时保存章节评论".tl),
+          subtitle: Text("断网时也可查看已保存的章节评论".tl),
+          trailing: AdaptiveSwitch(
+            value: appdata.settings.length > 102
+                ? appdata.settings[102] == "1"
+                : false,
+            onChanged: (b) {
+              setState(() {
+                while (appdata.settings.length <= 102) {
+                  appdata.settings.add("0");
+                }
+                appdata.settings[102] = b ? "1" : "0";
+              });
+              appdata.updateSettings();
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.comment_bank),
-            title: Text("下载漫画时保存普通评论".tl),
-            subtitle: Text("断网时也可查看已保存的漫画评论, 联网时会自动更新".tl),
-            trailing: AdaptiveSwitch(
-              value: appdata.settings.length > 104 ? appdata.settings[104] == "1" : false,
-              onChanged: (b) {
-                setState(() {
-                  while (appdata.settings.length <= 104) {
-                    appdata.settings.add("0");
-                  }
-                  appdata.settings[104] = b ? "1" : "0";
-                });
-                appdata.updateSettings();
-              },
-            ),
-          ),          
-          ListTile(
-            leading: const Icon(Icons.comment_bank),
-            title: Text("管理已保存的普通评论".tl),
-            subtitle: Text("查看或删除已下载漫画的评论".tl),
-            onTap: () {
-              context.to(() => const ComicCommentsManagerPage());
+        ),
+        ListTile(
+          leading: const Icon(Icons.folder),
+          title: Text("管理已保存的章节评论".tl),
+          subtitle: Text("查看或删除已保存的评论文件".tl),
+          onTap: () {
+            context.to(() => const ChapterCommentsManagerPage());
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.comment_bank),
+          title: Text("下载漫画时保存普通评论".tl),
+          subtitle: Text("断网时也可查看已保存的漫画评论, 联网时会自动更新".tl),
+          trailing: AdaptiveSwitch(
+            value: appdata.settings.length > 104
+                ? appdata.settings[104] == "1"
+                : false,
+            onChanged: (b) {
+              setState(() {
+                while (appdata.settings.length <= 104) {
+                  appdata.settings.add("0");
+                }
+                appdata.settings[104] = b ? "1" : "0";
+              });
+              appdata.updateSettings();
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.folder_open),
-            title: Text("文件管理器".tl),
-            subtitle: Text("浏览应用私有目录".tl),
-            onTap: () => context.to(() => const FileManagerPage()),
-            trailing: const Icon(Icons.arrow_right),
-          ),
+        ),
+        ListTile(
+          leading: const Icon(Icons.comment_bank),
+          title: Text("管理已保存的普通评论".tl),
+          subtitle: Text("查看或删除已下载漫画的评论".tl),
+          onTap: () {
+            context.to(() => const ComicCommentsManagerPage());
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.folder_open),
+          title: Text("文件管理器".tl),
+          subtitle: Text("浏览应用私有目录".tl),
+          onTap: () => context.to(() => const FileManagerPage()),
+          trailing: const Icon(Icons.arrow_right),
+        ),
         ListTile(
           leading: const Icon(Icons.timer_sharp),
           subtitle: SizedBox(
@@ -168,7 +175,7 @@ class _ReadingSettingsState extends State<ReadingSettings> {
                       divisions: 20,
                       value: int.parse(appdata.settings[33]).toDouble(),
                       overlayColor: WidgetStateColor.resolveWith(
-                              (states) => Colors.transparent),
+                          (states) => Colors.transparent),
                       onChanged: (v) {
                         if (v == 0) return;
                         appdata.settings[33] = v.toInt().toString();
@@ -204,7 +211,7 @@ class _ReadingSettingsState extends State<ReadingSettings> {
           settingsIndex: 18,
           icon: const Icon(Icons.brightness_4),
         ),
-        if(App.isAndroid)
+        if (App.isAndroid)
           SelectSetting(
             leading: const Icon(Icons.screen_lock_rotation),
             title: "固定屏幕方向".tl,
@@ -219,14 +226,13 @@ class _ReadingSettingsState extends State<ReadingSettings> {
               appdata.updateSettings();
             },
           ),
-
-
         if (App.isMobile)
           ListTile(
             leading: const Icon(Icons.signal_cellular_alt),
             title: Text("始终显示状态栏".tl),
             trailing: AdaptiveSwitch(
-              value: appdata.settings.length > 95 && appdata.settings[95] == "1",
+              value:
+                  appdata.settings.length > 95 && appdata.settings[95] == "1",
               onChanged: (b) {
                 setState(() {
                   while (appdata.settings.length <= 95) {
@@ -247,10 +253,12 @@ class _ReadingSettingsState extends State<ReadingSettings> {
         SelectSetting(
           leading: const Icon(Icons.image_outlined),
           title: "图片预加载".tl,
-          initialValue: ["0", "1", "2", "3", "4", "5", "10", "15"].indexOf(appdata.settings[28]),
+          initialValue: ["0", "1", "2", "3", "4", "5", "10", "15"]
+              .indexOf(appdata.settings[28]),
           values: const ["0", "1", "2", "3", "4", "5", "10", "15"],
           onChanged: (i) {
-            appdata.settings[28] = ["0", "1", "2", "3", "4", "5", "10", "15"][i];
+            appdata.settings[28] =
+                ["0", "1", "2", "3", "4", "5", "10", "15"][i];
             appdata.updateSettings();
           },
         ),
@@ -274,7 +282,9 @@ class _ReadingSettingsState extends State<ReadingSettings> {
           settingsIndex: 81,
           icon: const Icon(Icons.dark_mode),
         ),
-        Padding(padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom))
+        Padding(
+            padding:
+                EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom))
       ],
     );
   }

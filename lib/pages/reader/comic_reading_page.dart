@@ -31,6 +31,7 @@ import 'package:pica_comic/network/eh_network/get_gallery_id.dart';
 import 'package:pica_comic/base.dart';
 import 'package:pica_comic/network/htmanga_network/htmanga_main_network.dart';
 import 'package:pica_comic/network/jm_network/jm_models.dart' as jm;
+import 'package:pica_comic/network/jm_network/jm_image.dart';
 import 'package:pica_comic/network/nhentai_network/nhentai_main_network.dart';
 import 'package:pica_comic/network/res.dart';
 import 'package:pica_comic/pages/comic_page.dart';
@@ -42,10 +43,15 @@ import 'package:pica_comic/utils/save_image.dart';
 import 'package:pica_comic/utils/time.dart';
 import 'package:pica_comic/network/jm_network/jm_network.dart';
 import '../../foundation/app.dart';
+import '../../foundation/platform_utils.dart';
 import '../../foundation/ui_mode.dart';
 import '../../network/hitomi_network/hitomi_models.dart';
 import '../../utils/extensions.dart';
 import '../../utils/key_down_event.dart';
+import '../../utils/ohos_continuation.dart';
+import '../../utils/ohos_battery.dart';
+import '../../utils/ohos_decor.dart';
+import '../../utils/ohos_device_info.dart';
 import 'package:pica_comic/network/picacg_network/methods.dart' as picacg;
 import 'package:pica_comic/utils/translations.dart';
 
@@ -73,13 +79,43 @@ part 'reading_settings.dart';
 
 part 'reading_data.dart';
 
+part 'continuation.dart';
+
+void _setReaderSystemUi({required bool showBars}) {
+  final alwaysShowStatusBar =
+      appdata.settings.length > 95 && appdata.settings[95] == "1";
+  final mode = showBars || alwaysShowStatusBar
+      ? SystemUiMode.edgeToEdge
+      : (PlatformUtils.isOhos
+          ? SystemUiMode.immersiveSticky
+          : SystemUiMode.immersive);
+  SystemChrome.setEnabledSystemUIMode(mode);
+}
+
+void _restoreAppOrientations() {
+  if (App.isAndroid || App.isIOS) {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft, 
+      DeviceOrientation.landscapeRight, 
+    ]);
+  } else if (OhosDeviceInfoBridge.shouldLockAppPortrait) {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+  } else {
+    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+  }
+}
+
 ///阅读器
 class ComicReadingPage extends StatelessWidget {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   final ReadingData readingData;
 
-  late final History? history = HistoryManager().findSync(readingData.id);
+  late final History history = _findOrCreateHistory(readingData);
 
   final int initialPage;
 
@@ -99,8 +135,17 @@ class ComicReadingPage extends StatelessWidget {
 
   ComicReadingPage.picacg(
       String target, this.initialEp, List<String> eps, String title,
-      {super.key, this.initialPage = 1})
-      : readingData = PicacgReadingData(title, target, eps) {
+      {super.key,
+      this.initialPage = 1,
+      String historySubTitle = '',
+      String historyCover = ''})
+      : readingData = PicacgReadingData(
+          title,
+          target,
+          eps,
+          historySubTitle: historySubTitle,
+          historyCover: historyCover,
+        ) {
     StateController.put(ComicReadingPageLogic(
         initialEp,
         readingData,
@@ -109,7 +154,8 @@ class ComicReadingPage extends StatelessWidget {
             StateController.find<ComicReadingPageLogic>(), false)));
   }
 
-  ComicReadingPage.ehentai(eh.Gallery gallery, {super.key, this.initialPage = 1})
+  ComicReadingPage.ehentai(eh.Gallery gallery,
+      {super.key, this.initialPage = 1})
       : initialEp = 1,
         readingData = EhReadingData(gallery) {
     StateController.put(ComicReadingPageLogic(
@@ -144,6 +190,8 @@ class ComicReadingPage extends StatelessWidget {
           comic.target,
           comic.files,
           link,
+          historySubTitle: comic.subTitle,
+          historyCover: comic.cover,
         ) {
     StateController.put(ComicReadingPageLogic(
         initialEp,
@@ -154,9 +202,17 @@ class ComicReadingPage extends StatelessWidget {
   }
 
   ComicReadingPage.htmanga(String target, String title,
-      {super.key, this.initialPage = 1})
+      {super.key,
+      this.initialPage = 1,
+      String historySubTitle = '',
+      String historyCover = ''})
       : initialEp = 1,
-        readingData = HtReadingData(title, target) {
+        readingData = HtReadingData(
+          title,
+          target,
+          historySubTitle: historySubTitle,
+          historyCover: historyCover,
+        ) {
     StateController.put(ComicReadingPageLogic(
         initialEp,
         readingData,
@@ -166,9 +222,17 @@ class ComicReadingPage extends StatelessWidget {
   }
 
   ComicReadingPage.nhentai(String target, String title,
-      {super.key, this.initialPage = 1})
+      {super.key,
+      this.initialPage = 1,
+      String historySubTitle = '',
+      String historyCover = ''})
       : initialEp = 1,
-        readingData = NhentaiReadingData(title, target) {
+        readingData = NhentaiReadingData(
+          title,
+          target,
+          historySubTitle: historySubTitle,
+          historyCover: historyCover,
+        ) {
     StateController.put(ComicReadingPageLogic(
         initialEp,
         readingData,
@@ -180,32 +244,53 @@ class ComicReadingPage extends StatelessWidget {
   _updateHistory(ComicReadingPageLogic? logic, bool updateMePage) {
     if (readingData.hasEp) {
       if (logic!.order == 1 && logic.index == 1) {
-        history?.ep = 0;
-        history?.page = 0;
+        history.ep = 0;
+        history.page = 0;
       } else {
         if (logic.order == readingData.eps?.length &&
             logic.index == logic.length) {
-          history?.ep = logic.order;
-          history?.page = logic.length;
+          history.ep = logic.order;
+          history.page = logic.length;
         } else {
-          history?.ep = logic.order;
-          history?.page = logic.index;
+          history.ep = logic.order;
+          history.page = logic.index;
         }
       }
     } else {
       if (logic!.index == 1) {
-        history?.ep = 0;
-        history?.page = 0;
+        history.ep = 0;
+        history.page = 0;
       } else if (logic.index == logic.length) {
-        history?.ep = 0;
-        history?.page = logic.length;
+        history.ep = 0;
+        history.page = logic.length;
       } else {
-        history?.ep = 1;
-        history?.page = logic.index;
+        history.ep = 1;
+        history.page = logic.index;
       }
     }
-    history!.maxPage = logic.length;
-    HistoryManager().saveReadHistory(history!, updateMePage);
+    history.maxPage = logic.length;
+    HistoryManager().saveReadHistory(history, updateMePage);
+  }
+
+  History _findOrCreateHistory(ReadingData readingData) {
+    final historyManager = HistoryManager();
+    final target = readingData.historyTarget;
+    final history = historyManager.findSync(target);
+    if (history != null) {
+      return history;
+    }
+    final newHistory = History(
+      readingData.historyType,
+      DateTime.now(),
+      readingData.title,
+      readingData.historySubTitle,
+      readingData.historyCover,
+      0,
+      0,
+      target,
+    );
+    unawaited(historyManager.addHistory(newHistory));
+    return newHistory;
   }
 
   bool get useDarkBackground => appdata.appSettings.useDarkBackground;
@@ -213,11 +298,8 @@ class ComicReadingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StateBuilder<ComicReadingPageLogic>(initState: (logic) {
-      final alwaysShowStatusBar = appdata.settings.length > 95 && appdata.settings[95] == "1";
-      SystemChrome.setEnabledSystemUIMode(
-        alwaysShowStatusBar ? SystemUiMode.edgeToEdge : SystemUiMode.immersive,
-      );
-      if (appdata.settings[14] == "1") {
+      _setReaderSystemUi(showBars: false);
+      if (supportsKeepScreenOn && appdata.settings[14] == "1") {
         setKeepScreenOn();
       }
       if (appdata.settings[76] == "1") {
@@ -226,41 +308,51 @@ class ComicReadingPage extends StatelessWidget {
           DeviceOrientation.landscapeRight
         ]);
       } else if (appdata.settings[76] == "2") {
-        SystemChrome.setPreferredOrientations([
-          DeviceOrientation.portraitUp,
-          DeviceOrientation.portraitDown
-        ]);
+        SystemChrome.setPreferredOrientations(
+            [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+      } else if (App.isMobile) {
+        SystemChrome.setPreferredOrientations(DeviceOrientation.values);
       }
       //进入阅读器时清除内存中的缓存, 并且增大限制
       BaseImageProvider.clearCache();
       BaseImageProvider.setCacheSizeLimit(100 * 1024 * 1024);
       logic.openEpsView = openEpsDrawer;
-      if (useDarkBackground) {
-      }
+      logic.continuationIndexCallback ??= (_) {
+        unawaited(syncReaderContinuationState(readingData, logic));
+      };
+      logic.addIndexChangeCallback(logic.continuationIndexCallback!);
+      unawaited(syncReaderContinuationState(readingData, logic));
+      OhosDecorBridge.holdDecorDark(this);
+      if (useDarkBackground) {}
     }, dispose: (logic) {
       //清除缓存并减小最大缓存
       BaseImageProvider.clearCache();
       BaseImageProvider.setCacheSizeLimit(50 * 1024 * 1024);
       logic.clearPhotoViewControllers();
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+      _restoreAppOrientations();
       if (logic.listenVolume != null) {
         logic.listenVolume!.stop();
       }
-      if (appdata.settings[14] == "1") {
+      if (logic.continuationIndexCallback != null) {
+        logic.removeIndexChangeCallback(logic.continuationIndexCallback!);
+        logic.continuationIndexCallback = null;
+      }
+      unawaited(clearReaderContinuationState());
+      if (supportsKeepScreenOn && appdata.settings[14] == "1") {
         cancelKeepScreenOn();
       }
       logic.runningAutoPageTurning = false;
       ComicImage.clear();
       StateController.remove<ComicReadingPageLogic>();
       // 更新本地收藏
-      LocalFavoritesManager().onReadEnd(readingData.favoriteId, readingData.favoriteType);
-      LocalFavoritesManager().markAsRead(readingData.favoriteId, readingData.favoriteType);
+      LocalFavoritesManager()
+          .onReadEnd(readingData.favoriteId, readingData.favoriteType);
+      LocalFavoritesManager()
+          .markAsRead(readingData.favoriteId, readingData.favoriteType);
       updateFollowUpdatesUI();
       // 保存历史记录
-      if (history != null) {
-        _updateHistory(logic, true);
-      }
+      _updateHistory(logic, true);
       // 退出全屏
       if (logic.isFullScreen) {
         logic.fullscreen();
@@ -274,116 +366,119 @@ class ComicReadingPage extends StatelessWidget {
           BaseComicPage.tagsStack.last.updateHistory(history);
         }
       });
-      if (appdata.settings[76] != "0") {
-        SystemChrome.setPreferredOrientations(DeviceOrientation.values);
-      }
-      if (useDarkBackground) {
-      }
+      OhosDecorBridge.releaseDecorDark(this);
+      if (useDarkBackground) {}
     }, builder: (logic) {
+      Widget reader = Scaffold(
+        backgroundColor: useDarkBackground ? Colors.black : null,
+        endDrawerEnableOpenDragGesture: false,
+        key: _scaffoldKey,
+        endDrawer: Drawer(
+          child: buildEpsView(),
+        ),
+        floatingActionButton: buildEpChangeButton(logic),
+        body: StateBuilder<ComicReadingPageLogic>(builder: (logic) {
+          if (logic.isLoading) {
+            history.readEpisode.add(logic.order);
+            loadInfo(logic);
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          } else if (logic.urls.isNotEmpty) {
+            if (logic.readingMethod == ReadingMethod.topToBottomContinuously &&
+                !logic.haveUsedInitialPage &&
+                initialPage != 0) {
+              Future.microtask(() {
+                logic.jumpToPage(initialPage);
+                logic.haveUsedInitialPage = true;
+              });
+            }
+            //监听音量键
+            if (appdata.settings[7] == "1") {
+              if (logic.listenVolume == null) {
+                logic.listenVolume = ListenVolumeController(
+                    () => logic.jumpToLastPage(), () => logic.jumpToNextPage());
+                logic.listenVolume!.listenVolumeChange();
+              }
+            } else if (logic.listenVolume != null) {
+              logic.listenVolume!.stop();
+              logic.listenVolume = null;
+            }
+
+            if (appdata.settings[9] == "4") {
+              logic.scrollManager ??= ScrollManager(logic);
+            }
+
+            var body = Listener(
+              onPointerMove: TapController.onPointerMove,
+              onPointerUp: TapController.onTapUp,
+              onPointerDown: TapController.onTapDown,
+              behavior: HitTestBehavior.translucent,
+              onPointerCancel: TapController.onTapCancel,
+              child: Stack(
+                children: [
+                  buildComicView(
+                    logic,
+                    context,
+                    readingData.id,
+                  ),
+                  if (MediaQuery.of(context).platformBrightness ==
+                          Brightness.dark &&
+                      appdata.appSettings.reduceBrightnessInDarkMode)
+                    Positioned(
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: IgnorePointer(
+                        child: ColoredBox(
+                          color: Colors.black.withOpacity(0.2),
+                        ),
+                      ),
+                    ),
+                  if (appdata.appSettings.showPageInfoInReader &&
+                      !logic.isOnChapterCommentsPage)
+                    buildPageInfoText(logic, context),
+                  if (appdata.appSettings.enableClockAndBatteryInfoInReader &&
+                      !logic.isOnChapterCommentsPage)
+                    buildStatusInfo(logic, context),
+                  if (!logic.isOnChapterCommentsPage)
+                    buildBottomToolBar(logic, context, readingData.hasEp),
+                  if (!logic.isOnChapterCommentsPage)
+                    ...buildButtons(logic, context),
+                  if (!logic.isOnChapterCommentsPage)
+                    buildTopToolBar(logic, context),
+                ],
+              ),
+            );
+
+            return KeyboardListener(
+              focusNode: logic.focusNode,
+              autofocus: true,
+              onKeyEvent: logic.handleKeyboard,
+              child: body,
+            );
+          } else {
+            return buildErrorView(logic, context);
+          }
+        }),
+      );
+      if (PlatformUtils.isOhos) {
+        reader = MediaQuery.removeViewPadding(
+          context: context,
+          removeTop: true,
+          removeLeft: true,
+          removeRight: true,
+          removeBottom: true,
+          child: reader,
+        );
+      }
       return DefaultTextStyle.merge(
         style: TextStyle(
           color: useDarkBackground ? Colors.white : null,
           fontSize: 16,
         ),
-        child: Scaffold(
-          backgroundColor: useDarkBackground ? Colors.black : null,
-          endDrawerEnableOpenDragGesture: false,
-          key: _scaffoldKey,
-          endDrawer: Drawer(
-            child: buildEpsView(),
-          ),
-          floatingActionButton: buildEpChangeButton(logic),
-          body: StateBuilder<ComicReadingPageLogic>(builder: (logic) {
-            if (logic.isLoading) {
-              history?.readEpisode.add(logic.order);
-              loadInfo(logic);
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
-            } else if (logic.urls.isNotEmpty) {
-              if (logic.readingMethod ==
-                      ReadingMethod.topToBottomContinuously &&
-                  !logic.haveUsedInitialPage &&
-                  initialPage != 0) {
-                Future.microtask(() {
-                  logic.jumpToPage(initialPage);
-                  logic.haveUsedInitialPage = true;
-                });
-              }
-              //监听音量键
-              if (appdata.settings[7] == "1") {
-                if (logic.listenVolume == null) {
-                  logic.listenVolume = ListenVolumeController(
-                      () => logic.jumpToLastPage(),
-                      () => logic.jumpToNextPage());
-                  logic.listenVolume!.listenVolumeChange();
-                }
-              } else if (logic.listenVolume != null) {
-                logic.listenVolume!.stop();
-                logic.listenVolume = null;
-              }
-
-              if (appdata.settings[9] == "4") {
-                logic.scrollManager ??= ScrollManager(logic);
-              }
-
-              var body = Listener(
-                onPointerMove: TapController.onPointerMove,
-                onPointerUp: TapController.onTapUp,
-                onPointerDown: TapController.onTapDown,
-                behavior: HitTestBehavior.translucent,
-                onPointerCancel: TapController.onTapCancel,
-                child: Stack(
-                  children: [
-                    buildComicView(
-                      logic,
-                      context,
-                      readingData.id,
-                    ),
-                    if (MediaQuery.of(context).platformBrightness ==
-                            Brightness.dark &&
-                        appdata.appSettings.reduceBrightnessInDarkMode)
-                      Positioned(
-                        top: 0,
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        child: IgnorePointer(
-                          child: ColoredBox(
-                            color: Colors.black.withOpacity(0.2),
-                          ),
-                        ),
-                      ),
-
-                    if (appdata.appSettings.showPageInfoInReader && !logic.isOnChapterCommentsPage)
-                      buildPageInfoText(logic, context),
-
-                    if (appdata.appSettings.enableClockAndBatteryInfoInReader && !logic.isOnChapterCommentsPage)
-                      buildStatusInfo(logic, context),
-
-                    if (!logic.isOnChapterCommentsPage)
-                      buildBottomToolBar(logic, context, readingData.hasEp),
-
-                    if (!logic.isOnChapterCommentsPage)
-                      ...buildButtons(logic, context),
-
-                    if (!logic.isOnChapterCommentsPage)
-                      buildTopToolBar(logic, context),
-                  ],
-                ),
-              );
-
-              return KeyboardListener(
-                focusNode: logic.focusNode,
-                autofocus: true,
-                onKeyEvent: logic.handleKeyboard,
-                child: body,
-              );
-            } else {
-              return buildErrorView(logic, context);
-            }
-          }),
-        ),
+        child: reader,
       );
     });
   }
@@ -437,7 +532,8 @@ class ComicReadingPage extends StatelessWidget {
               child: Builder(
                 builder: (context) {
                   // 检查是否是 Cloudflare 错误
-                  final cfe = CloudflareException.fromString(logic.errorMessage ?? "");
+                  final cfe =
+                      CloudflareException.fromString(logic.errorMessage ?? "");
                   if (cfe != null) {
                     // Cloudflare 错误：显示验证按钮和切换章节按钮
                     return Row(

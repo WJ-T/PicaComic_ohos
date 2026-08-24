@@ -95,13 +95,13 @@ class _PicacgSettingsState extends State<PicacgSettings> {
           leading: const Icon(Icons.today),
           title: Text("自动打卡".tl),
           subtitle:
-              App.isMobile ? Text("APP启动或是距离上次打卡间隔一天时执行".tl) : Text("启动时执行".tl),
+              supportsWorkmanager ? Text("APP启动或是距离上次打卡间隔一天时执行".tl) : Text("启动时执行".tl),
           onTap: () {},
           trailing: AdaptiveSwitch(
             value: punchIn,
             onChanged: (b) {
               b ? appdata.settings[6] = "1" : appdata.settings[6] = "0";
-              if (App.isMobile) {
+              if (supportsWorkmanager) {
                 b ? runBackgroundService() : cancelBackgroundService();
               }
               setState(() {

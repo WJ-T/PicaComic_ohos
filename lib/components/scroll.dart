@@ -1,7 +1,8 @@
 part of 'components.dart';
 
 class SmoothCustomScrollView extends StatelessWidget {
-  const SmoothCustomScrollView({super.key, required this.slivers, this.controller});
+  const SmoothCustomScrollView(
+      {super.key, required this.slivers, this.controller});
 
   final ScrollController? controller;
 
@@ -22,9 +23,9 @@ class SmoothCustomScrollView extends StatelessWidget {
   }
 }
 
-
 class SmoothScrollProvider extends StatefulWidget {
-  const SmoothScrollProvider({super.key, this.controller, required this.builder});
+  const SmoothScrollProvider(
+      {super.key, this.controller, required this.builder});
 
   final ScrollController? controller;
 
@@ -51,7 +52,7 @@ class _SmoothScrollProviderState extends State<SmoothScrollProvider> {
 
   @override
   Widget build(BuildContext context) {
-    if(App.isMacOS) {
+    if (App.isMacOS) {
       return widget.builder(
         context,
         _controller,
@@ -79,8 +80,7 @@ class _SmoothScrollProviderState extends State<SmoothScrollProvider> {
           var currentLocation = _controller.position.pixels;
           _futurePosition ??= currentLocation;
           double k = (_futurePosition! - currentLocation).abs() / 1600 + 1;
-          _futurePosition =
-              _futurePosition! + pointerSignal.scrollDelta.dy * k;
+          _futurePosition = _futurePosition! + pointerSignal.scrollDelta.dy * k;
           _futurePosition = _futurePosition!.clamp(
               _controller.position.minScrollExtent,
               _controller.position.maxScrollExtent);
@@ -93,7 +93,8 @@ class _SmoothScrollProviderState extends State<SmoothScrollProvider> {
         _controller,
         _isMouseScroll
             ? const NeverScrollableScrollPhysics()
-            : const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+            : const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics()),
       ),
     );
   }
@@ -102,7 +103,8 @@ class _SmoothScrollProviderState extends State<SmoothScrollProvider> {
 /// A [SelectableText] that never scrolls independently, even when content
 /// overflows. It should always be placed inside a parent scrollable widget
 /// (e.g. CustomScrollView / ListView) so the text scrolls with the page.
-Widget Function(BuildContext, EditableTextState)? _defaultSelectionContextMenuBuilder(
+Widget Function(BuildContext, EditableTextState)?
+    _defaultSelectionContextMenuBuilder(
   Widget Function(BuildContext, EditableTextState)? builder,
 ) {
   if (builder != null) {

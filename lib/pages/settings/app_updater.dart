@@ -14,6 +14,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:pica_comic/utils/device.dart';
 import 'package:pica_comic/utils/date_time.dart';
 import 'package:pica_comic/utils/crypto.dart';
+import 'package:pica_comic/utils/app_url_launcher.dart';
+import 'package:pica_comic/foundation/platform_utils.dart';
 import 'package:pica_comic/utils/version.dart';
 
 /// 安装类型枚举
@@ -25,7 +27,7 @@ enum InstallationType {
   macosDmg, // Kazumi_macos_1.7.5.dmg
   androidApk, // Kazumi_android_1.7.5.apk
   ios, // iOS App
-  //ohos, // Kazumi_ohos_1.7.5_unsigned.hap
+  ohos, // PicaComic_ohos_4.8.1_signed.hap
   unknown,
 }
 
@@ -96,8 +98,8 @@ List<Map<String, dynamic>> getUpdateAssetsForType(
     }
   }
 
-  matched.sort((a, b) =>
-      getUpdateAssetMatchScore(b, type).compareTo(getUpdateAssetMatchScore(a, type)));
+  matched.sort((a, b) => getUpdateAssetMatchScore(b, type)
+      .compareTo(getUpdateAssetMatchScore(a, type)));
   return matched;
 }
 
@@ -173,6 +175,21 @@ int getUpdateAssetMatchScore(
         score += 5;
       }
       return score;
+    case InstallationType.ohos:
+      if (!name.endsWith('.hap') && !contentType.contains('harmony')) {
+        return -1;
+      }
+      var score = 100;
+      if (name.contains('ohos') || name.contains('harmony')) {
+        score += 40;
+      }
+      if (name.contains('arm64') || name.contains('aarch64')) {
+        score += 20;
+      }
+      if (name.contains('sign')) {
+        score += 10;
+      }
+      return score;
     case InstallationType.linuxDeb:
     case InstallationType.linuxTar:
     case InstallationType.ios:
@@ -238,7 +255,8 @@ String getAndroidApkVariantDescription(Map<String, dynamic> asset) {
 }
 
 List<Map<String, dynamic>> getPreferredAndroidApkAssets(List<dynamic> assets) {
-  final candidates = getUpdateAssetsForType(assets, InstallationType.androidApk);
+  final candidates =
+      getUpdateAssetsForType(assets, InstallationType.androidApk);
   final grouped = <AndroidApkVariant, Map<String, dynamic>>{};
 
   for (final asset in candidates) {
@@ -296,7 +314,9 @@ class AutoUpdater {
     List<InstallationType> availableTypes = [];
 
     try {
-      if (Platform.isWindows) {
+      if (PlatformUtils.isOhos) {
+        availableTypes.add(InstallationType.ohos);
+      } else if (Platform.isWindows) {
         // Windows 平台支持 MSIX 和 ZIP 便携版
         availableTypes.add(InstallationType.windowsMsix);
         availableTypes.add(InstallationType.windowsPortable);
@@ -313,9 +333,6 @@ class AutoUpdater {
       } else if (Platform.isAndroid) {
         // Android 平台支持 APK
         availableTypes.add(InstallationType.androidApk);
-      //} else if (Platform.isOhos) {
-        //// ohos 平台支持 hap
-        //availableTypes.add(InstallationType.ohos);
       }
     } catch (e) {
       KazumiLogger().w('Update: detect installation types failed', error: e);
@@ -454,8 +471,7 @@ class AutoUpdater {
           if (updateInfo.releaseNotes.isNotEmpty)
             TextButton(
               onPressed: () {
-                launchUrl(Uri.parse(updateInfo.releaseNotes),
-                    mode: LaunchMode.externalApplication);
+                AppUrlLauncher.launchExternalUrl(updateInfo.releaseNotes);
               },
               child: const Text('查看详情'),
             ),
@@ -605,8 +621,8 @@ class AutoUpdater {
         return 'Android APK';
       case InstallationType.ios:
         return 'iOS ipa';
-      //case InstallationType.ohos:
-        //return 'ohos hap';
+      case InstallationType.ohos:
+        return 'OHOS HAP';
       case InstallationType.unknown:
         return '未知安装类型';
     }
@@ -743,12 +759,13 @@ class AutoUpdater {
       // iOS 和 Linux 直接跳转到 Release 页面
       if (selectedType == InstallationType.ios ||
           selectedType == InstallationType.linuxDeb ||
-          selectedType == InstallationType.linuxTar) {
+          selectedType == InstallationType.linuxTar ||
+          selectedType == InstallationType.ohos) {
         String releaseUrl = updateInfo.releaseNotes;
         if (releaseUrl.isEmpty) {
           releaseUrl = ApiEndpoints.latestApp;
         }
-        launchUrl(Uri.parse(releaseUrl), mode: LaunchMode.externalApplication);
+        AppUrlLauncher.launchExternalUrl(releaseUrl);
         return;
       }
 
@@ -1086,15 +1103,9 @@ class AutoUpdater {
         if (result.type != ResultType.done) {
           KazumiDialog.showToast(message: '无法打开安装文件: ${result.message}');
           return;
-      //  }
-      //} else if (Platform.isOhos) {
-       // const platform = MethodChannel('com.predidit.kazumi/intent');
-       // try {
-          //await platform.invokeMethod(
-             // 'openWithInstaller', <String, String>{'path': filePath});
-      //  } on PlatformException catch (e) {
-         // KazumiDialog.showToast(message: '无法打开安装文件: ${e.message}');
         }
+      } else if (PlatformUtils.isOhos) {
+        KazumiDialog.showToast(message: 'OHOS 安装包请在系统文件管理器中手动安装');
       }
     } catch (e) {
       KazumiDialog.showToast(message: '启动安装程序失败: ${e.toString()}');
@@ -1170,8 +1181,8 @@ class AutoUpdater {
       extension = '.deb';
     } else if (Platform.isAndroid) {
       extension = '.apk';
-    //} else if (Platform.isOhos) {
-      //extension = '.hap';
+    } else if (PlatformUtils.isOhos) {
+      extension = '.hap';
     }
     return 'Kazumi-$version$extension';
   }

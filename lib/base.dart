@@ -135,7 +135,6 @@ class Appdata {
     "0", //102 下载时保存章节评论
     "0", //103 液态玻璃底部导航栏
     "0", //104 下载漫画时保存普通评论
-
   ];
 
   /// 隐式数据, 用于存储一些不需要用户设置的数据, 此数据通常为某些组件的状态, 此设置不应当被同步
@@ -395,7 +394,7 @@ class Appdata {
           var file = File("${externalDirectory.path}/blockingKeyword.txt");
           if (await file.exists()) {
             var data = (await file.readAsString()).split('\n');
-            if(data.length == 1 && data[0].isEmpty){
+            if (data.length == 1 && data[0].isEmpty) {
               data.clear();
             }
             blockingKeyword = data;
@@ -443,7 +442,7 @@ class Appdata {
           var file = File("${externalDirectory.path}/jmBlockingKeyword.txt");
           if (await file.exists()) {
             var data = (await file.readAsString()).split('\n');
-            if(data.length == 1 && data[0].isEmpty){
+            if (data.length == 1 && data[0].isEmpty) {
               data.clear();
             }
             jmBlockingKeyword = data;
@@ -491,7 +490,7 @@ class Appdata {
           var file = File("${externalDirectory.path}/blockedCommentWords.txt");
           if (await file.exists()) {
             var data = (await file.readAsString()).split('\n');
-            if(data.length == 1 && data[0].isEmpty){
+            if (data.length == 1 && data[0].isEmpty) {
               data.clear();
             }
             blockedCommentWords = data;
@@ -764,7 +763,9 @@ class Appdata {
   Map<String, Map<String, dynamic>> _comicSpecificSettings = {};
 
   bool isComicSpecificSettingsEnabled(String comicId, String sourceKey) {
-    return _comicSpecificSettings["$comicId@$sourceKey"]?.containsKey("enabled") == true &&
+    return _comicSpecificSettings["$comicId@$sourceKey"]
+                ?.containsKey("enabled") ==
+            true &&
         _comicSpecificSettings["$comicId@$sourceKey"]!["enabled"] == true;
   }
 
@@ -780,7 +781,8 @@ class Appdata {
   }
 
   /// 获取阅读设置，如果 comicId 不为 null 且启用了漫画特定设置，则返回漫画特定值，否则返回全局设置
-  String getReaderSetting(String? comicId, String? sourceKey, int settingIndex) {
+  String getReaderSetting(
+      String? comicId, String? sourceKey, int settingIndex) {
     if (comicId == null || sourceKey == null) {
       return settings[settingIndex];
     }
@@ -796,8 +798,11 @@ class Appdata {
   }
 
   /// 设置阅读设置，如果 comicId 不为 null 且启用了漫画特定设置，则保存到漫画特定设置，否则保存到全局设置
-  void setReaderSetting(String? comicId, String? sourceKey, int settingIndex, String value) {
-    if (comicId != null && sourceKey != null && isComicSpecificSettingsEnabled(comicId, sourceKey)) {
+  void setReaderSetting(
+      String? comicId, String? sourceKey, int settingIndex, String value) {
+    if (comicId != null &&
+        sourceKey != null &&
+        isComicSpecificSettingsEnabled(comicId, sourceKey)) {
       var key = "$comicId@$sourceKey";
       _comicSpecificSettings.putIfAbsent(key, () => {});
       _comicSpecificSettings[key]![settingIndex.toString()] = value;
@@ -1017,8 +1022,6 @@ class _Settings {
     appdata.settings[96] = value == 1 ? "1" : "0";
   }
 
-
-
   bool get enableClockAndBatteryInfoInReader {
     while (appdata.settings.length <= 98) {
       appdata.settings.add("0");
@@ -1105,20 +1108,20 @@ class ChapterCommentsStorage {
     String? comicName,
     String? chapterTitle,
   }) async {
-    var dir = Directory(
-        "$_basePath/${_sanitize(sourceKey)}_${_sanitize(comicId)}");
+    var dir =
+        Directory("$_basePath/${_sanitize(sourceKey)}_${_sanitize(comicId)}");
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }
     var file = File("${dir.path}/${_sanitize(epId)}.json");
-    
+
     // 检查现有文件内容
     if (await file.exists()) {
       try {
         var existingContent = await file.readAsString();
         var existingData = jsonDecode(existingContent) as Map<String, dynamic>;
         var existingComments = existingData['comments'] as List<dynamic>?;
-        
+
         // 比较评论内容是否相同
         if (_commentsEqual(existingComments, comments)) {
           return false; // 内容相同，不需要保存
@@ -1127,7 +1130,7 @@ class ChapterCommentsStorage {
         // 读取失败时继续保存
       }
     }
-    
+
     // 保留原有的锁定状态（如果存在）
     bool isLocked = false;
     if (await file.exists()) {
@@ -1139,7 +1142,7 @@ class ChapterCommentsStorage {
         // 忽略错误
       }
     }
-    
+
     var data = {
       'sourceKey': sourceKey,
       'comicId': comicId,
@@ -1150,7 +1153,7 @@ class ChapterCommentsStorage {
       'isLocked': isLocked,
       'comments': comments,
     };
-    
+
     await file.writeAsString(jsonEncode(data));
     return true; // 保存成功
   }
@@ -1159,18 +1162,18 @@ class ChapterCommentsStorage {
   static bool _commentsEqual(List<dynamic>? a, List<Map<String, dynamic>> b) {
     if (a == null) return false;
     if (a.length != b.length) return false;
-    
+
     for (var i = 0; i < a.length; i++) {
       var commentA = a[i] as Map<String, dynamic>;
       var commentB = b[i];
-      
+
       // 比较关键字段
       if (commentA['id'] != commentB['id']) return false;
       if (commentA['content'] != commentB['content']) return false;
       if (commentA['userName'] != commentB['userName']) return false;
       if (commentA['time'] != commentB['time']) return false;
     }
-    
+
     return true;
   }
 
@@ -1213,12 +1216,12 @@ class ChapterCommentsStorage {
             try {
               var content = await file.readAsString();
               var data = jsonDecode(content) as Map<String, dynamic>;
-              
+
               // 计算文件大小
               var stat = await file.stat();
               data['fileSize'] = stat.size;
               data['filePath'] = file.path;
-              
+
               result.add(data);
             } catch (e) {
               // 忽略无法解析的文件
@@ -1227,26 +1230,28 @@ class ChapterCommentsStorage {
         }
       }
     }
-    
+
     // 按保存时间排序，最新的在前
     result.sort((a, b) {
       var aTime = a['savedAt'] ?? '';
       var bTime = b['savedAt'] ?? '';
       return bTime.toString().compareTo(aTime.toString());
     });
-    
+
     return result;
   }
 
   /// 删除指定的评论文件
-  static Future<bool> deleteComments(String sourceKey, String comicId, String epId) async {
+  static Future<bool> deleteComments(
+      String sourceKey, String comicId, String epId) async {
     try {
       var file = File(
           "$_basePath/${_sanitize(sourceKey)}_${_sanitize(comicId)}/${_sanitize(epId)}.json");
       if (await file.exists()) {
         await file.delete();
         // 如果文件夹为空，删除文件夹
-        var dir = Directory("$_basePath/${_sanitize(sourceKey)}_${_sanitize(comicId)}");
+        var dir = Directory(
+            "$_basePath/${_sanitize(sourceKey)}_${_sanitize(comicId)}");
         var isEmpty = true;
         await for (var _ in dir.list()) {
           isEmpty = false;
@@ -1264,9 +1269,11 @@ class ChapterCommentsStorage {
   }
 
   /// 删除整个漫画的所有评论
-  static Future<bool> deleteComicComments(String sourceKey, String comicId) async {
+  static Future<bool> deleteComicComments(
+      String sourceKey, String comicId) async {
     try {
-      var dir = Directory("$_basePath/${_sanitize(sourceKey)}_${_sanitize(comicId)}");
+      var dir =
+          Directory("$_basePath/${_sanitize(sourceKey)}_${_sanitize(comicId)}");
       if (await dir.exists()) {
         await dir.delete(recursive: true);
         return true;
@@ -1278,18 +1285,19 @@ class ChapterCommentsStorage {
   }
 
   /// 切换章节的锁定状态
-  static Future<bool> toggleLock(String sourceKey, String comicId, String epId) async {
+  static Future<bool> toggleLock(
+      String sourceKey, String comicId, String epId) async {
     try {
       var file = File(
           "$_basePath/${_sanitize(sourceKey)}_${_sanitize(comicId)}/${_sanitize(epId)}.json");
       if (!await file.exists()) return false;
-      
+
       var content = await file.readAsString();
       var data = jsonDecode(content) as Map<String, dynamic>;
       var currentLock = data['isLocked'] == true;
       data['isLocked'] = !currentLock;
       data['savedAt'] = DateTime.now().toIso8601String();
-      
+
       await file.writeAsString(jsonEncode(data));
       return !currentLock; // 返回新的锁定状态
     } catch (e) {
@@ -1298,12 +1306,13 @@ class ChapterCommentsStorage {
   }
 
   /// 获取章节的锁定状态
-  static Future<bool> isLocked(String sourceKey, String comicId, String epId) async {
+  static Future<bool> isLocked(
+      String sourceKey, String comicId, String epId) async {
     try {
       var file = File(
           "$_basePath/${_sanitize(sourceKey)}_${_sanitize(comicId)}/${_sanitize(epId)}.json");
       if (!await file.exists()) return false;
-      
+
       var content = await file.readAsString();
       var data = jsonDecode(content) as Map<String, dynamic>;
       return data['isLocked'] == true;
@@ -1313,23 +1322,28 @@ class ChapterCommentsStorage {
   }
 
   /// 更新单条评论
-  static Future<bool> updateComment(String sourceKey, String comicId, String epId, 
-      String commentId, Map<String, dynamic> updatedComment) async {
+  static Future<bool> updateComment(
+      String sourceKey,
+      String comicId,
+      String epId,
+      String commentId,
+      Map<String, dynamic> updatedComment) async {
     try {
       var file = File(
           "$_basePath/${_sanitize(sourceKey)}_${_sanitize(comicId)}/${_sanitize(epId)}.json");
       if (!await file.exists()) return false;
-      
+
       var content = await file.readAsString();
       var data = jsonDecode(content) as Map<String, dynamic>;
       var comments = data['comments'] as List<dynamic>;
-      
-      var index = comments.indexWhere((c) => (c as Map<String, dynamic>)['id'] == commentId);
+
+      var index = comments
+          .indexWhere((c) => (c as Map<String, dynamic>)['id'] == commentId);
       if (index == -1) return false;
-      
+
       comments[index] = updatedComment;
       data['savedAt'] = DateTime.now().toIso8601String();
-      
+
       await file.writeAsString(jsonEncode(data));
       return true;
     } catch (e) {
@@ -1338,23 +1352,24 @@ class ChapterCommentsStorage {
   }
 
   /// 删除单条评论
-  static Future<bool> deleteSingleComment(String sourceKey, String comicId, String epId, 
-      String commentId) async {
+  static Future<bool> deleteSingleComment(
+      String sourceKey, String comicId, String epId, String commentId) async {
     try {
       var file = File(
           "$_basePath/${_sanitize(sourceKey)}_${_sanitize(comicId)}/${_sanitize(epId)}.json");
       if (!await file.exists()) return false;
-      
+
       var content = await file.readAsString();
       var data = jsonDecode(content) as Map<String, dynamic>;
       var comments = data['comments'] as List<dynamic>;
-      
-      var index = comments.indexWhere((c) => (c as Map<String, dynamic>)['id'] == commentId);
+
+      var index = comments
+          .indexWhere((c) => (c as Map<String, dynamic>)['id'] == commentId);
       if (index == -1) return false;
-      
+
       comments.removeAt(index);
       data['savedAt'] = DateTime.now().toIso8601String();
-      
+
       await file.writeAsString(jsonEncode(data));
       return true;
     } catch (e) {
@@ -1367,7 +1382,7 @@ class ChapterCommentsStorage {
     var totalComics = 0;
     var totalChapters = 0;
     var totalSize = 0;
-    
+
     var baseDir = Directory(_basePath);
     if (!await baseDir.exists()) {
       return {
@@ -1411,8 +1426,8 @@ class ComicCommentsStorage {
     required List<Map<String, dynamic>> comments,
     String? comicName,
   }) async {
-    var dir = Directory(
-        "$_basePath/${_sanitize(sourceKey)}_${_sanitize(comicId)}");
+    var dir =
+        Directory("$_basePath/${_sanitize(sourceKey)}_${_sanitize(comicId)}");
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }
@@ -1530,8 +1545,8 @@ class ComicCommentsStorage {
   static Future<bool> deleteComicComments(
       String sourceKey, String comicId) async {
     try {
-      var dir = Directory(
-          "$_basePath/${_sanitize(sourceKey)}_${_sanitize(comicId)}");
+      var dir =
+          Directory("$_basePath/${_sanitize(sourceKey)}_${_sanitize(comicId)}");
       if (await dir.exists()) {
         await dir.delete(recursive: true);
         return true;

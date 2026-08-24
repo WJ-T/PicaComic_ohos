@@ -1,7 +1,8 @@
 part of 'comic_reading_page.dart';
 
 extension ToolBar on ComicReadingPage {
-  bool get isReversed => appdata.settings[9] == "2" || appdata.settings[9] == "6";
+  bool get isReversed =>
+      appdata.settings[9] == "2" || appdata.settings[9] == "6";
 
   Widget _buildToolIconButton({
     required BuildContext context,
@@ -322,8 +323,7 @@ extension ToolBar on ComicReadingPage {
                         for (var button in buttons)
                           if (!small)
                             button.paddingHorizontal(4)
-                          else
-                            ...[button, const Spacer()],
+                          else ...[button, const Spacer()],
                         if (!small) const SizedBox(width: 4),
                       ],
                     );
@@ -479,9 +479,9 @@ extension ToolBar on ComicReadingPage {
                     right: MediaQuery.of(context).padding.right,
                   ),
                   child: SizedBox(
-                    width: MediaQuery.of(context).size.width
-                        - MediaQuery.of(context).padding.left
-                        - MediaQuery.of(context).padding.right,
+                    width: MediaQuery.of(context).size.width -
+                        MediaQuery.of(context).padding.left -
+                        MediaQuery.of(context).padding.right,
                     child: Row(
                       children: [
                         Padding(
@@ -501,7 +501,8 @@ extension ToolBar on ComicReadingPage {
                                 maxWidth:
                                     MediaQuery.of(context).size.width - 75),
                             child: Builder(builder: (context) {
-                              var epName = readingData.eps?.values.elementAtOrNull(
+                              var epName = readingData.eps?.values
+                                  .elementAtOrNull(
                                       comicReadingPageLogic.order - 1);
                               if (epName == null) {
                                 return Padding(
@@ -534,7 +535,6 @@ extension ToolBar on ComicReadingPage {
                           ),
                         ),
                         //const Spacer(),
-
 
                         if (_shouldShowChapterComments())
                           Padding(
@@ -579,11 +579,14 @@ extension ToolBar on ComicReadingPage {
   }
 
   bool _shouldShowChapterComments() {
-    if (!readingData.hasEp || readingData.eps == null || readingData.eps!.isEmpty) {
+    if (!readingData.hasEp ||
+        readingData.eps == null ||
+        readingData.eps!.isEmpty) {
       return false;
     }
 
-    var showChapterComments = appdata.settings.length > 92 && appdata.settings[92] == "1";
+    var showChapterComments =
+        appdata.settings.length > 92 && appdata.settings[92] == "1";
     if (!showChapterComments) return false;
 
     var source = ComicSource.find(readingData.sourceKey);
@@ -594,7 +597,8 @@ extension ToolBar on ComicReadingPage {
 
   bool _shouldShowChapterCommentsAtEnd() {
     if (!_shouldShowChapterComments()) return false;
-    var readingMethod = ReadingMethod.values[int.parse(appdata.settings[9]) - 1];
+    var readingMethod =
+        ReadingMethod.values[int.parse(appdata.settings[9]) - 1];
     if (readingMethod != ReadingMethod.leftToRight &&
         readingMethod != ReadingMethod.rightToLeft &&
         readingMethod != ReadingMethod.topToBottom) {
@@ -624,23 +628,21 @@ extension ToolBar on ComicReadingPage {
   }
 
   ///显示当前的章节和页面位置
-  Widget buildPageInfoText(
-      ComicReadingPageLogic comicReadingPageLogic, BuildContext context) {
+  Widget buildPageInfoText(ComicReadingPageLogic _, BuildContext context) {
     return Positioned(
       bottom: 13,
       left: 25,
       child: StateBuilder<ComicReadingPageLogic>(
         id: "ToolBar",
         builder: (logic) {
-          var epName = readingData.eps?.values
-                  .elementAtOrNull(comicReadingPageLogic.order - 1) ??
-              "E1";
+          var epName =
+              readingData.eps?.values.elementAtOrNull(logic.order - 1) ?? "E1";
           if (epName.length > 8) {
             epName = "${epName.substring(0, 8)}...";
           }
           var text = readingData.hasEp
-              ? "$epName : ${comicReadingPageLogic.index}/${comicReadingPageLogic.urls.length}"
-              : "${comicReadingPageLogic.index}/${comicReadingPageLogic.urls.length}";
+              ? "$epName : ${logic.index}/${logic.urls.length}"
+              : "${logic.index}/${logic.urls.length}";
           return Stack(
             children: [
               Text(
@@ -670,8 +672,7 @@ extension ToolBar on ComicReadingPage {
     );
   }
 
-  Widget buildStatusInfo(
-      ComicReadingPageLogic logic, BuildContext context) {
+  Widget buildStatusInfo(ComicReadingPageLogic logic, BuildContext context) {
     return Positioned(
       bottom: 13,
       right: 25,
@@ -692,38 +693,62 @@ class _BatteryWidget extends StatefulWidget {
 }
 
 class _BatteryWidgetState extends State<_BatteryWidget> {
-  late Battery _battery;
   late int _batteryLevel = 100;
   Timer? _timer;
   bool _hasBattery = false;
-  BatteryState state = BatteryState.unknown;
+  bool _isCharging = false;
 
   @override
   void initState() {
     super.initState();
-    _battery = Battery();
     _checkBatteryAvailability();
   }
 
   void _checkBatteryAvailability() async {
-    try {
-      _batteryLevel = await _battery.batteryLevel;
-      state = await _battery.batteryState;
-      if (_batteryLevel > 0 && state != BatteryState.unknown) {
+    final status = await _readBatteryStatus();
+    if (!mounted || status == null) {
+      return;
+    }
+    setState(() {
+      _batteryLevel = status.$1;
+      _isCharging = status.$2;
+      _hasBattery = true;
+    });
+    _timer = Timer.periodic(const Duration(seconds: 10), (timer) async {
+      final status = await _readBatteryStatus();
+      if (!mounted || status == null) {
+        return;
+      }
+      if (_batteryLevel != status.$1 || _isCharging != status.$2) {
         setState(() {
-          _hasBattery = true;
-        });
-        _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-          _battery.batteryLevel.then((level) {
-            if (_batteryLevel != level) {
-              setState(() {
-                _batteryLevel = level;
-              });
-            }
-          });
+          _batteryLevel = status.$1;
+          _isCharging = status.$2;
         });
       }
-    } catch (_) {}
+    });
+  }
+
+  Future<(int, bool)?> _readBatteryStatus() async {
+    if (OhosBatteryBridge.isSupported) {
+      final status = await OhosBatteryBridge.read();
+      if (status == null) {
+        return null;
+      }
+      return (status.level, status.charging);
+    }
+    try {
+      final battery = Battery();
+      final level = await battery.batteryLevel;
+      final state = await battery.batteryState;
+      if (level <= 0 && state == BatteryState.unknown) {
+        return null;
+      }
+      final charging =
+          state == BatteryState.charging || state == BatteryState.full;
+      return (level, charging);
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
@@ -744,7 +769,7 @@ class _BatteryWidgetState extends State<_BatteryWidget> {
     IconData batteryIcon;
     Color batteryColor = Theme.of(context).colorScheme.onSurface;
 
-    if (state == BatteryState.charging) {
+    if (_isCharging) {
       batteryIcon = Icons.battery_charging_full;
     } else if (batteryLevel >= 96) {
       batteryIcon = Icons.battery_full_sharp;

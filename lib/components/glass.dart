@@ -43,10 +43,12 @@ class GlassContainerLite extends StatelessWidget {
         (isDark
             ? Colors.white.withValues(alpha: 0.18)
             : Colors.white.withValues(alpha: 0.28));
-    final ambientStrength = glassSettings?.ambientStrength ?? (isDark ? 0.34 : 0.48);
+    final ambientStrength =
+        glassSettings?.ambientStrength ?? (isDark ? 0.34 : 0.48);
     final blur = glassSettings?.blur ?? 0;
     final borderRadius = _borderRadius;
-    final content = padding == null ? child : Padding(padding: padding!, child: child);
+    final content =
+        padding == null ? child : Padding(padding: padding!, child: child);
     final borderOpacity =
         ((blur == 0 ? 0.14 : 0.12) + ambientStrength * 0.14).clamp(0.14, 0.24);
     final dividerColor = isDark
@@ -114,10 +116,12 @@ class GlassContainerLiteSettings extends StatelessWidget {
         (isDark
             ? scheme.surfaceContainerHighest.withValues(alpha: 0.24)
             : Colors.white.withValues(alpha: 0.16));
-    final ambientStrength = glassSettings?.ambientStrength ?? (isDark ? 0.34 : 0.48);
+    final ambientStrength =
+        glassSettings?.ambientStrength ?? (isDark ? 0.34 : 0.48);
     final blur = glassSettings?.blur ?? 0;
     final borderRadius = _borderRadius;
-    final content = padding == null ? child : Padding(padding: padding!, child: child);
+    final content =
+        padding == null ? child : Padding(padding: padding!, child: child);
     final highlightOpacity = (0.08 + ambientStrength * 0.18).clamp(0.08, 0.18);
     final shadowOpacity = (blur == 0 ? 0.08 : 0.05) + (isDark ? 0.16 : 0.03);
 
@@ -133,7 +137,8 @@ class GlassContainerLiteSettings extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: shadowOpacity.clamp(0.08, 0.22)),
+            color:
+                Colors.black.withValues(alpha: shadowOpacity.clamp(0.08, 0.22)),
             blurRadius: blur == 0 ? 12 : 8,
             spreadRadius: 0,
             offset: const Offset(0, 2),

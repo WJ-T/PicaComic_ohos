@@ -23,6 +23,7 @@ import 'htmanga/ht_comic_page.dart';
 import 'image_favorites/image_favorites_comic.dart';
 import 'image_favorites/type.dart';
 import 'jm/jm_comic_page.dart';
+import 'local_add_comic.dart';
 import 'reader/comic_reading_page.dart';
 import 'picacg/comic_page.dart';
 import 'nhentai/comic_page.dart';
@@ -30,6 +31,52 @@ import 'comic_page.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 const int _imageFavoritesPageSize = 10;
+
+String _resolveImageFavoriteSourceKey(ImageFavorite image) {
+  final stored = image.otherInfo["sourceKey"]?.toString();
+  if (stored != null && stored.isNotEmpty) {
+    return stored;
+  }
+  return _resolveImageFavoriteSourceKeyFromId(image.id);
+}
+
+String _resolveImageFavoriteSourceKeyFromId(String id) {
+  final candidates = <String>{
+    "picacg",
+    "ehentai",
+    "jm",
+    "hitomi",
+    "htManga",
+    "htmanga",
+    "nhentai",
+    "local-folder",
+    ...ComicSource.sources.map((source) => source.key),
+  }.toList()
+    ..sort((a, b) => b.length.compareTo(a.length));
+
+  for (final key in candidates) {
+    if (id == key || id.startsWith("$key-")) {
+      return key;
+    }
+  }
+
+  final separatorIndex = id.indexOf("-");
+  return separatorIndex == -1 ? id : id.substring(0, separatorIndex);
+}
+
+String _resolveImageFavoriteTarget(ImageFavorite image, [String? sourceKey]) {
+  final stored = image.otherInfo["target"]?.toString();
+  if (stored != null && stored.isNotEmpty) {
+    return stored;
+  }
+
+  final resolvedSourceKey = sourceKey ?? _resolveImageFavoriteSourceKey(image);
+  final prefix = "$resolvedSourceKey-";
+  if (image.id.startsWith(prefix)) {
+    return image.id.substring(prefix.length);
+  }
+  return image.id;
+}
 
 class ImageFavoritesPage extends StatefulWidget {
   const ImageFavoritesPage({super.key, this.initialKeyword});
@@ -540,32 +587,30 @@ class _ImageFavoritesPageState extends State<ImageFavoritesPage> {
       ),
     );
     return Row(
-          children: [
-            FilledButton(
-              onPressed: currentPage > 1
-                  ? () {
-                      prevPage();
-                    }
-                  : null,
-              child: Text("后退".tl),
-            ).fixWidth(84),
-            Expanded(
-              child: Center(
-                child: currentPageButton,
-              ),
-            ),
-            FilledButton(
-              onPressed: currentPage < maxPage
-                  ? () {
-                      nextPage();
-                    }
-                  : null,
-              child: Text("前进".tl),
-            ).fixWidth(84),
-          ],
-        )
-        .paddingVertical(8)
-        .paddingHorizontal(16);
+      children: [
+        FilledButton(
+          onPressed: currentPage > 1
+              ? () {
+                  prevPage();
+                }
+              : null,
+          child: Text("后退".tl),
+        ).fixWidth(84),
+        Expanded(
+          child: Center(
+            child: currentPageButton,
+          ),
+        ),
+        FilledButton(
+          onPressed: currentPage < maxPage
+              ? () {
+                  nextPage();
+                }
+              : null,
+          child: Text("前进".tl),
+        ).fixWidth(84),
+      ],
+    ).paddingVertical(8).paddingHorizontal(16);
   }
 
   void selectAll() {
@@ -704,9 +749,9 @@ class _ImageFavoritesComicTileState extends State<_ImageFavoritesComicTile> {
                   widget.addSelected(ele);
                 }
               } else {
-                var image = widget.comic.images.first;
-                var type = image.id.split("-")[0];
-                _goToComicDetail(type, image.id.replaceFirst("$type-", ""),
+                final image = widget.comic.images.first;
+                final type = _resolveImageFavoriteSourceKey(image);
+                _goToComicDetail(type, _resolveImageFavoriteTarget(image, type),
                     image.title, image.otherInfo);
               }
             },
@@ -785,10 +830,11 @@ class _ImageFavoritesComicTileState extends State<_ImageFavoritesComicTile> {
                                 if (widget.multiSelectMode) {
                                   widget.addSelected(image);
                                 } else {
-                                  var type = image.id.split("-")[0];
+                                  final type =
+                                      _resolveImageFavoriteSourceKey(image);
                                   _readWithKey(
                                       type,
-                                      image.id.replaceFirst("$type-", ""),
+                                      _resolveImageFavoriteTarget(image, type),
                                       image.ep,
                                       image.page,
                                       image.title,
@@ -830,7 +876,9 @@ class _ImageFavoritesComicTileState extends State<_ImageFavoritesComicTile> {
                                     child: Container(
                                       width: itemWidth,
                                       height: itemHeight,
-                                      color: fluent.FluentTheme.of(context).resources.solidBackgroundFillColorBase,
+                                      color: fluent.FluentTheme.of(context)
+                                          .resources
+                                          .solidBackgroundFillColorBase,
                                       child: Image(
                                         image: _ImageProvider(image),
                                         fit: BoxFit.cover,
@@ -862,7 +910,9 @@ class _ImageFavoritesComicTileState extends State<_ImageFavoritesComicTile> {
                                     Positioned.fill(
                                       child: Container(
                                         decoration: BoxDecoration(
-                                          color: fluent.FluentTheme.of(context).accentColor.withOpacity(0.3),
+                                          color: fluent.FluentTheme.of(context)
+                                              .accentColor
+                                              .withOpacity(0.3),
                                           borderRadius:
                                               BorderRadius.circular(4),
                                         ),
@@ -914,9 +964,9 @@ class _ImageFavoritesComicTileState extends State<_ImageFavoritesComicTile> {
             }
           } else {
             // 跳转到漫画详情页
-            var image = widget.comic.images.first;
-            var type = image.id.split("-")[0];
-            _goToComicDetail(type, image.id.replaceFirst("$type-", ""),
+            final image = widget.comic.images.first;
+            final type = _resolveImageFavoriteSourceKey(image);
+            _goToComicDetail(type, _resolveImageFavoriteTarget(image, type),
                 image.title, image.otherInfo);
           }
         },
@@ -1009,10 +1059,10 @@ class _ImageFavoritesComicTileState extends State<_ImageFavoritesComicTile> {
                           if (widget.multiSelectMode) {
                             widget.addSelected(image);
                           } else {
-                            var type = image.id.split("-")[0];
+                            final type = _resolveImageFavoriteSourceKey(image);
                             _readWithKey(
                                 type,
-                                image.id.replaceFirst("$type-", ""),
+                                _resolveImageFavoriteTarget(image, type),
                                 image.ep,
                                 image.page,
                                 image.title,
@@ -1145,6 +1195,17 @@ class _ImageFavoritesComicTileState extends State<_ImageFavoritesComicTile> {
         Navigator.of(context).push(
             MaterialPageRoute(builder: (context) => NhentaiComicPage(id)));
         break;
+      case "local-folder":
+        LocalLibraryController.instance.loadComicByPath(id).then((comic) {
+          if (comic == null) {
+            showToast(message: "本地漫画不存在或已移动".tl);
+            return;
+          }
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => LocalComicInfoView(comic)),
+          );
+        });
+        break;
       default:
         if (ComicSource.sources.any((s) => s.key == type)) {
           Navigator.of(context).push(MaterialPageRoute(
@@ -1168,8 +1229,8 @@ class _ImageFavoritesComicTileState extends State<_ImageFavoritesComicTile> {
           icon: Icons.chrome_reader_mode_rounded,
           text: "查看漫画".tl,
           onClick: () {
-            var type = image.id.split("-")[0];
-            _readWithKey(type, image.id.replaceFirst("$type-", ""),
+            final type = _resolveImageFavoriteSourceKey(image);
+            _readWithKey(type, _resolveImageFavoriteTarget(image, type),
                 image.ep, image.page, image.title, image.otherInfo);
           },
         ),
@@ -1194,8 +1255,8 @@ class _ImageFavoritesComicTileState extends State<_ImageFavoritesComicTile> {
           icon: Icons.image,
           text: "图片视图".tl,
           onClick: () {
-            var type = image.id.split("-")[0];
-            _readWithKey(type, image.id.replaceFirst("$type-", ""),
+            final type = _resolveImageFavoriteSourceKey(image);
+            _readWithKey(type, _resolveImageFavoriteTarget(image, type),
                 image.ep, image.page, image.title, image.otherInfo);
           },
         ),
@@ -1260,6 +1321,15 @@ class _ImageFavoritesComicTileState extends State<_ImageFavoritesComicTile> {
         App.globalTo(
           () => ComicReadingPage.nhentai(target, title, initialPage: page),
         );
+      case "local-folder":
+        final comic = await LocalLibraryController.instance.loadComicByPath(
+          target,
+        );
+        if (comic == null) {
+          showToast(message: "本地漫画不存在或已移动".tl);
+          return;
+        }
+        await openLocalComicReader(comic, ep: ep, page: page);
       default:
         var source = ComicSource.find(key);
         if (source == null) throw "Unknown source $key";
@@ -1282,11 +1352,7 @@ class _ImageFavoritesComicTileState extends State<_ImageFavoritesComicTile> {
   String _getSourceName(String id) {
     if (id.isEmpty) return "未知";
 
-    // ID格式通常是 "源类型-漫画ID"，例如 "picacg-12345"
-    var parts = id.split("-");
-    if (parts.isEmpty) return "未知";
-
-    var sourceType = parts[0];
+    final sourceType = _resolveImageFavoriteSourceKeyFromId(id);
     switch (sourceType) {
       case "picacg":
         return "哔咔漫画";
@@ -1402,8 +1468,8 @@ class FavoriteImageTile extends StatelessWidget {
   }
 
   void onTap() {
-    var type = image.id.split("-")[0];
-    _readWithKey(type, image.id.replaceFirst("$type-", ""), image.ep,
+    final type = _resolveImageFavoriteSourceKey(image);
+    _readWithKey(type, _resolveImageFavoriteTarget(image, type), image.ep,
         image.page, image.title, image.otherInfo);
   }
 
@@ -1460,6 +1526,15 @@ class FavoriteImageTile extends StatelessWidget {
         App.globalTo(
           () => ComicReadingPage.nhentai(target, title, initialPage: page),
         );
+      case "local-folder":
+        final comic = await LocalLibraryController.instance.loadComicByPath(
+          target,
+        );
+        if (comic == null) {
+          showToast(message: "本地漫画不存在或已移动".tl);
+          return;
+        }
+        await openLocalComicReader(comic, ep: ep, page: page);
       default:
         var source = ComicSource.find(key);
         if (source == null) throw "Unknown source $key";
@@ -1515,7 +1590,7 @@ class _ImageProvider extends BaseImageProvider<_ImageProvider> {
     if (localFile.existsSync()) {
       return await localFile.readAsBytes();
     } else {
-      var type = image.id.split("-")[0];
+      final type = _resolveImageFavoriteSourceKey(image);
       Stream<DownloadProgress> stream;
       switch (type) {
         case "ehentai":
@@ -1530,14 +1605,20 @@ class _ImageProvider extends BaseImageProvider<_ImageProvider> {
           stream = ImageManager().getHitomiImage(
               HitomiFile.fromMap(image.otherInfo["hitomi"][image.page - 1]),
               image.otherInfo["galleryId"]);
+        case "local-folder":
+          final file = File(image.otherInfo["url"].toString());
+          if (!file.existsSync()) {
+            throw "Image not found";
+          }
+          return await file.readAsBytes();
         default:
           var sourceKey = type;
-          var comicId = image.id.replaceFirst("$type-", "");
+          var comicId = _resolveImageFavoriteTarget(image, type);
           var eps = image.otherInfo["eps"];
           String epId;
           if (eps is Map) {
-            epId = (eps.keys.elementAtOrNull(image.ep - 1)?.toString()) ??
-                comicId;
+            epId =
+                (eps.keys.elementAtOrNull(image.ep - 1)?.toString()) ?? comicId;
           } else if (eps is List) {
             epId = (eps.elementAtOrNull(image.ep - 1)?.toString()) ?? comicId;
           } else {
@@ -1644,12 +1725,14 @@ class _ImageFavoritesDialogState extends State<_ImageFavoritesDialog> {
                     title: Text("时间筛选".tl),
                     trailing: Select(
                       current: timeFilterSelect.type.displayName,
-                      values:
-                          TimeRangeType.values.map((e) => e.displayName).toList(),
+                      values: TimeRangeType.values
+                          .map((e) => e.displayName)
+                          .toList(),
                       minWidth: 64,
                       onTap: (index) {
                         setState(() {
-                          timeFilterSelect = TimeRange.fromType(TimeRangeType.values[index]);
+                          timeFilterSelect =
+                              TimeRange.fromType(TimeRangeType.values[index]);
                         });
                       },
                     ),
@@ -1657,8 +1740,13 @@ class _ImageFavoritesDialogState extends State<_ImageFavoritesDialog> {
                   ListTile(
                     title: Text("图片收藏数量大于".tl),
                     trailing: Select(
-                      current: numFilterSelect == numFilterList[0] ? "不限".tl : numFilterSelect.toString(),
-                      values: numFilterList.map((e) => e == numFilterList[0] ? "不限".tl : e.toString()).toList(),
+                      current: numFilterSelect == numFilterList[0]
+                          ? "不限".tl
+                          : numFilterSelect.toString(),
+                      values: numFilterList
+                          .map((e) =>
+                              e == numFilterList[0] ? "不限".tl : e.toString())
+                          .toList(),
                       minWidth: 64,
                       onTap: (index) {
                         setState(() {

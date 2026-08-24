@@ -56,7 +56,7 @@ class _HtSettingsState extends State<HtSettings> {
     var dialog = showLoadingDialog(context);
     var list = await _getApiList();
     dialog.close();
-    
+
     if (!context.mounted) return;
 
     String? choose = await showDialog<String>(
@@ -137,13 +137,13 @@ class _HtApiOptionRow extends StatefulWidget {
 
 class _HtApiOptionRowState extends State<_HtApiOptionRow> {
   late Future<int> _feature;
-  
+
   @override
   void initState() {
     super.initState();
     _feature = _ping(widget.value);
   }
-  
+
   Future<int> _ping(String url) async {
     try {
       var stopwatch = Stopwatch()..start();
@@ -154,7 +154,7 @@ class _HtApiOptionRowState extends State<_HtApiOptionRow> {
       return 9999;
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Row(

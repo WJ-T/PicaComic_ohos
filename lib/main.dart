@@ -14,7 +14,9 @@ import 'package:pica_comic/base.dart';
 import 'package:pica_comic/components/window_frame.dart';
 import 'package:pica_comic/foundation/app.dart';
 import 'package:pica_comic/foundation/app_page_route.dart';
+import 'package:pica_comic/foundation/history.dart';
 import 'package:pica_comic/foundation/log.dart';
+import 'package:pica_comic/foundation/platform_utils.dart';
 import 'package:pica_comic/init.dart';
 import 'package:pica_comic/network/http_client.dart';
 import 'package:pica_comic/pages/auth_page.dart';
@@ -22,6 +24,9 @@ import 'package:pica_comic/pages/main_page.dart';
 import 'package:pica_comic/pages/welcome_page.dart';
 import 'package:pica_comic/utils/block_screenshot.dart';
 import 'package:pica_comic/utils/mouse_listener.dart';
+import 'package:pica_comic/utils/ohos_device_info.dart';
+import 'package:pica_comic/utils/android_widget.dart';
+import 'package:pica_comic/utils/ohos_widget.dart';
 import 'package:pica_comic/utils/android_first_use_manager.dart';
 import 'package:pica_comic/utils/tags_translation.dart';
 import 'package:window_manager/window_manager.dart';
@@ -43,7 +48,17 @@ void main(List<String> args) {
     };
 
     setNetworkProxy();
-    runApp(const MyApp());
+    String? initialWidgetAction;
+    if (PlatformUtils.isOhos) {
+      await OhosWidgetService.instance.initialize();
+      unawaited(HistoryManager().syncOhosWidgetHistory());
+      initialWidgetAction = OhosWidgetService.instance.takePendingAction();
+    } else if (App.isAndroid) {
+      await AndroidWidgetService.instance.initialize();
+      unawaited(HistoryManager().syncOhosWidgetHistory());
+      initialWidgetAction = AndroidWidgetService.instance.takePendingAction();
+    }
+    runApp(MyApp(initialWidgetAction: initialWidgetAction));
     if (App.isDesktop) {
       await windowManager.ensureInitialized();
       windowManager.waitUntilReadyToShow().then((_) async {
@@ -79,9 +94,11 @@ class _CustomScrollBehavior extends MaterialScrollBehavior {
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, this.initialWidgetAction});
 
   static void Function()? updater;
+
+  final String? initialWidgetAction;
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -96,6 +113,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       appdata.settings.length > 103 && appdata.settings[103] == "1";
 
   OverlayEntry? hideContentOverlay;
+  late String? _initialWidgetAction;
 
   void hideContent() {
     if (hideContentOverlay != null) return;
@@ -166,6 +184,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   void initState() {
+    _initialWidgetAction = widget.initialWidgetAction;
     MyApp.updater = () => setState(() => forceRebuild = true);
     time = DateTime.now();
     TagsTranslation.readData();
@@ -186,6 +205,20 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
     listenMouseSideButtonToBack();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    if (App.isAndroid || App.isIOS) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+        DeviceOrientation.landscapeLeft, 
+        DeviceOrientation.landscapeRight, 
+      ]);
+    } else if (OhosDeviceInfoBridge.shouldLockAppPortrait) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+      ]);
+    } else if (PlatformUtils.isOhos) {
+      SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+    }
     WidgetsBinding.instance.addObserver(this);
     notifications.init();
 
@@ -207,6 +240,46 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       PaintingBinding.instance.imageCache.maximumSizeBytes = 200 * 1024 * 1024;
     }
     super.initState();
+  }
+
+  Widget _buildRootPage() {
+    return FutureBuilder<bool>(
+      future: _checkFirstUse(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        } else if (snapshot.hasError) {
+          LogManager.addLog(LogLevel.error, "MyApp.onGenerateRoute",
+              "Error checking firstUse: ${snapshot.error}");
+          return const WelcomePage();
+        } else {
+          bool isFirstUse = snapshot.data ?? true;
+          final initialWidgetAction = _initialWidgetAction;
+          _initialWidgetAction = null;
+          return isFirstUse
+              ? const WelcomePage()
+              : (appdata.settings[13] == "1"
+                  ? const AuthPage()
+                  : MainPage(initialWidgetAction: initialWidgetAction));
+        }
+      },
+    );
+  }
+
+  List<Route<dynamic>> _buildInitialRoutes(String initialRouteName) {
+    final routes = <Route<dynamic>>[
+      AppPageRoute(
+        builder: (context) => _buildRootPage(),
+        settings: const RouteSettings(name: '/'),
+        isRootRoute: true,
+      ),
+    ];
+
+    return routes;
   }
 
   @override
@@ -268,7 +341,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     if (appdata.settings.length > 95 && appdata.settings[95].isNotEmpty) {
       return (appdata.settings[95], null);
     }
-    
+
     String? font;
     List<String>? fallback;
     if (App.isLinux || App.isWindows) {
@@ -329,14 +402,23 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       (context as Element).visitChildren(rebuild);
     }
 
-    if (appdata.settings.length > 91 && appdata.settings[91] == "1" &&
-        appdata.settings.length > 103 && appdata.settings[103] == "1") {
+    if (appdata.settings.length > 91 &&
+        appdata.settings[91] == "1" &&
+        appdata.settings.length > 103 &&
+        appdata.settings[103] == "1") {
       appdata.settings[91] = "0";
       appdata.settings[103] = "0";
       appdata.updateSettings();
     }
     return DynamicColorBuilder(builder: (light, dark) {
       var (lightColor, darkColor) = _generateColorSchemes(light, dark);
+      if (PlatformUtils.isOhos) {
+        unawaited(OhosWidgetService.instance.updateThemeColors(
+          lightScheme: lightColor,
+          darkScheme: darkColor,
+          themeMode: appdata.appSettings.darkMode,
+        ));
+      }
       if (appdata.settings.length > 91 && appdata.settings[91] == "1") {
         Widget app = fluent.FluentApp(
           title: 'Pica Comic',
@@ -344,67 +426,40 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           navigatorKey: App.navigatorKey,
           navigatorObservers: [KazumiDialog.observer],
           theme: fluent.FluentThemeData(
-             accentColor: fluent.AccentColor('normal', {
-               'normal': lightColor.primary,
-               'dark': lightColor.primary,
-               'light': lightColor.primary,
-               'darker': lightColor.primary,
-               'lighter': lightColor.primary,
-               'darkest': lightColor.primary,
-               'lightest': lightColor.primary,
-             }),
-             brightness: fluent.Brightness.light,
-             fontFamily: _getFontConfig().$1,
-           ),
-           darkTheme: fluent.FluentThemeData(
-             accentColor: fluent.AccentColor('normal', {
-               'normal': darkColor.primary,
-               'dark': darkColor.primary,
-               'light': darkColor.primary,
-               'darker': darkColor.primary,
-               'lighter': darkColor.primary,
-               'darkest': darkColor.primary,
-               'lightest': darkColor.primary,
-             }),
-             brightness: fluent.Brightness.dark,
-             fontFamily: _getFontConfig().$1,
-           ),
+            accentColor: fluent.AccentColor('normal', {
+              'normal': lightColor.primary,
+              'dark': lightColor.primary,
+              'light': lightColor.primary,
+              'darker': lightColor.primary,
+              'lighter': lightColor.primary,
+              'darkest': lightColor.primary,
+              'lightest': lightColor.primary,
+            }),
+            brightness: fluent.Brightness.light,
+            fontFamily: _getFontConfig().$1,
+          ),
+          darkTheme: fluent.FluentThemeData(
+            accentColor: fluent.AccentColor('normal', {
+              'normal': darkColor.primary,
+              'dark': darkColor.primary,
+              'light': darkColor.primary,
+              'darker': darkColor.primary,
+              'lighter': darkColor.primary,
+              'darkest': darkColor.primary,
+              'lightest': darkColor.primary,
+            }),
+            brightness: fluent.Brightness.dark,
+            fontFamily: _getFontConfig().$1,
+          ),
           themeMode: appdata.appSettings.darkMode == 2
               ? fluent.ThemeMode.dark
               : appdata.appSettings.darkMode == 1
                   ? fluent.ThemeMode.light
                   : fluent.ThemeMode.system,
           scrollBehavior: const _CustomScrollBehavior(),
+          onGenerateInitialRoutes: _buildInitialRoutes,
           onGenerateRoute: (settings) => AppPageRoute(
-            builder: (context) {
-              // 使用FutureBuilder来异步检查firstUse[3]的值
-              return FutureBuilder<bool>(
-                future: _checkFirstUse(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    // 显示加载页面
-                    return const Scaffold(
-                      body: Center(
-                        child: CircularProgressIndicator(),
-                      ),
-                    );
-                  } else if (snapshot.hasError) {
-                    // 发生错误，显示欢迎页面
-                    LogManager.addLog(LogLevel.error, "MyApp.onGenerateRoute",
-                        "Error checking firstUse: ${snapshot.error}");
-                    return const WelcomePage();
-                  } else {
-                    // 根据firstUse[3]的值决定显示哪个页面
-                    bool isFirstUse = snapshot.data ?? true;
-                    return isFirstUse
-                        ? const WelcomePage()
-                        : (appdata.settings[13] == "1"
-                            ? const AuthPage()
-                            : const MainPage());
-                  }
-                },
-              );
-            },
+            builder: (context) => _buildRootPage(),
           ),
           localizationsDelegates: const [
             fluent.FluentLocalizations.delegate,
@@ -502,36 +557,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             : appdata.appSettings.darkMode == 1
                 ? ThemeMode.light
                 : ThemeMode.system,
+        onGenerateInitialRoutes: _buildInitialRoutes,
         onGenerateRoute: (settings) => AppPageRoute(
-          builder: (context) {
-            // 使用FutureBuilder来异步检查firstUse[3]的值
-            return FutureBuilder<bool>(
-              future: _checkFirstUse(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  // 显示加载页面
-                  return const Scaffold(
-                    body: Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
-                } else if (snapshot.hasError) {
-                  // 发生错误，显示欢迎页面
-                  LogManager.addLog(LogLevel.error, "MyApp.onGenerateRoute",
-                      "Error checking firstUse: ${snapshot.error}");
-                  return const WelcomePage();
-                } else {
-                  // 根据firstUse[3]的值决定显示哪个页面
-                  bool isFirstUse = snapshot.data ?? true;
-                  return isFirstUse
-                      ? const WelcomePage()
-                      : (appdata.settings[13] == "1"
-                          ? const AuthPage()
-                          : const MainPage());
-                }
-              },
-            );
-          },
+          builder: (context) => _buildRootPage(),
         ),
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
@@ -564,7 +592,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                       if (globalNavigator != null && globalNavigator.canPop()) {
                         App.globalBack();
                       } else {
-                        final mainNavigator = App.mainNavigatorKey?.currentState;
+                        final mainNavigator =
+                            App.mainNavigatorKey?.currentState;
                         if (mainNavigator != null && mainNavigator.canPop()) {
                           mainNavigator.pop();
                         }
@@ -605,13 +634,20 @@ class _SystemUiProvider extends StatelessWidget {
       systemUiStyle = SystemUiOverlayStyle.dark.copyWith(
         statusBarColor: Colors.transparent,
         systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarDividerColor: Colors.transparent,
+        systemStatusBarContrastEnforced: false,
+        systemNavigationBarContrastEnforced: false,
       );
     } else {
       systemUiStyle = SystemUiOverlayStyle.light.copyWith(
         statusBarColor: Colors.transparent,
         systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarDividerColor: Colors.transparent,
+        systemStatusBarContrastEnforced: false,
+        systemNavigationBarContrastEnforced: false,
       );
     }
+    SystemChrome.setSystemUIOverlayStyle(systemUiStyle);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: systemUiStyle,
       child: child,

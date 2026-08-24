@@ -99,7 +99,6 @@ final picacg = ComicSource.named(
           App.globalBack();
         },
       ),
-
     ],
   ),
   initData: (s) {
@@ -140,16 +139,14 @@ final picacg = ComicSource.named(
   ],
   categoryComicsData: CategoryComicsData.named(
     load: (category, param, options, page) async {
-      if(category == "random") {
+      if (category == "random") {
         return PicacgNetwork().getRandomComics();
       } else if (category == "latest") {
         return PicacgNetwork().getLatest(page);
       }
-      
+
       String categories = category;
-      String type = param == "a"
-          ? "a"
-          : (param == "ca" ? "ca" : "c");
+      String type = param == "a" ? "a" : (param == "ca" ? "ca" : "c");
       var sort = options[0];
       return PicacgNetwork().getCategoryComics(
         categories,
@@ -186,7 +183,8 @@ final picacg = ComicSource.named(
   ),
   searchPageData: SearchPageData.named(
     loadPage: (keyword, page, options) {
-      return PicacgNetwork().search(keyword, options[0], page, addToHistory: true);
+      return PicacgNetwork()
+          .search(keyword, options[0], page, addToHistory: true);
     },
     searchOptions: [
       SearchOptions.named(
@@ -230,44 +228,46 @@ class _PicComicTile extends ComicTile {
   ActionFunc? get read => comic.id.startsWith("creator:")
       ? null
       : () async {
-        bool cancel = false;
-        var dialog = showLoadingDialog(
-          App.globalContext!,
-          onCancel: () => cancel = true,
-        );
-        var res = await network.getEps(comic.id);
-        if (cancel) {
-          return;
-        }
-        dialog.close();
-        if (res.error) {
-          showToast(message: res.errorMessage ?? "Error");
-        } else {
-          var history = await HistoryManager().find(comic.id);
-          if (history == null) {
-            history = History(
-              HistoryType.picacg,
-              DateTime.now(),
-              comic.title,
-              comic.author,
-              comic.cover,
-              0,
-              0,
-              comic.id,
-            );
-            await HistoryManager().addHistory(history);
-          }
-          App.globalTo(
-            () => ComicReadingPage.picacg(
-              comic.id,
-              history!.ep,
-              res.data,
-              comic.title,
-              initialPage: history.page,
-            ),
+          bool cancel = false;
+          var dialog = showLoadingDialog(
+            App.globalContext!,
+            onCancel: () => cancel = true,
           );
-        }
-      };
+          var res = await network.getEps(comic.id);
+          if (cancel) {
+            return;
+          }
+          dialog.close();
+          if (res.error) {
+            showToast(message: res.errorMessage ?? "Error");
+          } else {
+            var history = await HistoryManager().find(comic.id);
+            if (history == null) {
+              history = History(
+                HistoryType.picacg,
+                DateTime.now(),
+                comic.title,
+                comic.author,
+                comic.cover,
+                0,
+                0,
+                comic.id,
+              );
+              await HistoryManager().addHistory(history);
+            }
+            App.globalTo(
+              () => ComicReadingPage.picacg(
+                comic.id,
+                history!.ep,
+                res.data,
+                comic.title,
+                initialPage: history.page,
+                historySubTitle: comic.subTitle,
+                historyCover: comic.cover,
+              ),
+            );
+          }
+        };
 
   @override
   void onTap_() {

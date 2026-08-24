@@ -60,7 +60,7 @@ class PicacgComicPage extends BaseComicPage<ComicItem> {
       },
       cancelPlatformFavorite: () async {
         var res = await network.favouriteOrUnfavouriteComic(id);
-        if(res) {
+        if (res) {
           data!.isFavourite = false;
           return const Res(true);
         }
@@ -69,7 +69,7 @@ class PicacgComicPage extends BaseComicPage<ComicItem> {
       selectFolderCallback: (name, p) async {
         if (p == 0) {
           var res = await network.favouriteOrUnfavouriteComic(id);
-          if(res) {
+          if (res) {
             data!.isFavourite = true;
             update();
             return const Res(true);
@@ -102,7 +102,15 @@ class PicacgComicPage extends BaseComicPage<ComicItem> {
       (i) async {
         await History.findOrCreate(data!);
         App.globalTo(
-            () => ComicReadingPage.picacg(id, i + 1, data!.eps, data!.title));
+          () => ComicReadingPage.picacg(
+            id,
+            i + 1,
+            data!.eps,
+            data!.title,
+            historySubTitle: data!.subTitle,
+            historyCover: data!.cover,
+          ),
+        );
       },
     );
   }
@@ -126,6 +134,8 @@ class PicacgComicPage extends BaseComicPage<ComicItem> {
         data!.eps,
         data!.title,
         initialPage: history.page,
+        historySubTitle: data!.subTitle,
+        historyCover: data!.cover,
       ),
     );
   }
@@ -184,7 +194,8 @@ class PicacgComicPage extends BaseComicPage<ComicItem> {
   @override
   Future<bool> loadFavorite(ComicItem data) async {
     return data.isFavourite ||
-        (await LocalFavoritesManager().findWithModel(toLocalFavoriteItem())).isNotEmpty;
+        (await LocalFavoritesManager().findWithModel(toLocalFavoriteItem()))
+            .isNotEmpty;
   }
 
   @override
@@ -272,8 +283,8 @@ void _downloadComic(
   }
   var downloaded = <int>[];
   if (DownloadManager().isExists(comic.id)) {
-    var downloadedComic = (await DownloadManager().getComicOrNull(comic.id))!
-      as DownloadedComic;
+    var downloadedComic =
+        (await DownloadManager().getComicOrNull(comic.id))! as DownloadedComic;
     downloaded.addAll(downloadedComic.downloadedEps);
   }
   var content = SelectDownloadChapter(

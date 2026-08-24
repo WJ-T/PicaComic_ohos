@@ -6,7 +6,7 @@ import 'package:pica_comic/components/components.dart';
 import 'package:pica_comic/pages/ehentai/eh_user_cookie_parser.dart';
 import 'package:pica_comic/pages/webview.dart';
 import 'package:pica_comic/utils/translations.dart';
-import 'package:url_launcher/url_launcher_string.dart';
+import 'package:pica_comic/utils/app_url_launcher.dart';
 
 import '../../foundation/app.dart';
 import '../../network/eh_network/eh_main_network.dart';
@@ -169,9 +169,8 @@ class _EhLoginPageState extends State<EhLoginPage> {
                       child: SizedBox(
                         height: 40,
                         child: TextButton(
-                          onPressed: () => launchUrlString(
-                              "https://forums.e-hentai.org/index.php?act=Reg&CODE=00",
-                              mode: LaunchMode.externalApplication),
+                          onPressed: () => AppUrlLauncher.launchExternalUrl(
+                              "https://forums.e-hentai.org/index.php?act=Reg&CODE=00"),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [

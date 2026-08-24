@@ -10,6 +10,9 @@ import 'package:pica_comic/foundation/app.dart';
 import 'package:pica_comic/foundation/comic_comments_helper.dart';
 import 'package:pica_comic/foundation/local_favorites.dart';
 import 'package:pica_comic/foundation/log.dart';
+import 'package:pica_comic/foundation/ohos_download_bridge.dart';
+import 'package:pica_comic/foundation/ohos_path_provider.dart';
+import 'package:pica_comic/foundation/platform_utils.dart';
 import 'package:pica_comic/network/custom_download_model.dart';
 import 'package:pica_comic/network/download_model.dart';
 import 'package:pica_comic/network/eh_network/eh_download_model.dart';
@@ -85,8 +88,34 @@ class DownloadManager with _DownloadDb implements Listenable {
   ///获取下载目录
   Future<void> _getPath() async {
     if (appdata.settings[22] == "") {
-      final appPath = await getApplicationSupportDirectory();
-      path = "${appPath.path}/download";
+      if (PlatformUtils.isOhos) {
+        final legacyAppPath = await getApplicationSupportDirectory();
+        final legacyPath = "${legacyAppPath.path}/download";
+        final newPath = await OhosDownloadBridge.ensureDownloadDir() ??
+            OhosPathProvider.sharedDownloadRoot;
+        if (legacyPath != newPath) {
+          final legacyDir = Directory(legacyPath);
+          final newDir = Directory(newPath);
+          final newDirIsEmpty =
+              !newDir.existsSync() || newDir.listSync().isEmpty;
+          if (legacyDir.existsSync() && newDirIsEmpty) {
+            try {
+              if (!newDir.existsSync()) {
+                newDir.createSync(recursive: true);
+              }
+              await copyDirectory(legacyDir, newDir);
+              await legacyDir.delete(recursive: true);
+            } catch (e, s) {
+              LogManager.addLog(LogLevel.error, "IO",
+                  "Failed to migrate OHOS downloads to public directory\n$e\n$s");
+            }
+          }
+        }
+        path = newPath;
+      } else {
+        final appPath = await getApplicationSupportDirectory();
+        path = "${appPath.path}/download";
+      }
     } else {
       path = appdata.settings[22];
     }
@@ -115,9 +144,11 @@ class DownloadManager with _DownloadDb implements Listenable {
     if (transform) {
       var source = Directory(path!);
       final appPath = await getApplicationSupportDirectory();
-      var destination = Directory(
-        newPath == "" ? "${appPath.path}${pathSep}download" : newPath,
-      );
+      final defaultPath = PlatformUtils.isOhos
+          ? (await OhosDownloadBridge.ensureDownloadDir() ??
+              OhosPathProvider.sharedDownloadRoot)
+          : "${appPath.path}${pathSep}download";
+      var destination = Directory(newPath.isEmpty ? defaultPath : newPath);
       try {
         await copyDirectory(source, destination);
         for (var i in source.listSync()) {
@@ -129,7 +160,8 @@ class DownloadManager with _DownloadDb implements Listenable {
     }
 
     _runInit = false;
-    _db!.dispose();
+    _db?.dispose();
+    _db = null;
     downloading.clear();
     await init();
     return "ok";
@@ -178,9 +210,10 @@ class DownloadManager with _DownloadDb implements Listenable {
                   break;
                 } catch (e) {
                   i++;
-                  if(i > 20) {
+                  if (i > 20) {
                     // it seems that the error is unrelated to the directory name
-                    Log.error("IO", "Failed to rename directory: Trying rename ${entry.name} to ${comic.name}\n$e");
+                    Log.error("IO",
+                        "Failed to rename directory: Trying rename ${entry.name} to ${comic.name}\n$e");
                     break;
                   }
                   directory = comic.name + i.toString();
@@ -192,16 +225,24 @@ class DownloadManager with _DownloadDb implements Listenable {
         }
       }
     }
-    _db = sqlite3.open("$path/download.db");
-    _createTable();
-    for (var entry in oldData.entries) {
-      _addToDb(entry.value, entry.key);
+    try {
+      _db = sqlite3.open("$path/download.db");
+      _createTable();
+      for (var entry in oldData.entries) {
+        _addToDb(entry.value, entry.key);
+      }
+    } catch (e, s) {
+      _db = null;
+      LogManager.addLog(LogLevel.error, "DownloadDb",
+          "Failed to open download database: $e\n$s");
     }
   }
 
   void dispose() {
     _runInit = false;
-    downloading.forEach((e) => e.stop());
+    for (final item in downloading) {
+      item.stop();
+    }
     downloading.clear();
     _db?.dispose();
     _db = null;
@@ -406,20 +447,20 @@ class DownloadManager with _DownloadDb implements Listenable {
     } else {
       downloadPath = "$path/${getDirectory(id)}/$ep/";
     }
-    var fileName  = _downloadedFileName["$id$ep$index"];
-    if(fileName != null) {
+    var fileName = _downloadedFileName["$id$ep$index"];
+    if (fileName != null) {
       return File(downloadPath + fileName);
     }
     await for (var file in Directory(downloadPath).list()) {
       var i = file.uri.pathSegments.last.replaceFirst(RegExp(r"\..+"), "");
-      if(i.isNum) {
-        if(_downloadedFileName.length > 2000) {
+      if (i.isNum) {
+        if (_downloadedFileName.length > 2000) {
           _downloadedFileName.remove(_downloadedFileName.keys.first);
         }
         _downloadedFileName["$id$ep$i"] = file.name;
       }
     }
-    if(_downloadedFileName["$id$ep$index"] == null) {
+    if (_downloadedFileName["$id$ep$index"] == null) {
       throw Exception("File not found");
     }
     return File(downloadPath + _downloadedFileName["$id$ep$index"]!);
@@ -554,7 +595,8 @@ extension AddDownloadExt on DownloadManager {
       "picacg" => comic.target,
       "ehentai" => getGalleryId(comic.target),
       "jm" => "jm${comic.target}",
-      "hitomi" => "hitomi${RegExp(r"\d+(?=\.html)").firstMatch(comic.target)![0]!}",
+      "hitomi" =>
+        "hitomi${RegExp(r"\d+(?=\.html)").firstMatch(comic.target)![0]!}",
       "htmanga" => "Ht${comic.target}",
       "nhentai" => "nhentai${comic.target}",
       _ => generateId(comic.type.comicSource.key, comic.target)
@@ -569,7 +611,8 @@ extension AddDownloadExt on DownloadManager {
   }
 }
 
-DownloadedItem? _getComicFromJson(String id, String json, DateTime time, [String? directory]) {
+DownloadedItem? _getComicFromJson(String id, String json, DateTime time,
+    [String? directory]) {
   DownloadedItem comic;
   try {
     if (id.contains('-')) {
@@ -599,8 +642,24 @@ DownloadedItem? _getComicFromJson(String id, String json, DateTime time, [String
 
 abstract mixin class _DownloadDb {
   Database? get _db;
+  bool _downloadDbWarningShown = false;
+
+  bool _ensureDownloadDb() {
+    if (_db != null) {
+      return true;
+    }
+    if (!_downloadDbWarningShown) {
+      _downloadDbWarningShown = true;
+      LogManager.addLog(LogLevel.warning, "DownloadDb",
+          "Download database is unavailable. Some download features are disabled.");
+    }
+    return false;
+  }
 
   void _createTable() {
+    if (!_ensureDownloadDb()) {
+      return;
+    }
     _db!.execute('''
       create table if not exists download (
         id text primary key,
@@ -615,6 +674,9 @@ abstract mixin class _DownloadDb {
   }
 
   void _addToDb(DownloadedItem item, String directory, [DateTime? time]) {
+    if (!_ensureDownloadDb()) {
+      return;
+    }
     _db!.execute('''
       insert or replace into download
       values (?,?,?,?,?,?,?)
@@ -630,6 +692,9 @@ abstract mixin class _DownloadDb {
   }
 
   bool isExists(String id) {
+    if (!_ensureDownloadDb()) {
+      return false;
+    }
     var result = _db!.select('''
       select id from download
       where id = ?
@@ -638,6 +703,9 @@ abstract mixin class _DownloadDb {
   }
 
   void _deleteFromDb(String id) {
+    if (!_ensureDownloadDb()) {
+      return;
+    }
     _db!.execute('''
       delete from download
       where id = ?
@@ -645,6 +713,9 @@ abstract mixin class _DownloadDb {
   }
 
   DownloadedItem? _getComicWithDb(String id) {
+    if (!_ensureDownloadDb()) {
+      return null;
+    }
     var result = _db!.select('''
       select * from download
       where id = ?
@@ -660,6 +731,9 @@ abstract mixin class _DownloadDb {
   }
 
   int get total {
+    if (!_ensureDownloadDb()) {
+      return 0;
+    }
     var result = _db!.select('''
       select count(*) from download
     ''');
@@ -669,18 +743,17 @@ abstract mixin class _DownloadDb {
   /// order: time, title, subtitle, size
   List<DownloadedItem> getAll(
       [String order = 'time', String direction = 'desc']) {
+    if (!_ensureDownloadDb()) {
+      return [];
+    }
     var result = _db!.select('''
       select * from download
       order by $order $direction
     ''');
     return result
         .map(
-          (e) => _getComicFromJson(
-            e['id'],
-            e['json'],
-            DateTime.fromMillisecondsSinceEpoch(e['time']),
-            e['directory']
-          ),
+          (e) => _getComicFromJson(e['id'], e['json'],
+              DateTime.fromMillisecondsSinceEpoch(e['time']), e['directory']),
         )
         .where((comic) => comic != null)
         .cast<DownloadedItem>()
@@ -691,7 +764,10 @@ abstract mixin class _DownloadDb {
 
   String getDirectory(String id) {
     var directory = _cache[id];
-    if(directory == null) {
+    if (directory == null) {
+      if (!_ensureDownloadDb()) {
+        return _findAccurateDirectory(id);
+      }
       var result = _db!.select('''
       select directory from download
       where id = ?
@@ -701,7 +777,7 @@ abstract mixin class _DownloadDb {
       }
       directory = result.first['directory'];
       directory = _findAccurateDirectory(directory!);
-      if(_cache.length > 50) {
+      if (_cache.length > 50) {
         _cache.remove(_cache.keys.first);
       }
       _cache[id] = directory;

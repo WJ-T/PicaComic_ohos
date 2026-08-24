@@ -223,7 +223,8 @@ class CustomDownloadingItem extends DownloadingItem {
 
   @override
   Future<void> saveChapterComments() async {
-    if (!(appdata.settings.length > 102 && appdata.settings[102] == "1")) return;
+    if (!(appdata.settings.length > 102 && appdata.settings[102] == "1"))
+      return;
     if (source.chapterCommentsLoader == null || comic.chapters == null) return;
     for (var ep in _downloadEps) {
       try {

@@ -13,9 +13,9 @@ import 'package:pica_comic/components/components.dart';
 import 'package:pica_comic/foundation/app.dart';
 import 'package:pica_comic/foundation/ui_mode.dart';
 import 'package:pica_comic/network/http_client.dart';
+import 'package:pica_comic/utils/app_url_launcher.dart';
 import 'package:pica_comic/utils/extensions.dart';
 import 'package:pica_comic/utils/translations.dart';
-import 'package:url_launcher/url_launcher_string.dart';
 
 import '../base.dart';
 
@@ -30,13 +30,8 @@ extension WebviewExtension on InAppWebViewController {
     if (url[url.length - 1] == '/') {
       url = url.substring(0, url.length - 1);
     }
-    CookieManager cookieManager = CookieManager.instance(
-      webViewEnvironment: AppWebview.webViewEnvironment,
-    );
-    final cookies = await cookieManager.getCookies(
-      url: WebUri(url),
-      webViewController: this,
-    );
+    CookieManager cookieManager = CookieManager.instance();
+    final cookies = await cookieManager.getCookies(url: WebUri(url));
     var res = <io.Cookie>[];
     for (var cookie in cookies) {
       var c = io.Cookie(cookie.name, cookie.value);
@@ -84,8 +79,6 @@ class AppWebview extends StatefulWidget {
 
   final String? userAgent;
 
-  static WebViewEnvironment? webViewEnvironment;
-
   @override
   State<AppWebview> createState() => _AppWebviewState();
 }
@@ -99,12 +92,12 @@ class _AppWebviewState extends State<AppWebview> {
 
   double _progress = 0;
 
-  late var future = _createWebviewEnvironment();
+  late final Future<void> future = _setupAndroidProxy();
 
   Future<void> _openInBrowser() async {
     final url = (await controller?.getUrl())?.toString();
     if (url != null) {
-      await launchUrlString(url);
+      await AppUrlLauncher.launchExternalUrl(url);
     }
   }
 
@@ -213,12 +206,16 @@ class _AppWebviewState extends State<AppWebview> {
     );
   }
 
-  Future<bool> _createWebviewEnvironment() async {
+  Future<void> _setupAndroidProxy() async {
     // 获取代理设置 - 使用索引 [8]
     var proxy = appdata.settings[8].toString();
     // 只在 Android 平台处理代理设置，iOS 不支持 WebViewFeature API
     // 并且只处理非系统代理和非直连的情况
-    if (App.isAndroid && proxy != "system" && proxy != "direct" && proxy != "0" && proxy.isNotEmpty) {
+    if (App.isAndroid &&
+        proxy != "system" &&
+        proxy != "direct" &&
+        proxy != "0" &&
+        proxy.isNotEmpty) {
       var proxyAvailable = await WebViewFeature.isFeatureSupported(
         WebViewFeature.PROXY_OVERRIDE,
       );
@@ -236,14 +233,8 @@ class _AppWebviewState extends State<AppWebview> {
       }
     }
     if (!App.isWindows) {
-      return true;
+      return;
     }
-    AppWebview.webViewEnvironment = await WebViewEnvironment.create(
-      settings: WebViewEnvironmentSettings(
-        userDataFolder: "${App.dataPath}\\webview",
-      ),
-    );
-    return true;
   }
 
   @override
@@ -300,12 +291,10 @@ class _AppWebviewState extends State<AppWebview> {
         if (e.error != null) {
           return Center(child: Text("Error: ${e.error}"));
         }
-        if (!e.hasData) {
+        if (e.connectionState != ConnectionState.done) {
           return const SizedBox();
         }
-        return createWebviewWithEnvironment(
-          AppWebview.webViewEnvironment,
-        );
+        return createWebview();
       },
     );
 
@@ -338,9 +327,8 @@ class _AppWebviewState extends State<AppWebview> {
         ));
   }
 
-  Widget createWebviewWithEnvironment(WebViewEnvironment? e) {
+  Widget createWebview() {
     return InAppWebView(
-      webViewEnvironment: e,
       initialSettings: InAppWebViewSettings(
         isInspectable: true,
         userAgent: widget.userAgent,

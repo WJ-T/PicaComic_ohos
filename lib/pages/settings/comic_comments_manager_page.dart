@@ -175,8 +175,7 @@ class _ComicCommentsManagerPageState extends State<ComicCommentsManagerPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text("确认删除".tl),
-        content: Text(
-            "确定要删除《$displayName》的 ${comic.comments.length} 条评论吗？".tl),
+        content: Text("确定要删除《$displayName》的 ${comic.comments.length} 条评论吗？".tl),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -289,8 +288,9 @@ class _ComicCommentsManagerPageState extends State<ComicCommentsManagerPage> {
                       padding: const EdgeInsets.all(16),
                       margin: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color:
-                            Theme.of(context).colorScheme.surfaceContainerHighest,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -344,13 +344,12 @@ class _ComicCommentsManagerPageState extends State<ComicCommentsManagerPage> {
                                 children: [
                                   Icon(Icons.search_off,
                                       size: 64,
-                                      color:
-                                          Theme.of(context).colorScheme.outline),
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .outline),
                                   const SizedBox(height: 16),
                                   Text(
-                                    hasKeyword
-                                        ? "没有匹配的搜索结果".tl
-                                        : "暂无已保存的评论".tl,
+                                    hasKeyword ? "没有匹配的搜索结果".tl : "暂无已保存的评论".tl,
                                     style: TextStyle(
                                         color: Theme.of(context)
                                             .colorScheme
@@ -360,7 +359,8 @@ class _ComicCommentsManagerPageState extends State<ComicCommentsManagerPage> {
                               ),
                             )
                           : ListView.builder(
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 8),
                               itemCount: pageComics.length,
                               itemBuilder: (context, index) {
                                 var comic = pageComics[index];
@@ -395,7 +395,9 @@ class _ComicCommentsManagerPageState extends State<ComicCommentsManagerPage> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-                                    subtitle: Text("$subtitle · ${_formatDate(comic.savedAt)}".tl),
+                                    subtitle: Text(
+                                        "$subtitle · ${_formatDate(comic.savedAt)}"
+                                            .tl),
                                     trailing: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
@@ -472,9 +474,11 @@ class _ComicCommentsDetailPageState extends State<_ComicCommentsDetailPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(widget.comic.displayName, style: const TextStyle(fontSize: 18)),
+            Text(widget.comic.displayName,
+                style: const TextStyle(fontSize: 18)),
             Text(
-              "${widget.comic.sourceKey} · ${_comments.length}条评论 · ${_formatDate(widget.comic.savedAt)}".tl,
+              "${widget.comic.sourceKey} · ${_comments.length}条评论 · ${_formatDate(widget.comic.savedAt)}"
+                  .tl,
               style: const TextStyle(fontSize: 12),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -509,8 +513,9 @@ class _ComicCommentsDetailPageState extends State<_ComicCommentsDetailPage> {
                           children: [
                             CircleAvatar(
                               radius: 16,
-                              backgroundColor:
-                                  Theme.of(context).colorScheme.primaryContainer,
+                              backgroundColor: Theme.of(context)
+                                  .colorScheme
+                                  .primaryContainer,
                               child: Text(
                                 (comment['userName'] as String? ?? "?")
                                     .substring(0, 1)
@@ -526,8 +531,8 @@ class _ComicCommentsDetailPageState extends State<_ComicCommentsDetailPage> {
                             Expanded(
                               child: Text(
                                 comment['userName'] as String? ?? "Unknown".tl,
-                                style:
-                                    const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
                               ),
                             ),
                             if (comment['time'] != null)

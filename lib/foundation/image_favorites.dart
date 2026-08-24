@@ -20,11 +20,14 @@ class ImageFavorite{
 }
 
 class ImageFavoriteManager{
-  static Database get _db => HistoryManager()._db;
+  static Database? get _db => HistoryManager()._db;
 
   /// 检查表image_favorites是否存在, 不存在则创建
   static void init(){
-    _db.execute("CREATE TABLE IF NOT EXISTS image_favorites ("
+    if (_db == null) {
+      return;
+    }
+    _db!.execute("CREATE TABLE IF NOT EXISTS image_favorites ("
         "id TEXT,"
         "title TEXT NOT NULL,"
         "cover TEXT NOT NULL,"
@@ -36,7 +39,10 @@ class ImageFavoriteManager{
   }
 
   static void add(ImageFavorite favorite){
-    _db.execute("""
+    if (_db == null) {
+      return;
+    }
+    _db!.execute("""
       insert into image_favorites(id, title, cover, ep, page, other)
       values(?, ?, ?, ?, ?, ?);
     """, [favorite.id, favorite.title, favorite.imagePath, favorite.ep, favorite.page, jsonEncode(favorite.otherInfo)]);
@@ -45,7 +51,10 @@ class ImageFavoriteManager{
   }
 
   static List<ImageFavorite> getAll(){
-    var res = _db.select("select * from image_favorites;");
+    if (_db == null) {
+      return [];
+    }
+    var res = _db!.select("select * from image_favorites;");
     return res.map((e) =>
         ImageFavorite(e["id"], e["cover"], e["title"], e["ep"], e["page"], jsonDecode(e["other"]))).toList();
   }
@@ -54,7 +63,16 @@ class ImageFavoriteManager{
   static List<ImageFavorite> search(String keyword) {
     if (keyword.isEmpty) return getAll();
     
-    var res = _db.select("""
+    // var res = _db.select("""
+    //   select * from image_favorites 
+    //   where title like ? or id like ?
+    // """, ['%$keyword%', '%$keyword%']);
+    final db = _db;
+    if (db == null) {
+      // 数据库未就绪时，按业务语义返回空结果
+      return [];
+    }
+    final res = db.select("""
       select * from image_favorites 
       where title like ? or id like ?
     """, ['%$keyword%', '%$keyword%']);
@@ -81,17 +99,30 @@ class ImageFavoriteManager{
   /// 批量删除图片收藏
   static void deleteMultiple(Iterable<ImageFavorite> favorites) {
     for (var favorite in favorites) {
-      _db.execute("""
+      // _db.execute("""
+      //   delete from image_favorites
+      //   where id = ? and ep = ? and page = ?;
+      // """, [favorite.id, favorite.ep, favorite.page]);
+      final db = _db;
+      if (db == null) {
+        // DB 尚未初始化：按你现在的容错策略直接跳过
+        return;
+      }
+      db.execute("""
         delete from image_favorites
         where id = ? and ep = ? and page = ?;
       """, [favorite.id, favorite.ep, favorite.page]);
+
     }
     Webdav.uploadData();
     Future.microtask(() => StateController.findOrNull(tag: "me_page")?.update());
   }
 
   static void delete(ImageFavorite favorite){
-    _db.execute("""
+    if (_db == null) {
+      return;
+    }
+    _db!.execute("""
       delete from image_favorites
       where id = ? and ep = ? and page = ?;
     """, [favorite.id, favorite.ep, favorite.page]);
@@ -100,7 +131,10 @@ class ImageFavoriteManager{
   }
 
   static bool exist(String id, int ep, int page) {
-    var res = _db.select("""
+    if (_db == null) {
+      return false;
+    }
+    var res = _db!.select("""
       select * from image_favorites
       where id = ? and ep = ? and page = ?;
     """, [id, ep, page]);
@@ -108,7 +142,10 @@ class ImageFavoriteManager{
   }
 
   static int get length {
-    var res = _db.select("select count(*) from image_favorites;");
+    if (_db == null) {
+      return 0;
+    }
+    var res = _db!.select("select count(*) from image_favorites;");
     return res.first.values.first! as int;
   }
 }

@@ -14,6 +14,7 @@ import 'history_page.dart';
 import 'package:pica_comic/utils/translations.dart';
 import 'package:pica_comic/utils/data_sync.dart';
 import 'image_favorites.dart';
+import 'local_add_comic.dart';
 import 'package:pica_comic/pages/pre_search_page.dart';
 import 'package:pica_comic/pages/follow_updates_page.dart';
 import 'package:pica_comic/foundation/local_favorites.dart';
@@ -81,6 +82,7 @@ class MePage extends StatelessWidget {
           buildFollowUpdates(context),
           buildAccount(1000), // width not critical for Fluent layout here
           buildDownload(context, 1000),
+          buildLocalAddComic(context, 1000),
           buildImageFavorite(context, 1000),
           buildComicSource(context, 1000),
           buildTools(context, 1000),
@@ -114,6 +116,7 @@ class MePage extends StatelessWidget {
                           children: [
                             buildAccount(width),
                             buildDownload(context, width),
+                            buildLocalAddComic(context, width),
                             buildComicSource(context, width),
                           ],
                         ),
@@ -135,6 +138,7 @@ class MePage extends StatelessWidget {
                   ...[
                     buildAccount(width),
                     buildDownload(context, width),
+                    buildLocalAddComic(context, width),
                     buildImageFavorite(context, width),
                     buildComicSource(context, width),
                     buildTools(context, width),
@@ -225,16 +229,10 @@ class MePage extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 clipBehavior: Clip.antiAlias,
-                                child: AnimatedImage(
-                                  image: CachedImageProvider(
-                                    history[index].cover,
-                                    sourceKey:
-                                        history[index].type.comicSource?.key,
-                                  ),
+                                child: buildHistoryCover(
+                                  history[index],
                                   width: 96,
                                   height: 128,
-                                  fit: BoxFit.cover,
-                                  filterQuality: FilterQuality.medium,
                                 ),
                               );
                             },
@@ -332,16 +330,10 @@ class MePage extends StatelessWidget {
                                   .secondaryContainer,
                             ),
                             clipBehavior: Clip.antiAlias,
-                            child: AnimatedImage(
-                              image: CachedImageProvider(
-                                history[index].cover,
-                                sourceKey:
-                                    history[index].type.comicSource?.key,
-                              ),
+                            child: buildHistoryCover(
+                              history[index],
                               width: 96,
                               height: 128,
-                              fit: BoxFit.cover,
-                              filterQuality: FilterQuality.medium,
                             ),
                           ),
                         );
@@ -499,7 +491,14 @@ class MePage extends StatelessWidget {
     );
   }
 
-  
+  Widget buildLocalAddComic(BuildContext context, double width) {
+    return _MePageCard(
+      icon: const Icon(Icons.library_books_outlined),
+      title: "本地漫画库".tl,
+      description: "添加并浏览本地漫画,只限已解压的文件夹,不支持压缩包".tl,
+      onTap: () => context.to(() => const LocalAddComicPage()),
+    );
+  }
 
   Widget buildImageFavorite(BuildContext context, double width) {
     return StateBuilder<SimpleController>(

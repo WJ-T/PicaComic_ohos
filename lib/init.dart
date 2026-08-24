@@ -20,9 +20,11 @@ import 'package:pica_comic/utils/background_service.dart';
 import 'package:pica_comic/utils/cache_auto_clear.dart';
 import 'package:pica_comic/utils/io_extensions.dart';
 import 'package:pica_comic/utils/io_tools.dart';
+import 'package:pica_comic/utils/ohos_device_info.dart';
 import 'package:pica_comic/utils/translations.dart';
 import 'package:pica_comic/utils/android_first_use_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 import 'package:workmanager/workmanager.dart';
 
 import 'base.dart';
@@ -32,12 +34,24 @@ import 'foundation/comic_source/built_in/jm.dart';
 import 'foundation/comic_source/built_in/nhentai.dart';
 import 'foundation/comic_source/built_in/picacg.dart';
 import 'foundation/app.dart';
+import 'foundation/ohos_path_provider.dart';
+import 'foundation/ohos_shared_preferences_store.dart';
+import 'foundation/ohos_sqlite.dart';
+import 'foundation/platform_utils.dart';
 import 'network/nhentai_network/nhentai_main_network.dart';
 import 'package:pica_comic/utils/font_manager.dart';
 
 Future<void> init() async {
   try {
+    OhosPathProvider.registerIfNeeded();
+    configureOhosSqlite();
     await App.init();
+    await OhosDeviceInfoBridge.initialize();
+    if (PlatformUtils.isOhos) {
+      SharedPreferencesStorePlatform.instance =
+          OhosSharedPreferencesStore("${App.dataPath}/shared_prefs.json");
+    }
+    await FontManager().init();
     await FontManager().init();
     io.File? logFile = io.File("${App.dataPath}/log.txt");
     if (App.isAndroid) {
@@ -91,7 +105,7 @@ Future<void> init() async {
         handleAppLinks(uri);
       });
     }
-    if (App.isMobile) {
+    if (supportsWorkmanager) {
       Workmanager().initialize(
         onStart,
       );

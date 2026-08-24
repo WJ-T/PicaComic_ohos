@@ -1,16 +1,18 @@
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:file_picker/file_picker.dart' as fp;
 import 'package:flutter/services.dart';
 import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 import 'package:flutter_saf/flutter_saf.dart';
 import 'package:pica_comic/utils/extensions.dart';
 import 'package:pica_comic/utils/ext.dart';
 import 'package:path/path.dart' as p;
-import 'package:share_plus/share_plus.dart' as s;
 import 'package:file_selector/file_selector.dart' as file_selector;
+//import 'package:file_picker_ohos/file_picker_ohos.dart' as fp;
 import 'package:pica_comic/utils/file_type.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:pica_comic/foundation/platform_utils.dart';
+import 'package:pica_comic/utils/app_share.dart';
 
 import '../foundation/app.dart';
 
@@ -273,13 +275,16 @@ class IOSDirectoryPicker {
 Future<FileSelectResult?> selectFile({required List<String> ext}) async {
   IO._isSelectingFiles = true;
   try {
-    var extensions = App.isMacOS || App.isIOS ? null : ext;
-    file_selector.XTypeGroup typeGroup = file_selector.XTypeGroup(
-      label: 'files',
-      extensions: extensions,
-    );
     FileSelectResult? file;
-    if (App.isAndroid) {
+    if (PlatformUtils.isOhos) {
+      final result = await fp.FilePicker.platform.pickFiles(
+        type: fp.FileType.custom,
+        allowedExtensions: ext,
+        allowMultiple: false,
+      );
+      if (result == null || result.files.isEmpty) return null;
+      file = FileSelectResult(result.files.first.path!);
+    } else if (App.isAndroid) {
       const selectFileChannel = MethodChannel("venera/select_file");
       String mimeType = "*/*";
       if (ext.length == 1) {
@@ -295,6 +300,11 @@ Future<FileSelectResult?> selectFile({required List<String> ext}) async {
       if (filePath == null) return null;
       file = FileSelectResult(filePath);
     } else {
+      var extensions = App.isMacOS || App.isIOS ? null : ext;
+      file_selector.XTypeGroup typeGroup = file_selector.XTypeGroup(
+        label: 'files',
+        extensions: extensions,
+      );
       var xFile = await file_selector.openFile(
         acceptedTypeGroups: <file_selector.XTypeGroup>[typeGroup],
       );
@@ -318,7 +328,12 @@ Future<FileSelectResult?> selectFile({required List<String> ext}) async {
 Future<String?> selectDirectory() async {
   IO._isSelectingFiles = true;
   try {
-    var path = await file_selector.getDirectoryPath();
+    String? path;
+    if (PlatformUtils.isOhos) {
+      path = await fp.FilePicker.platform.getDirectoryPath();
+    } else {
+      path = await file_selector.getDirectoryPath();
+    }
     return path;
   } finally {
     Future.delayed(const Duration(milliseconds: 100), () {
@@ -347,7 +362,13 @@ Future<void> saveFile(
       await File(cache).writeAsBytes(data);
       file = File(cache);
     }
-    if (App.isMobile) {
+    if (PlatformUtils.isOhos) {
+      await fp.FilePicker.platform.saveFile(
+        fileName: filename,
+        type: fp.FileType.any,
+        bytes: await file!.readAsBytes(),
+      );
+    } else if (App.isMobile) {
       final params = SaveFileDialogParams(sourceFilePath: file!.path);
       await FlutterFileDialog.saveFile(params: params);
     } else {
@@ -410,20 +431,11 @@ class Share {
     required String filename,
     required String mime,
   }) {
-    if (!App.isWindows) {
-      s.Share.shareXFiles(
-        [s.XFile.fromData(data, mimeType: mime, name: filename)],
-      );
-    } else {
-      // write to cache
-      var file = File(FilePath.join(App.cachePath, filename));
-      file.writeAsBytesSync(data);
-      s.Share.shareXFiles([s.XFile(file.path)]);
-    }
+    AppShare.shareData(data: data, filename: filename, mime: mime);
   }
 
   static void shareText(String text) {
-    s.Share.share(text);
+    AppShare.shareText(text);
   }
 }
 

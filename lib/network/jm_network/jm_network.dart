@@ -48,7 +48,8 @@ extension _CachedNetwork on CachedNetwork {
     if (res.data == null) {
       throw Exception("Empty data");
     }
-    var body = utf8.decoder.convert(res.data!);
+    var decodedBytes = _decodeJmResponseBytes(res.data!, res.headers);
+    var body = utf8.decoder.convert(decodedBytes);
     if (res.statusCode != 200) {
       return CachedNetworkRes(body, res.statusCode, res.realUri.toString());
     }
@@ -64,11 +65,40 @@ extension _CachedNetwork on CachedNetwork {
         "$time${JmNetwork.kJmSecret}"
     );
     if (expiredTime != CacheExpiredTime.no) {
-      await CacheManager().writeCache(key, res.data!, expiredTime.time);
+      await CacheManager().writeCache(key, decodedBytes, expiredTime.time);
     }
     return CachedNetworkRes(
         decodedData, res.statusCode, res.realUri.toString());
   }
+}
+
+Uint8List _decodeJmResponseBytes(Uint8List data, Headers headers) {
+  final encodingHeader = headers.value(Headers.contentEncodingHeader);
+  if (encodingHeader == null || encodingHeader.isEmpty) {
+    return data;
+  }
+  var decoded = data;
+  for (final encoding in encodingHeader.split(',')) {
+    final normalized = encoding.trim().toLowerCase();
+    if (normalized.isEmpty || normalized == "identity") {
+      continue;
+    }
+    try {
+      if (normalized == "gzip" || normalized == "x-gzip") {
+        decoded = Uint8List.fromList(GZipCodec().decode(decoded));
+      } else if (normalized == "deflate") {
+        decoded = Uint8List.fromList(ZLibCodec().decode(decoded));
+      }
+    } catch (e, s) {
+      if (kDebugMode) {
+        print("Failed to decode JM response: $normalized\n$e");
+      }
+      LogManager.addLog(LogLevel.warning, "Network",
+          "Failed to decode JM response: $normalized\n$e\n$s");
+      return data;
+    }
+  }
+  return decoded;
 }
 
 class JmNetwork {

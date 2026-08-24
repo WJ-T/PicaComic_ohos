@@ -39,7 +39,8 @@ class _DownloadedComicCommentsPageState
   }
 
   Future<void> _loadSaved() async {
-    var comments = await ComicCommentsStorage.loadComments(_sourceKey, _comicId);
+    var comments =
+        await ComicCommentsStorage.loadComments(_sourceKey, _comicId);
     if (!mounted) return;
     setState(() {
       savedComments = comments;

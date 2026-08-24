@@ -738,27 +738,27 @@ void exportDataSetting(BuildContext context) {
 
   if (App.isFluent) {
     fluent.showDialog(
-      context: context,
-      builder: (context) => fluent.ContentDialog(
-        title: Text("导出用户数据".tl),
-        content: Text("将导出设置, 账号, 历史记录, 下载内容, 本地收藏等数据".tl),
-        actions: [
-          fluent.Button(
-              onPressed: () => App.globalBack(), child: Text("取消".tl)),
-          fluent.Button(
-              onPressed: () {
-                App.globalBack();
-                export(false);
-              },
-              child: Text("导出不含下载的数据".tl)),
-          fluent.FilledButton(
-              onPressed: () {
-                App.globalBack();
-                export(true);
-              },
-              child: Text("导出所有数据".tl))
-        ],
-      ));
+        context: context,
+        builder: (context) => fluent.ContentDialog(
+              title: Text("导出用户数据".tl),
+              content: Text("将导出设置, 账号, 历史记录, 下载内容, 本地收藏, 本地漫画文件夹, 漫画评论, 章节评论等数据".tl),
+              actions: [
+                fluent.Button(
+                    onPressed: () => App.globalBack(), child: Text("取消".tl)),
+                fluent.Button(
+                    onPressed: () {
+                      App.globalBack();
+                      export(false);
+                    },
+                    child: Text("导出不含下载的数据".tl)),
+                fluent.FilledButton(
+                    onPressed: () {
+                      App.globalBack();
+                      export(true);
+                    },
+                    child: Text("导出所有数据".tl))
+              ],
+            ));
     return;
   }
 
@@ -766,7 +766,7 @@ void exportDataSetting(BuildContext context) {
       context: context,
       builder: (context) => ContentDialog(
             title: "导出用户数据".tl,
-            content: Text("将导出设置, 账号, 历史记录, 下载内容, 本地收藏等数据".tl).paddingHorizontal(16).paddingVertical(8),
+            content: Text("将导出设置, 账号, 历史记录, 下载内容, 本地收藏, 本地漫画文件夹, 漫画评论, 章节评论等数据".tl).paddingHorizontal(16).paddingVertical(8),
             actions: [
               Button.text(
                   onPressed: () {
@@ -789,7 +789,7 @@ void importDataSetting(BuildContext context) {
       context: context,
       builder: (context) => ContentDialog(
             title: "导入用户数据".tl,
-            content: Text("${"将导入设置, 账号, 历史记录, 下载内容, 本地收藏等数据, 现在的所有数据将会被覆盖".tl}"
+            content: Text("${"将导入设置, 账号, 历史记录, 下载内容, 本地收藏, 本地漫画文件夹, 漫画评论, 章节评论等数据, 现在的所有数据将会被覆盖".tl}"
                 "\n${"如果导入的数据中包含下载数据, 则当前的下载数据也将被覆盖".tl}").paddingHorizontal(16).paddingVertical(8),
             actions: [
               Button.filled(

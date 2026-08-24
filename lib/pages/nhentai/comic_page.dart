@@ -87,7 +87,7 @@ class NhentaiComicPage extends BaseComicPage<NhentaiComic> {
       },
       cancelPlatformFavorite: () async {
         var res = await NhentaiNetwork().unfavoriteComic(id, data!.token);
-        if(res.success) {
+        if (res.success) {
           data!.favorite = false;
         }
         return res;
@@ -142,11 +142,12 @@ class NhentaiComicPage extends BaseComicPage<NhentaiComic> {
   void read(History? history) async {
     history = await History.createIfNull(history, data!);
     App.globalTo(() => ComicReadingPage.nhentai(
-        data!.id,
-        data!.title,
-        initialPage: history!.page,
-      )
-    );
+          data!.id,
+          data!.title,
+          initialPage: history!.page,
+          historySubTitle: data!.subTitle,
+          historyCover: data!.cover,
+        ));
   }
 
   @override
@@ -157,6 +158,8 @@ class NhentaiComicPage extends BaseComicPage<NhentaiComic> {
         data!.id,
         data!.title,
         initialPage: index + 1,
+        historySubTitle: data!.subTitle,
+        historyCover: data!.cover,
       ),
     );
   }
@@ -164,7 +167,8 @@ class NhentaiComicPage extends BaseComicPage<NhentaiComic> {
   @override
   Future<bool> loadFavorite(NhentaiComic data) async {
     return data.favorite ||
-        (await LocalFavoritesManager().findWithModel(toLocalFavoriteItem())).isNotEmpty;
+        (await LocalFavoritesManager().findWithModel(toLocalFavoriteItem()))
+            .isNotEmpty;
   }
 
   @override
@@ -195,9 +199,7 @@ class NhentaiComicPage extends BaseComicPage<NhentaiComic> {
       "Languages": "language",
       "Categories": "category",
     }[key];
-    final categoryParam = categoryType == null
-        ? null
-        : "/$categoryType/$tag";
+    final categoryParam = categoryType == null ? null : "/$categoryType/$tag";
 
     if (categoryParam == null) {
       HistoryManager.addSearchHistory(tag);

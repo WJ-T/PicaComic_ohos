@@ -102,7 +102,8 @@ class ComicSource {
               .parse(await entity.readAsString(), entity.absolute.path);
           sources.add(source);
         } catch (e, s) {
-          log("$e\n$s", "ComicSource", LogLevel.error);
+          log("Failed to load comic source ${entity.path}\n$e\n$s",
+              "ComicSource", LogLevel.error);
         }
       }
     }

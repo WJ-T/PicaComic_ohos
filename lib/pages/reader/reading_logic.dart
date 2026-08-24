@@ -1,16 +1,17 @@
 part of 'comic_reading_page.dart';
 
-extension PageControllerExtension on PageController{
-  void animatedJumpToPage(int page){
+extension PageControllerExtension on PageController {
+  void animatedJumpToPage(int page) {
     final current = this.page?.round() ?? 0;
-    if((current - page).abs() > 1){
+    if ((current - page).abs() > 1) {
       jumpToPage(page > current ? page - 1 : page + 1);
     }
-    animateToPage(page, duration: const Duration(milliseconds: 300), curve: Curves.ease);
+    animateToPage(page,
+        duration: const Duration(milliseconds: 300), curve: Curves.ease);
   }
 
   void jumpByDeviceType(int page) {
-    if(StateController.find<ComicReadingPageLogic>().mouseScroll) {
+    if (StateController.find<ComicReadingPageLogic>().mouseScroll) {
       jumpToPage(page);
     } else {
       animatedJumpToPage(page);
@@ -32,8 +33,8 @@ class ComicReadingPageLogic extends StateController {
   var scrollController = ScrollController(keepScrollOffset: true);
 
   ///用于从上至下(连续)阅读方式, 获取放缩大小
-  PhotoViewController get photoViewController => photoViewControllers[index]
-      ?? photoViewControllers[0]!;
+  PhotoViewController get photoViewController =>
+      photoViewControllers[index] ?? photoViewControllers[0]!;
 
   var photoViewControllers = <int, PhotoViewController>{};
 
@@ -43,7 +44,7 @@ class ComicReadingPageLogic extends StateController {
 
   String? errorMessage;
 
-  void clearPhotoViewControllers(){
+  void clearPhotoViewControllers() {
     photoViewControllers.forEach((key, value) => value.dispose());
     photoViewControllers.clear();
   }
@@ -83,23 +84,59 @@ class ComicReadingPageLogic extends StateController {
     }
   }
 
-  ComicReadingPageLogic(this.order, this.data, int initialPage, this.updateHistory){
-    if(initialPage <= 0){
+  ComicReadingPageLogic(
+      this.order, this.data, int initialPage, this.updateHistory) {
+    if (initialPage <= 0) {
       initialPage = 1;
     }
-    pageController =
-        PageController(initialPage: _getPage(initialPage));
+    pageController = _createPageController(_getPage(initialPage));
     _index = _getIndex(initialPage);
     order <= 0 ? order = 1 : order;
     itemScrollListener.itemPositions.addListener(() {
       var newIndex = itemScrollListener.itemPositions.value.first.index + 1;
-      if(newIndex != index) {
+      if (newIndex != index) {
         index = newIndex;
         update(["ToolBar"]);
       }
     });
   }
 
+  PageController _createPageController(int initialPage) {
+    final controller = PageController(initialPage: initialPage);
+    controller.addListener(() {
+      _syncIndexFromPageController();
+    });
+    return controller;
+  }
+
+  void _syncIndexFromPageController() {
+    if (urls.isEmpty ||
+        readingMethod == ReadingMethod.topToBottomContinuously ||
+        !pageController.hasClients) {
+      return;
+    }
+    final page = pageController.page?.round();
+    if (page == null) {
+      return;
+    }
+    int? newIndex;
+    if (readingMethod.isTwoPage) {
+      if (page <= 0) {
+        return;
+      }
+      newIndex = singlePageForFirstScreen
+          ? (page * 2 - 2).clamp(1, urls.length)
+          : page * 2 - 1;
+    } else {
+      if (page <= 0 || page > urls.length) {
+        return;
+      }
+      newIndex = page;
+    }
+    if (newIndex >= 1 && newIndex <= urls.length && newIndex != index) {
+      index = newIndex;
+    }
+  }
 
   final void Function() updateHistory;
 
@@ -140,20 +177,26 @@ class ComicReadingPageLogic extends StateController {
 
   ///当前的页面, 0和最后一个为空白页, 用于进行章节跳转
   set index(int value) {
+    if (_index == value) {
+      return;
+    }
     _index = value;
     for (var element in _indexChangeCallbacks) {
       element(value);
     }
     updateHistory();
+    update(["ToolBar"]);
   }
 
   final _indexChangeCallbacks = <void Function(int)>[];
 
-  void addIndexChangeCallback(void Function(int) callback){
+  void Function(int)? continuationIndexCallback;
+
+  void addIndexChangeCallback(void Function(int) callback) {
     _indexChangeCallbacks.add(callback);
   }
 
-  void removeIndexChangeCallback(void Function(int) callback){
+  void removeIndexChangeCallback(void Function(int) callback) {
     _indexChangeCallbacks.remove(callback);
   }
 
@@ -172,7 +215,7 @@ class ComicReadingPageLogic extends StateController {
   void reload() {
     index = 1;
     isOnChapterCommentsPage = false;
-    pageController = PageController(initialPage: 1);
+    pageController = _createPageController(1);
     isLoading = true;
     requestedLoadingItems = [];
     update();
@@ -210,23 +253,23 @@ class ComicReadingPageLogic extends StateController {
     i = i.clamp(1, length);
     if (readingMethod == ReadingMethod.topToBottomContinuously) {
       itemScrollController.jumpTo(index: i - 1);
-    } else if(!readingMethod.isTwoPage){
+    } else if (!readingMethod.isTwoPage) {
       pageController.jumpToPage(i);
     } else {
-      var index = singlePageForFirstScreen ? i ~/ 2 + 1 : (i + 1) ~/ 2;
-      pageController.jumpToPage(index);
+      var page = singlePageForFirstScreen ? i ~/ 2 + 1 : (i + 1) ~/ 2;
+      pageController.jumpToPage(page);
     }
-    if(index != i){
+    if (index != i) {
       index = i;
     }
-    if(updateWidget){
+    if (updateWidget) {
       update(["ToolBar"]);
     }
   }
 
-  void jumpByDeviceType(int page){
+  void jumpByDeviceType(int page) {
     Future.microtask(() {
-      if(mouseScroll){
+      if (mouseScroll) {
         pageController.jumpToPage(page);
       } else {
         pageController.animatedJumpToPage(page);
@@ -238,7 +281,7 @@ class ComicReadingPageLogic extends StateController {
     var eps = data.eps;
     showFloatingButtonValue = 0;
     if (!data.hasEp || order == eps?.length) {
-      if(readingMethod != ReadingMethod.topToBottomContinuously){
+      if (readingMethod != ReadingMethod.topToBottomContinuously) {
         if (readingMethod.index < 3) {
           jumpByDeviceType(urls.length);
         } else if (readingMethod == ReadingMethod.twoPage) {
@@ -257,20 +300,20 @@ class ComicReadingPageLogic extends StateController {
     tools = false;
     index = 1;
     isOnChapterCommentsPage = false;
-    pageController = PageController(initialPage: 1);
+    pageController = _createPageController(1);
     requestedLoadingItems = [];
     clearPhotoViewControllers();
     update();
   }
 
-  void jumpToChapter(int index){
+  void jumpToChapter(int index) {
     order = index;
     urls = [];
     isLoading = true;
     tools = false;
     this.index = 1;
     isOnChapterCommentsPage = false;
-    pageController = PageController(initialPage: 1);
+    pageController = _createPageController(1);
     requestedLoadingItems = [];
     clearPhotoViewControllers();
     update();
@@ -278,8 +321,8 @@ class ComicReadingPageLogic extends StateController {
 
   void jumpToLastChapter() {
     showFloatingButtonValue = 0;
-    if(order == 1 || !data.hasEp){
-      if(readingMethod != ReadingMethod.topToBottomContinuously){
+    if (order == 1 || !data.hasEp) {
+      if (readingMethod != ReadingMethod.topToBottomContinuously) {
         jumpByDeviceType(1);
       } else {
         jumpToPage(1);
@@ -294,7 +337,7 @@ class ComicReadingPageLogic extends StateController {
     isLoading = true;
     tools = false;
     isOnChapterCommentsPage = false;
-    pageController = PageController(initialPage: 1);
+    pageController = _createPageController(1);
     index = 1;
     requestedLoadingItems = [];
     clearPhotoViewControllers();
@@ -326,7 +369,7 @@ class ComicReadingPageLogic extends StateController {
   }
 
   void refresh_() {
-    pageController = PageController(initialPage: 1);
+    pageController = _createPageController(1);
     itemScrollController = ItemScrollController();
     itemScrollListener = ItemPositionsListener.create();
     scrollController = ScrollController(keepScrollOffset: true);
@@ -375,15 +418,15 @@ class ComicReadingPageLogic extends StateController {
   }
 
   void handleKeyboard(KeyEvent event) {
-    if(event is KeyDownEvent || event is KeyRepeatEvent){
+    if (event is KeyDownEvent || event is KeyRepeatEvent) {
       bool reverse = appdata.settings[9] == "2" || appdata.settings[9] == "6";
       switch (event.logicalKey) {
         case LogicalKeyboardKey.arrowDown:
         case LogicalKeyboardKey.arrowRight:
-          reverse ? jumpToLastPage(): jumpToNextPage();
+          reverse ? jumpToLastPage() : jumpToNextPage();
         case LogicalKeyboardKey.arrowUp:
         case LogicalKeyboardKey.arrowLeft:
-          reverse ? jumpToNextPage(): jumpToLastPage();
+          reverse ? jumpToNextPage() : jumpToLastPage();
         case LogicalKeyboardKey.f12:
           fullscreen();
       }

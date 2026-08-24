@@ -1,15 +1,19 @@
 class ApiEndpoints {
+  static const String githubOwner = 'ccbkv';
+  static const String githubRepo = 'PicaComic';
+
   /// 当前版本
-  static const String version = '4.8.1';
+  static const String version = '4.8.5-beta1';
 
   /// 规则API级别
   static const int apiLevel = 7;
 
   /// 项目主页
-  static const String projectUrl = "https://github.com/ccbkv/PicaComic";
+  static const String projectUrl =
+      "https://github.com/$githubOwner/$githubRepo";
 
   /// Github 项目主页
-  static const String sourceUrl = "https://github.com/ccbkv/PicaComic";
+  static const String sourceUrl = projectUrl;
 
   /// 图标作者
   static const String iconUrl = "https://www.pixiv.net/users/66219277";
@@ -20,7 +24,7 @@ class ApiEndpoints {
 
   /// 应用 Releases 列表
   static const String appReleases =
-      'https://api.github.com/repos/ccbkv/PicaComic/releases';
+      'https://api.github.com/repos/$githubOwner/$githubRepo/releases';
 
   /// 在线升级
   static const String latestApp = '$appReleases/latest';
@@ -50,8 +54,8 @@ class ApiEndpoints {
   //static const String bangumiInfoByID = '/v0/subjects/{0}';
 
   /// 条目搜索
- // static const String bangumiRankSearch =
-      //'/v0/search/subjects?limit={0}&offset={1}';
+  // static const String bangumiRankSearch =
+  //'/v0/search/subjects?limit={0}&offset={1}';
 
   /// 从条目ID获取角色信息
   //static const String bangumiCharacterByID = '/v0/subjects/{0}/characters';
@@ -67,7 +71,7 @@ class ApiEndpoints {
 
   /// 获取用户收藏。用户名，分页参数1，分页参数2
   //static const String bangumiGetCollection =
-     // '/v0/users/{0}/collections?subject_type=2&limit={1}&offset={2}&type={3}';
+  // '/v0/users/{0}/collections?subject_type=2&limit={1}&offset={2}&type={3}';
 
   /// Bangumi Next API Domain
   //static const String bangumiAPINextDomain = 'https://next.bgm.tv';
@@ -79,19 +83,19 @@ class ApiEndpoints {
   //static const String bangumiTrendsNext = '/p1/trending/subjects';
 
   /// Kazumi Bangumi 镜像缓存榜单
- // static const String bangumiMirrorPopularSubjects =
-   //   '/kazumi/v1/popular/subjects';
+  // static const String bangumiMirrorPopularSubjects =
+  //   '/kazumi/v1/popular/subjects';
 
   /// Kazumi Bangumi 镜像季节时间表
   //static const String bangumiMirrorSeasonCalendar =
-   //   '/kazumi/v1/calendar/season';
+  //   '/kazumi/v1/calendar/season';
 
   /// 番剧信息
- // static const String bangumiInfoByIDNext = '/p1/subjects/{0}';
+  // static const String bangumiInfoByIDNext = '/p1/subjects/{0}';
 
   /// 番剧评论
- // static const String bangumiCommentsByIDNext =
-    //  '/p1/subjects/{0}/comments?limit={1}&offset={2}';
+  // static const String bangumiCommentsByIDNext =
+  //  '/p1/subjects/{0}/comments?limit={1}&offset={2}';
 
   /// 番剧剧集评论
   //static const String bangumiEpisodeCommentsByIDNext =

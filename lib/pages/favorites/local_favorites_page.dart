@@ -1054,7 +1054,7 @@ class _LocalFavoritesPageState extends State<_LocalFavoritesPage> {
         return;
       }
     }
-    
+
     bool cancel = false;
     var dialog = showLoadingDialog(
       App.globalContext!,

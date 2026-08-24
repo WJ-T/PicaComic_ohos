@@ -17,8 +17,8 @@ import 'package:pica_comic/foundation/ui_mode.dart';
 import 'package:pica_comic/network/cloudflare.dart';
 import 'package:pica_comic/network/nhentai_network/nhentai_main_network.dart';
 import 'package:pica_comic/pages/webview.dart';
+import 'package:pica_comic/utils/app_url_launcher.dart';
 import 'package:pica_comic/utils/translations.dart';
-import 'package:url_launcher/url_launcher_string.dart';
 
 /// NHentai API v2 登录响应
 class NhentaiLoginResponse {
@@ -446,7 +446,9 @@ class _NhentaiLoginPageState extends State<NhentaiLoginPage> {
           ),
           const SizedBox(height: 8),
           TextButton(
-            onPressed: () => launchUrlString('https://nhentai.net/register'),
+            onPressed: () => AppUrlLauncher.launchExternalUrl(
+              'https://nhentai.net/register',
+            ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

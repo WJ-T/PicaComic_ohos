@@ -28,8 +28,6 @@ class SideBarRoute<T> extends PopupRoute<T> {
 
   final bool addBottomPadding;
 
-
-
   @override
   void install() {
     super.install();
@@ -108,7 +106,8 @@ class SideBarRoute<T> extends PopupRoute<T> {
       body = IOSBackGestureDetector(
         enabledCallback: () => true,
         gestureWidth: 20.0,
-        onStartPopGesture: () => IOSBackGestureController(controller!, navigator!),
+        onStartPopGesture: () =>
+            IOSBackGestureController(controller!, navigator!),
         child: body,
       );
     }
@@ -136,10 +135,6 @@ class SideBarRoute<T> extends PopupRoute<T> {
     );
   }
 }
-
-
-
-
 
 class SidebarBody extends StatefulWidget {
   const SidebarBody(
@@ -472,8 +467,9 @@ class _FavoritesSideBarState extends State<FavoritesSideBar> {
             : null,
         border: Border(
           left: BorderSide(
-            color:
-                isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary
+                : Colors.transparent,
             width: 2,
           ),
         ),
@@ -539,8 +535,9 @@ class _FavoritesSideBarState extends State<FavoritesSideBar> {
             : null,
         border: Border(
           left: BorderSide(
-            color:
-                isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary
+                : Colors.transparent,
             width: 2,
           ),
         ),

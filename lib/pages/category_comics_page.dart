@@ -53,7 +53,7 @@ class _CategoryComicsPageState extends State<CategoryComicsPage> {
           return true;
         }).toList();
         optionsValue = options.map((e) => e.options.keys.first).toList();
-        
+
         // 初始化选中的分类
         if (widget.param != null && widget.param!.contains(',')) {
           selectedCategories = widget.param!.split(',');
@@ -73,7 +73,7 @@ class _CategoryComicsPageState extends State<CategoryComicsPage> {
     super.initState();
   }
 
-bool get _isNhentai => source.key == "nhentai";
+  bool get _isNhentai => source.key == "nhentai";
 
   Future<void> _openFilterDialog() async {
     if (_isNhentai) {
@@ -198,8 +198,8 @@ bool get _isNhentai => source.key == "nhentai";
     // 获取分类列表
     final source = ComicSource.sources
         .firstWhere((e) => e.categoryData?.key == widget.categoryKey);
-   // final categories = _getCategories(source);
-    
+    // final categories = _getCategories(source);
+
     if (App.isFluent) {
       return fluent.ScaffoldPage(
         header: fluent.PageHeader(
@@ -209,19 +209,21 @@ bool get _isNhentai => source.key == "nhentai";
                     ? "${selectedCategories.length}个分类"
                     : selectedCategories.firstOrNull ?? widget.category),
           ),
-          commandBar: widget.param != "ca" ? fluent.CommandBar(
-            primaryItems: [
-              fluent.CommandBarButton(
-                label: const Text("分类过滤"),
-                icon: const Icon(fluent.FluentIcons.filter),
-                onPressed: _openFilterDialog,
-              ),
-            ],
-          ) : null,
+          commandBar: widget.param != "ca"
+              ? fluent.CommandBar(
+                  primaryItems: [
+                    fluent.CommandBarButton(
+                      label: const Text("分类过滤"),
+                      icon: const Icon(fluent.FluentIcons.filter),
+                      onPressed: _openFilterDialog,
+                    ),
+                  ],
+                )
+              : null,
         ),
         content: Column(
           children: [
-             if (!_isNhentai && selectedCategories.length > 1) ...[
+            if (!_isNhentai && selectedCategories.length > 1) ...[
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Wrap(
@@ -229,15 +231,18 @@ bool get _isNhentai => source.key == "nhentai";
                   runSpacing: 8,
                   children: selectedCategories.map((category) {
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: fluent.FluentTheme.of(context).accentColor.normal,
+                        color:
+                            fluent.FluentTheme.of(context).accentColor.normal,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(category, style: const TextStyle(color: Colors.white)),
+                          Text(category,
+                              style: const TextStyle(color: Colors.white)),
                           const SizedBox(width: 4),
                           GestureDetector(
                             onTap: () {
@@ -245,7 +250,8 @@ bool get _isNhentai => source.key == "nhentai";
                                 selectedCategories.remove(category);
                               });
                             },
-                            child: const Icon(fluent.FluentIcons.clear, size: 12, color: Colors.white),
+                            child: const Icon(fluent.FluentIcons.clear,
+                                size: 12, color: Colors.white),
                           )
                         ],
                       ),
@@ -271,7 +277,7 @@ bool get _isNhentai => source.key == "nhentai";
       );
     }
 
-   return Scaffold(
+    return Scaffold(
       backgroundColor: Colors.white,
       appBar: Appbar(
         allowLiquidGlass: false,
@@ -287,7 +293,8 @@ bool get _isNhentai => source.key == "nhentai";
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Theme.of(context).colorScheme.outline),
+                border:
+                    Border.all(color: Theme.of(context).colorScheme.outline),
               ),
               child: TextButton(
                 onPressed: _openFilterDialog,
@@ -304,7 +311,7 @@ bool get _isNhentai => source.key == "nhentai";
       body: Column(
         children: [
           // 显示已选分类
-             if (!_isNhentai && selectedCategories.length > 1) ...[
+          if (!_isNhentai && selectedCategories.length > 1) ...[
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: Wrap(
@@ -316,11 +323,11 @@ bool get _isNhentai => source.key == "nhentai";
               ),
             ),
           ],
-          
+
           Expanded(
             child: _CategoryComicsList(
               key: ValueKey(
-              "${selectedCategories.join(',')} with $optionsValue and $currentParam"),
+                  "${selectedCategories.join(',')} with $optionsValue and $currentParam"),
               loader: data.load,
               category: selectedCategories.join(','),
               options: optionsValue,
@@ -333,7 +340,7 @@ bool get _isNhentai => source.key == "nhentai";
       ),
     );
   }
-  
+
   // 获取分类列表
   List<String> _getCategories(ComicSource source) {
     // 尝试从picacg源获取分类列表
@@ -381,7 +388,7 @@ bool get _isNhentai => source.key == "nhentai";
         "重口地帶"
       ];
     }
-    
+
     // 默认返回当前分类
     return [widget.category];
   }
@@ -434,12 +441,10 @@ bool get _isNhentai => source.key == "nhentai";
     }
     return SliverToBoxAdapter(
       child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [...children, const Divider()],
-                )
-          .paddingLeft(8)
-          .paddingRight(8),
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [...children, const Divider()],
+      ).paddingLeft(8).paddingRight(8),
     );
   }
 }

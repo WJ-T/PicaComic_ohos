@@ -8,8 +8,8 @@ import 'package:pica_comic/foundation/ui_mode.dart';
 import 'package:pica_comic/utils/translations.dart';
 import 'package:pica_comic/pages/webview.dart';
 import 'package:pica_comic/foundation/js_engine.dart';
+import 'package:pica_comic/utils/app_url_launcher.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart' show CookieManager, WebUri;
-import 'package:url_launcher/url_launcher_string.dart';
 
 class AccountsPageLogic extends StateController {
   final _reLogin = <String, bool>{};
@@ -149,9 +149,7 @@ class AccountsPage extends StatelessWidget {
             element.saveData();
             // 清除 WebView 的所有 cookies，防止网页登录时自动使用旧凭证
             try {
-              var cookieManager = CookieManager.instance(
-                webViewEnvironment: AppWebview.webViewEnvironment,
-              );
+              var cookieManager = CookieManager.instance();
               await cookieManager.deleteAllCookies();
             } catch (_) {}
             logic.update();
@@ -244,7 +242,8 @@ class _LoginPageState extends State<_LoginPage> {
         const Spacer(),
         if (widget.registerWebsite != null)
           TextButton(
-            onPressed: () => launchUrlString(widget.registerWebsite!),
+            onPressed: () =>
+                AppUrlLauncher.launchExternalUrl(widget.registerWebsite!),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -309,9 +308,7 @@ class _LoginPageState extends State<_LoginPage> {
     void checkLogin(controller) async {
       if (success) return;
       try {
-        var cookieManager = CookieManager.instance(
-          webViewEnvironment: AppWebview.webViewEnvironment,
-        );
+        var cookieManager = CookieManager.instance();
         var cookies = await cookieManager.getCookies(url: WebUri(url));
         for (var cookie in cookies) {
           if (cookie.name == 'token' && cookie.value.isNotEmpty) {

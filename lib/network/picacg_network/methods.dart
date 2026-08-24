@@ -999,7 +999,7 @@ class PicacgNetwork {
       List<String> categories = keyWord.split(',');
       // 过滤空字符串
       categories = categories.where((category) => category.isNotEmpty).toList();
-      
+
       // 使用高级搜索API进行多分类搜索
       var response = await post(
         '$apiUrl/comics/advanced-search?page=$page',
@@ -1009,11 +1009,11 @@ class PicacgNetwork {
           'sort': sort,
         }
       );
-      
+
       if (response.error) {
         return Res(null, errorMessage: response.errorMessage);
       }
-      
+
       var res = response.data;
       var pages = res["data"]["comics"]["pages"];
       var comics = <ComicItemBrief>[];
@@ -1042,7 +1042,7 @@ class PicacgNetwork {
       }
       return Res(comics, subData: pages);
     }
-    
+
     // 作者搜索和单个分类使用普通GET请求
     var response = await get(
         '$apiUrl/comics?page=$page&$type=${Uri.encodeComponent(keyWord)}&s=$sort',
