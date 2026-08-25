@@ -1201,9 +1201,14 @@ class _ImageFavoritesComicTileState extends State<_ImageFavoritesComicTile> {
             showToast(message: "本地漫画不存在或已移动".tl);
             return;
           }
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => LocalComicInfoView(comic)),
-          );
+          if (UiMode.m1(context)) {
+            showModalBottomSheet(
+              context: context,
+              builder: (context) => LocalComicInfoView(comic),
+            );
+          } else {
+            showSideBar(App.globalContext!, LocalComicInfoView(comic));
+          }
         });
         break;
       default:
