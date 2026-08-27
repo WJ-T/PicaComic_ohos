@@ -3,7 +3,7 @@ class ApiEndpoints {
   static const String githubRepo = 'PicaComic';
 
   /// 当前版本
-  static const String version = '4.8.5-beta1';
+  static const String version = '4.8.8';
 
   /// 规则API级别
   static const int apiLevel = 7;
