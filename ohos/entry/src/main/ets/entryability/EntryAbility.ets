@@ -82,13 +82,13 @@ export default class EntryAbility extends FlutterAbility {
     }
   }
 
-  async onContinue(
+  onContinue(
     wantParam: Record<string, Object>,
-  ): Promise<AbilityConstant.OnContinueResult> {
+  ): AbilityConstant.OnContinueResult {
     if (!ENABLE_CONTINUATION) {
       return AbilityConstant.OnContinueResult.REJECT;
     }
-    if (!(await applyContinuationWantParam(wantParam))) {
+    if (!applyContinuationWantParam(wantParam)) {
       return AbilityConstant.OnContinueResult.REJECT;
     }
     return AbilityConstant.OnContinueResult.AGREE;

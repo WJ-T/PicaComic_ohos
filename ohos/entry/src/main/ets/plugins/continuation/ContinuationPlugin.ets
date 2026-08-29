@@ -52,13 +52,10 @@ class ContinuationStore {
     }
   }
 
-  static async applyWantParam(
-    wantParam: Record<string, Object>,
-  ): Promise<boolean> {
-    let payloadText = await ContinuationStore.requestCurrentPayloadText();
-    if (payloadText.length === 0 && ContinuationStore.activePayloadText != null) {
-      payloadText = ContinuationStore.activePayloadText;
-    }
+  static applyWantParam(wantParam: Record<string, Object>): boolean {
+    // onContinue is a synchronous UIAbility lifecycle callback. The reader
+    // state is already cached by setReaderState before the system invokes it.
+    const payloadText = ContinuationStore.activePayloadText ?? '';
     if (payloadText.length === 0) {
       return false;
     }
@@ -115,9 +112,9 @@ export function hasContinuationPayload(want: Want | undefined | null): boolean {
 
 export function applyContinuationWantParam(
   wantParam: Record<string, Object>,
-): Promise<boolean> {
+): boolean {
   if (!ENABLE_CONTINUATION) {
-    return Promise.resolve(false);
+    return false;
   }
   return ContinuationStore.applyWantParam(wantParam);
 }
@@ -255,9 +252,11 @@ export default class ContinuationPlugin
   private async updateContinueState(
     state: AbilityConstant.ContinueState,
   ): Promise<void> {
-    if (this.abilityContext == null) {
+    const abilityContext =
+      this.abilityContext ?? (getContext() as common.UIAbilityContext);
+    if (abilityContext == null) {
       throw new Error('UIAbilityContext not attached');
     }
-    await this.abilityContext.setMissionContinueState(state);
+    await abilityContext.setMissionContinueState(state);
   }
 }
