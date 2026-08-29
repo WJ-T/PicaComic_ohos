@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
@@ -10,6 +11,7 @@ import 'package:pica_comic/foundation/app.dart';
 import 'package:pica_comic/foundation/comic_comments_helper.dart';
 import 'package:pica_comic/foundation/local_favorites.dart';
 import 'package:pica_comic/foundation/log.dart';
+import 'package:pica_comic/foundation/ohos_background_download.dart';
 import 'package:pica_comic/foundation/ohos_download_bridge.dart';
 import 'package:pica_comic/foundation/ohos_path_provider.dart';
 import 'package:pica_comic/foundation/platform_utils.dart';
@@ -141,6 +143,9 @@ class DownloadManager with _DownloadDb implements Listenable {
 
   ///更换下载目录
   Future<String> updatePath(String newPath, {bool transform = true}) async {
+    if (isDownloading) {
+      pause();
+    }
     if (transform) {
       var source = Directory(path!);
       final appPath = await getApplicationSupportDirectory();
@@ -163,6 +168,7 @@ class DownloadManager with _DownloadDb implements Listenable {
     _db?.dispose();
     _db = null;
     downloading.clear();
+    isDownloading = false;
     await init();
     return "ok";
   }
@@ -307,6 +313,7 @@ class DownloadManager with _DownloadDb implements Listenable {
     } else {
       //标记状态为未在下载
       isDownloading = false;
+      unawaited(OhosBackgroundDownload.setActive(false));
       notifications.endProgress();
     }
   }
@@ -314,7 +321,8 @@ class DownloadManager with _DownloadDb implements Listenable {
   ///暂停下载
   void pause() {
     isDownloading = false;
-    downloading.first.pause();
+    unawaited(OhosBackgroundDownload.setActive(false));
+    downloading.firstOrNull?.pause();
   }
 
   ///出现错误时调用此函数
@@ -328,9 +336,10 @@ class DownloadManager with _DownloadDb implements Listenable {
   ///开始或继续下载
   void start() {
     _error = false;
-    if (isDownloading) return;
-    downloading.first.start();
+    if (isDownloading || downloading.isEmpty) return;
     isDownloading = true;
+    unawaited(OhosBackgroundDownload.setActive(true));
+    downloading.first.start();
   }
 
   ///取消指定的下载
@@ -353,11 +362,20 @@ class DownloadManager with _DownloadDb implements Listenable {
 
     if (downloading.isEmpty) {
       isDownloading = false;
+      unawaited(OhosBackgroundDownload.setActive(false));
       notifications.endProgress();
     } else {
+      isDownloading = true;
+      unawaited(OhosBackgroundDownload.setActive(true));
       downloading.first.start();
     }
     _saveInfo();
+  }
+
+  void _startAfterAdding() {
+    if (!isDownloading) {
+      start();
+    }
   }
 
   Future<DownloadedItem?> getComicOrNull(String id) async {
@@ -515,10 +533,7 @@ extension AddDownloadExt on DownloadManager {
     downloading.addLast(PicDownloadingItem(
         comic, downloadEps, _onFinish, _onError, _saveInfo, comic.id));
     _saveInfo();
-    if (!isDownloading) {
-      downloading.first.start();
-      isDownloading = true;
-    }
+    _startAfterAdding();
   }
 
   ///添加E-Hentai下载
@@ -527,10 +542,7 @@ extension AddDownloadExt on DownloadManager {
     downloading.addLast(
         EhDownloadingItem(gallery, _onFinish, _onError, _saveInfo, id, type));
     _saveInfo();
-    if (!isDownloading) {
-      downloading.first.start();
-      isDownloading = true;
-    }
+    _startAfterAdding();
   }
 
   ///添加禁漫下载
@@ -538,10 +550,7 @@ extension AddDownloadExt on DownloadManager {
     downloading.addLast(JmDownloadingItem(
         comic, downloadEps, _onFinish, _onError, _saveInfo, "jm${comic.id}"));
     _saveInfo();
-    if (!isDownloading) {
-      downloading.first.start();
-      isDownloading = true;
-    }
+    _startAfterAdding();
   }
 
   ///添加Hitomi下载
@@ -550,10 +559,7 @@ extension AddDownloadExt on DownloadManager {
     downloading.addLast(HitomiDownloadingItem(
         comic, cover, link, _onFinish, _onError, _saveInfo, id));
     _saveInfo();
-    if (!isDownloading) {
-      downloading.first.start();
-      isDownloading = true;
-    }
+    _startAfterAdding();
   }
 
   ///添加绅士漫画下载
@@ -562,10 +568,7 @@ extension AddDownloadExt on DownloadManager {
     downloading
         .addLast(DownloadingHtComic(comic, _onFinish, _onError, _saveInfo, id));
     _saveInfo();
-    if (!isDownloading) {
-      downloading.first.start();
-      isDownloading = true;
-    }
+    _startAfterAdding();
   }
 
   void addNhentaiDownload(NhentaiComic comic) {
@@ -573,10 +576,7 @@ extension AddDownloadExt on DownloadManager {
     downloading.addLast(
         NhentaiDownloadingItem(comic, _onFinish, _onError, _saveInfo, id));
     _saveInfo();
-    if (!isDownloading) {
-      downloading.first.start();
-      isDownloading = true;
-    }
+    _startAfterAdding();
   }
 
   void addCustomDownload(ComicInfoData comic, List<int> downloadEps) {
@@ -584,10 +584,7 @@ extension AddDownloadExt on DownloadManager {
     downloading.addLast(CustomDownloadingItem(
         comic, downloadEps, _onFinish, _onError, _saveInfo, id));
     _saveInfo();
-    if (!isDownloading) {
-      downloading.first.start();
-      isDownloading = true;
-    }
+    _startAfterAdding();
   }
 
   void addFavoriteDownload(FavoriteItem comic) {
@@ -604,10 +601,7 @@ extension AddDownloadExt on DownloadManager {
     downloading.addLast(
         FavoriteDownloading(comic, _onFinish, _onError, _saveInfo, id));
     _saveInfo();
-    if (!isDownloading) {
-      downloading.first.start();
-      isDownloading = true;
-    }
+    _startAfterAdding();
   }
 }
 

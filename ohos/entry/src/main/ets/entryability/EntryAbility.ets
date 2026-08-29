@@ -6,6 +6,7 @@ import {
   MethodResult,
 } from '@ohos/flutter_ohos';
 import DownloadBridgePlugin from '../plugins/download/DownloadBridgePlugin';
+import OhosBackgroundDownloadPlugin from '../plugins/background_download/OhosBackgroundDownloadPlugin';
 import BatteryPlugin from '../plugins/battery/BatteryPlugin';
 import ContinuationPlugin, {
   ENABLE_CONTINUATION,
@@ -115,6 +116,7 @@ export default class EntryAbility extends FlutterAbility {
     flutterEngine.getNavigationChannel()?.setMethodCallHandler(new SafeNavigationHandler());
     GeneratedPluginRegistrant.registerWith(flutterEngine);
     flutterEngine.getPlugins()?.add(new DownloadBridgePlugin());
+    flutterEngine.getPlugins()?.add(new OhosBackgroundDownloadPlugin());
     flutterEngine.getPlugins()?.add(new BatteryPlugin());
     if (ENABLE_CONTINUATION) {
       flutterEngine.getPlugins()?.add(new ContinuationPlugin());

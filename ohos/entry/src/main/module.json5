@@ -22,6 +22,9 @@
         "label": "$string:EntryAbility_label",
         "continuable": true,
         "launchType": "singleton",
+        "backgroundModes": [
+          "dataTransfer"
+        ],
         "supportWindowMode": [
           "fullscreen",
           "split",
@@ -61,6 +64,14 @@
     "requestPermissions": [
       {"name": "ohos.permission.INTERNET"},
       {"name": "ohos.permission.VIBRATE"},
+      {
+        "name": "ohos.permission.KEEP_BACKGROUND_RUNNING",
+        "reason": "$string:perm_keep_background_running",
+        "usedScene": {
+          "abilities": ["EntryAbility"],
+          "when": "inuse"
+        }
+      },
       {
         "name": "ohos.permission.READ_PASTEBOARD",
         "reason": "$string:perm_read_pasteboard",

@@ -91,6 +91,22 @@ Hvigor packages the installed OHPM module, so patching the HAR alone is not
 enough. `tool/build_ohos_hap.sh` reapplies the patch after `flutter build hap`,
 because that Flutter command regenerates the OHOS Flutter artifacts.
 
+### Background downloads
+
+OHOS comic downloads use a native `dataTransfer` continuous task while the
+Flutter download queue is active. The entry ability must keep the
+`dataTransfer` background mode and the
+`ohos.permission.KEEP_BACKGROUND_RUNNING` declaration in `module.json5`.
+Removing either declaration causes Dart network streams to be suspended after
+the application enters the background. HarmonyOS displays a system-managed
+continuous-task notification while a download is active; this is expected.
+
+After changing the native bridge or its manifest declarations, rebuild and
+reinstall the HAP. Hot reload and Dart-only restart cannot update the native
+plugin or permissions. Verify by starting a multi-page comic download, sending
+the app to the background, and confirming that downloaded pages continue to
+increase before reopening the app.
+
 ### 2. Bootstrap project on a new machine
 
 Windows CMD:
