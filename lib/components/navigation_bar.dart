@@ -1042,12 +1042,10 @@ class _InsetPageTransitionsBuilder extends PageTransitionsBuilder {
     Widget child,
   ) {
     final inset = route.isFirst ? 0.0 : insetBuilder();
-    final insetChild = inset <= 0
-        ? child
-        : Padding(
-            padding: EdgeInsets.only(left: inset),
-            child: child,
-          );
+    final insetChild = Padding(
+      padding: EdgeInsets.only(left: inset),
+      child: child,
+    );
     return baseBuilder.buildTransitions(
       route,
       context,

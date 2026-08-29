@@ -1,6 +1,76 @@
 part of 'components.dart';
 
+class _ReattachScrollController extends ScrollController {
+  double? _detachedOffset;
+  bool _detachedAtEnd = false;
+  bool _restoreScheduled = false;
+  int _restoreEpoch = 0;
+
+  @override
+  void detach(ScrollPosition position) {
+    if (position.hasPixels) {
+      _detachedOffset = position.pixels;
+      _detachedAtEnd = position.hasContentDimensions &&
+          position.pixels >= position.maxScrollExtent - 1;
+    }
+    super.detach(position);
+    _scheduleRestore();
+  }
+
+  @override
+  void attach(ScrollPosition position) {
+    super.attach(position);
+    _scheduleRestore();
+  }
+
+  void _scheduleRestore() {
+    if (_detachedOffset == null || _restoreScheduled) return;
+
+    _restoreScheduled = true;
+    final epoch = _restoreEpoch;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _restoreScheduled = false;
+      if (epoch != _restoreEpoch || positions.isEmpty) {
+        return;
+      }
+      final position = positions.last;
+      if (!position.hasContentDimensions) {
+        _scheduleRestore();
+        return;
+      }
+      final offset = _detachedOffset;
+      if (offset == null) return;
+      final restoreToEnd = _detachedAtEnd;
+      final target = restoreToEnd
+          ? position.maxScrollExtent
+          : offset.clamp(
+              position.minScrollExtent,
+              position.maxScrollExtent,
+            );
+      if ((position.pixels - target).abs() > 0.5) {
+        position.jumpTo(target);
+      }
+      _detachedOffset = null;
+      _detachedAtEnd = false;
+    });
+  }
+
+  void resetPosition() {
+    _detachedOffset = null;
+    _detachedAtEnd = false;
+    _restoreEpoch++;
+    _restoreScheduled = false;
+    for (final position in positions.toList()) {
+      if (position.hasPixels) {
+        position.jumpTo(position.minScrollExtent);
+      }
+    }
+  }
+}
+
 class ComicsPageLogic<T> extends StateController {
+  final ScrollController scrollController = _ReattachScrollController();
+
   bool loading = true;
 
   ///用于正常模式下的漫画数据储存
@@ -94,10 +164,17 @@ class ComicsPageLogic<T> extends StateController {
 
   @override
   void refresh() {
+    (scrollController as _ReattachScrollController).resetPosition();
     loading = true;
     comics = null;
     message = null;
     update();
+  }
+
+  @override
+  void dispose() {
+    scrollController.dispose();
+    super.dispose();
   }
 }
 
@@ -196,6 +273,7 @@ abstract class ComicsPage<T extends BaseComic> extends StatelessWidget {
     Widget body = StateBuilder<ComicsPageLogic<T>>(
         init: ComicsPageLogic<T>(),
         tag: tag,
+        reuseControllerOnReattach: true,
         builder: (logic) {
           if (logic.dividedComics?[logic.current] == null &&
               logic.message == null &&
@@ -246,6 +324,7 @@ abstract class ComicsPage<T extends BaseComic> extends StatelessWidget {
               }
               if (comics.isEmpty) {
                 return SmoothCustomScrollView(
+                  controller: logic.scrollController,
                   slivers: [
                     if (title != null)
                       SliverAppbar(
@@ -261,6 +340,7 @@ abstract class ComicsPage<T extends BaseComic> extends StatelessWidget {
                 );
               }
               return SmoothCustomScrollView(
+                controller: logic.scrollController,
                 slivers: [
                   if (title != null)
                     SliverAppbar(
@@ -309,6 +389,7 @@ abstract class ComicsPage<T extends BaseComic> extends StatelessWidget {
               }
               if (comics.isEmpty) {
                 return SmoothCustomScrollView(
+                  controller: logic.scrollController,
                   slivers: [
                     if (title != null)
                       SliverAppbar(
@@ -324,6 +405,7 @@ abstract class ComicsPage<T extends BaseComic> extends StatelessWidget {
                 );
               }
               Widget body = SmoothCustomScrollView(
+                controller: logic.scrollController,
                 slivers: [
                   if (title != null)
                     SliverAppbar(
@@ -454,7 +536,8 @@ abstract class ComicsPage<T extends BaseComic> extends StatelessWidget {
                   child: Padding(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    child: Text("${"页面".tl} ${logic.current} / ${logic.maxPage?.toString() ?? "?"}"),
+                    child: Text(
+                        "${"页面".tl} ${logic.current} / ${logic.maxPage?.toString() ?? "?"}"),
                   ),
                 ),
               ),
@@ -590,7 +673,8 @@ abstract class ComicsPage<T extends BaseComic> extends StatelessWidget {
                 if (page == null) {
                   context.showMessage(message: "输入的数字不正确".tl);
                 } else {
-                  if (page > 0 && (logic.maxPage == null || page <= logic.maxPage!)) {
+                  if (page > 0 &&
+                      (logic.maxPage == null || page <= logic.maxPage!)) {
                     logic.current = page;
                     logic.update();
                   } else {
@@ -613,17 +697,16 @@ abstract class ComicsPage<T extends BaseComic> extends StatelessWidget {
         children: [
           const Icon(Icons.search_off, size: 56),
           const SizedBox(height: 12),
-          Text("无匹配结果".tl,
-              style: Theme.of(context).textTheme.titleMedium),
+          Text("无匹配结果".tl, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 6),
         ],
       ),
     );
   }
 
-
   Widget buildItem(BuildContext context, T item) {
-    return buildComicTile(context, item, sourceKey, addonMenuOptions: addonMenuOptions);
+    return buildComicTile(context, item, sourceKey,
+        addonMenuOptions: addonMenuOptions);
   }
 }
 
@@ -689,7 +772,7 @@ class _SliverGridComics extends StatelessWidget {
   Widget build(BuildContext context) {
     return SliverGrid(
       delegate: SliverChildBuilderDelegate(
-            (context, index) {
+        (context, index) {
           if (index == comics.length - 1) {
             onLastItemBuild?.call();
           }

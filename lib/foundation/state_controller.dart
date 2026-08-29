@@ -119,6 +119,7 @@ class StateBuilder<T extends StateController> extends StatefulWidget {
     this.dispose,
     this.initState,
     this.tag,
+    this.reuseControllerOnReattach = false,
     required this.builder,
     this.id,
   });
@@ -130,6 +131,10 @@ class StateBuilder<T extends StateController> extends StatefulWidget {
   final void Function(T controller)? initState;
 
   final Object? tag;
+
+  /// Preserve an auto-removed controller when an equivalent builder is
+  /// mounted before this one finishes disposing during responsive reparenting.
+  final bool reuseControllerOnReattach;
 
   final Widget Function(T controller) builder;
 
@@ -154,30 +159,52 @@ class StateBuilder<T extends StateController> extends StatefulWidget {
 class _StateBuilderState<T extends StateController>
     extends State<StateBuilder> {
   late T controller;
+  late final Pair<Object?, void Function()> _stateUpdater;
 
   @override
   void initState() {
     if (widget.init != null) {
-      StateController.put(widget.init!, tag: widget.tag, autoRemove: true);
+      if (widget.reuseControllerOnReattach) {
+        StateController.putIfNotExists(
+          widget.init! as T,
+          tag: widget.tag,
+          autoRemove: true,
+        );
+      } else {
+        StateController.put(widget.init!, tag: widget.tag, autoRemove: true);
+      }
     }
     try {
       controller = StateController.find<T>(tag: widget.tag);
     } catch (e) {
       throw "Controller Not Found";
     }
-    controller.stateUpdaters.add(Pair(widget.id, () {
+    _stateUpdater = Pair(widget.id, () {
       if (mounted) {
         setState(() {});
       }
-    }));
+    });
+    controller.stateUpdaters.add(_stateUpdater);
     widget.initStateWrapped(controller);
     super.initState();
   }
 
   @override
   void dispose() {
-    widget.disposeWrapped(controller);
-    StateController.remove<T>(widget.tag, true);
+    if (widget.reuseControllerOnReattach) {
+      controller.stateUpdaters.remove(_stateUpdater);
+      final disposedWidget = widget;
+      final disposedController = controller;
+      Future.microtask(() {
+        if (disposedController.stateUpdaters.isEmpty) {
+          disposedWidget.disposeWrapped(disposedController);
+          disposedController.dispose();
+        }
+      });
+    } else {
+      widget.disposeWrapped(controller);
+      StateController.remove<T>(widget.tag, true);
+    }
     super.dispose();
   }
 

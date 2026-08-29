@@ -130,12 +130,10 @@ mixin _AppRouteTransitionMixin<T> on PageRoute<T> {
     );
 
     final routeInsets = RouteDisplayInsets.maybeOf(context)?.padding;
-    if (!isFirst && routeInsets != null && routeInsets.left > 0) {
-      page = _RouteViewportInset(
-        padding: routeInsets,
-        child: page,
-      );
-    }
+    page = _RouteViewportInset(
+      padding: isFirst ? EdgeInsets.zero : routeInsets ?? EdgeInsets.zero,
+      child: page,
+    );
 
     return page;
   }

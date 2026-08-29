@@ -85,6 +85,16 @@ changes Flutter's root `devicePixelRatio` while the app is running and can
 scale the entire page, including overlays, during scrolling. Real window-size
 and display-density changes remain handled by the embedding.
 
+The OHOS host keeps a single `FlutterPage` mounted for the lifetime of the
+ability. Do not mirror `windowSizeChange` or `windowRectChange` into ArkUI
+`@State` around that page: the Flutter embedding already forwards viewport
+changes, and forwarding them again makes the host lifecycle unnecessarily
+unstable. Responsive Flutter wrappers must also remain structurally stable:
+change their padding or constraints instead of conditionally inserting and
+removing ancestors around stateful routes. OHOS-specific window behavior should
+stay in `ohos/` or the HAR patcher so upstream Flutter UI updates can continue
+to merge without platform conditionals.
+
 The patcher updates both the project copy at `ohos/har/flutter.har` and the
 generated OHPM module under `ohos/oh_modules/.ohpm/@ohos+flutter_ohos@*/`.
 Hvigor packages the installed OHPM module, so patching the HAR alone is not
