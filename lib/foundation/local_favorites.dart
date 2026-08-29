@@ -792,6 +792,9 @@ class LocalFavoritesManager {
         tags TEXT,
         cover_path TEXT,
         time TEXT,
+        last_update_time TEXT DEFAULT NULL,
+        has_new_update INTEGER DEFAULT 0,
+        last_check_time INTEGER DEFAULT NULL,
         display_order int,
         primary key (target, type)
       );

@@ -319,6 +319,26 @@ Future<String?> _exportData(String path, String appdataString,
     String? downloadPath, String outPath) async {
   var encode = createZipWriter(outPath);
   try {
+    void addDirectoryToZip(Directory directory, String zipPath) {
+      for (final entry in directory.listSync()) {
+        if (entry is File) {
+          encode.addFile('$zipPath/${entry.name}', entry.path);
+        } else if (entry is Directory) {
+          addDirectoryToZip(entry, '$zipPath/${entry.name}');
+        }
+      }
+    }
+
+    void addOptionalDirectoryWithMarker(String name) {
+      final directory = Directory("$path${pathSep}$name");
+      final marker = File("$path${pathSep}$name.marker");
+      if (directory.existsSync()) {
+        marker.writeAsStringSync("");
+        encode.addFile(marker.name, marker.path);
+        addDirectoryToZip(directory, name);
+      }
+    }
+
     var filePath = "$path${pathSep}appdata";
     var file = File(filePath);
     if (file.existsSync()) {
@@ -329,21 +349,42 @@ Future<String?> _exportData(String path, String appdataString,
     encode.addFile(file.uri.pathSegments.last, file.path);
     var localFavorite = File("$path${pathSep}local_favorite.db");
     var history = File("$path${pathSep}history.db");
+    var localComicFolders = File("$path${pathSep}local_comic_folders.json");
+    var localAddComicUi = File("$path${pathSep}local_add_comic_ui.json");
+    var localAddComic = Directory("$path${pathSep}local_add_comic");
+    var localAddComicMarker = File("$path${pathSep}local_add_comic.marker");
     if (!localFavorite.existsSync()) {
       localFavorite.createSync();
     }
     if (!history.existsSync()) {
       history.createSync();
     }
+    if (!localComicFolders.existsSync()) {
+      localComicFolders.createSync();
+      localComicFolders.writeAsStringSync("[]");
+    }
+    if (!localAddComicUi.existsSync()) {
+      localAddComicUi.createSync();
+      localAddComicUi.writeAsStringSync("{}");
+    }
     encode.addFile(
         localFavorite.name, localFavorite.path.replaceAll("\\", "/"));
     encode.addFile(history.name, history.path);
+    encode.addFile(localComicFolders.name, localComicFolders.path);
+    encode.addFile(localAddComicUi.name, localAddComicUi.path);
     encode.addFile('cookies.db', "$path/cookies.db");
     await for (var entry in Directory("$path/comic_source").list()) {
       if (entry is File) {
         encode.addFile('comic_source/${entry.name}', entry.path);
       }
     }
+    if (localAddComic.existsSync()) {
+      localAddComicMarker.writeAsStringSync("");
+      encode.addFile(localAddComicMarker.name, localAddComicMarker.path);
+      addDirectoryToZip(localAddComic, 'local_add_comic');
+    }
+    addOptionalDirectoryWithMarker('chapter_comments');
+    addOptionalDirectoryWithMarker('comic_comments');
     if (downloadPath != null) {
       downloadPath = downloadPath.replaceAll('\\', '/');
       var sourceFolder =
@@ -369,6 +410,19 @@ Future<String?> _exportData(String path, String appdataString,
   } catch (e) {
     return e.toString();
   } finally {
+    final localAddComicMarker = File("$path${pathSep}local_add_comic.marker");
+    if (localAddComicMarker.existsSync()) {
+      localAddComicMarker.deleteSync();
+    }
+    for (final markerName in [
+      'chapter_comments.marker',
+      'comic_comments.marker'
+    ]) {
+      final marker = File("$path${pathSep}$markerName");
+      if (marker.existsSync()) {
+        marker.deleteSync();
+      }
+    }
     encode.close();
   }
 }
@@ -526,9 +580,17 @@ Future<bool> importData([String? filePath]) async {
       _flattenExtractedRoot("$path/dataTemp");
       var downloadPath = Directory(data[2]);
       List<FileSystemEntity> contents = Directory("$path/dataTemp").listSync();
+      const knownDirectories = {
+        "comic_source",
+        "download",
+        "local_add_comic",
+        "chapter_comments",
+        "comic_comments",
+      };
       for (FileSystemEntity item in contents) {
         if (item is Directory) {
-          if (item.name != "comic_source" && item.name != "download") {
+          if (!knownDirectories.contains(item.name) &&
+              !Directory('$path/dataTemp/download').existsSync()) {
             item.renameSync('$path/dataTemp/download');
           }
         }
@@ -565,6 +627,14 @@ Future<bool> importData([String? filePath]) async {
       if (history.existsSync()) {
         history.copySync('$path/history_temp.db');
       }
+      var localComicFolders = File('$path/dataTemp/local_comic_folders.json');
+      if (localComicFolders.existsSync()) {
+        localComicFolders.copySync('$path/local_comic_folders.json');
+      }
+      var localAddComicUi = File('$path/dataTemp/local_add_comic_ui.json');
+      if (localAddComicUi.existsSync()) {
+        localAddComicUi.copySync('$path/local_add_comic_ui.json');
+      }
       var comicSource = Directory('$path/dataTemp/comic_source');
       if (comicSource.existsSync()) {
         Directory("$path/comic_source").deleteSync(recursive: true);
@@ -579,6 +649,32 @@ Future<bool> importData([String? filePath]) async {
         downloadPath.deleteSync(recursive: true);
         downloadPath.createSync();
         await moveDirectory(downloadData, downloadPath);
+      }
+      var localAddComicMarker = File('$path/dataTemp/local_add_comic.marker');
+      var localAddComicData = Directory('$path/dataTemp/local_add_comic');
+      if (localAddComicMarker.existsSync() || localAddComicData.existsSync()) {
+        var currentLocalAddComic = Directory('$path/local_add_comic');
+        if (currentLocalAddComic.existsSync()) {
+          currentLocalAddComic.deleteSync(recursive: true);
+        }
+        currentLocalAddComic.createSync(recursive: true);
+        if (localAddComicData.existsSync()) {
+          await moveDirectory(localAddComicData, currentLocalAddComic);
+        }
+      }
+      for (final directoryName in ['chapter_comments', 'comic_comments']) {
+        final marker = File('$path/dataTemp/$directoryName.marker');
+        final backupDirectory = Directory('$path/dataTemp/$directoryName');
+        if (marker.existsSync() || backupDirectory.existsSync()) {
+          final currentDirectory = Directory('$path/$directoryName');
+          if (currentDirectory.existsSync()) {
+            currentDirectory.deleteSync(recursive: true);
+          }
+          currentDirectory.createSync(recursive: true);
+          if (backupDirectory.existsSync()) {
+            await moveDirectory(backupDirectory, currentDirectory);
+          }
+        }
       }
       return json;
     }, [
@@ -608,7 +704,7 @@ Future<bool> importData([String? filePath]) async {
         "The data file version is $fileVersion, while the app data version is "
             "$appVersion\nStop importing data");
   }
-  var dataReadRes = await appdata.readDataFromJson(json);
+  var dataReadRes = appdata.readDataFromJson(json);
   if (!dataReadRes) {
     LogManager.addLog(
         LogLevel.error, "Appdata", "appdata.readDataFromJson(json) failed");

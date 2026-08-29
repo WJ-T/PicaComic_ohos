@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 import 'package:flutter_saf/flutter_saf.dart';
 import 'package:pica_comic/utils/extensions.dart';
-import 'package:pica_comic/utils/ext.dart';
 import 'package:path/path.dart' as p;
 import 'package:file_selector/file_selector.dart' as file_selector;
 import 'package:file_picker_ohos/file_picker_ohos.dart' as fp;

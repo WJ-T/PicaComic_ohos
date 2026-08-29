@@ -19,6 +19,7 @@ import VolumeKeyPlugin from '../plugins/volume/VolumeKeyPlugin';
 import OhosDeviceInfoPlugin from '../plugins/device_info/OhosDeviceInfoPlugin';
 import OhosSharePlugin from '../plugins/share/OhosSharePlugin';
 import OhosDecorPlugin from '../plugins/decor/OhosDecorPlugin';
+import OhosFilePickerPlugin from '../plugins/file_picker/OhosFilePickerPlugin';
 import OhosWidgetPlugin, {
   cacheWidgetWant,
   dispatchWidgetWant,
@@ -123,6 +124,7 @@ export default class EntryAbility extends FlutterAbility {
     flutterEngine.getPlugins()?.add(new OhosDeviceInfoPlugin());
     flutterEngine.getPlugins()?.add(new OhosSharePlugin());
     flutterEngine.getPlugins()?.add(new OhosDecorPlugin());
+    flutterEngine.getPlugins()?.add(new OhosFilePickerPlugin());
     flutterEngine.getPlugins()?.add(new OhosWidgetPlugin());
   }
 

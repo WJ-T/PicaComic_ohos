@@ -137,9 +137,10 @@ hdc install -r ohos/entry/build/default/outputs/default/entry-default-signed.hap
 
 `tool/build_ohos_hap.sh` must be used for the final release build. Do not use
 `flutter build hap` as the HAP to install: Flutter's OHOS builder normalizes
-`4.8.3-beta3` to `4.8.33` while generating its intermediate HAP. The script
-uses Flutter to generate the runtime files, then runs the final Hvigor package
-step with the exact version from `ohos/AppScope/app.json5`.
+pre-release versions such as `4.8.3-beta3` to `4.8.33` while generating its
+intermediate HAP. The script uses Flutter to generate the runtime files, then
+runs the final Hvigor package step with the exact version from
+`ohos/AppScope/app.json5`.
 
 On Windows, run the same commands from Git Bash or WSL. The script also
 supports a custom Hvigor executable path when needed:
@@ -180,7 +181,7 @@ ohpm install --all
 - `tool/prepare_ohos_har.sh`: copies `flutter.har` from Flutter engine cache into `ohos/har/`.
 - `tool/patch_ohos_flutter_har.dart`: patches the project Flutter OHOS HAR and the generated installed OHPM Flutter module. It keeps a window-stage event listener error from preventing Flutter content from loading during service-card launches and keeps runtime viewport DPI stable. Run it after `flutter precache --ohos`; the final build script runs it again after Flutter regenerates the artifacts.
 - `tool/build_quickjs_ohos.sh`: rebuilds `libflutter_qjs_plugin.so`; run when `flutter_qjs/cxx` changes.
-- `tool/build_ohos_hap.sh`: builds the final signed HAP with the exact OHOS version from `ohos/AppScope/app.json5`. Use it instead of `flutter build hap` when installing a release build; Flutter otherwise normalizes `4.8.3-beta3` to `4.8.33` during its intermediate build.
+- `tool/build_ohos_hap.sh`: builds the final signed HAP with the exact OHOS version from `ohos/AppScope/app.json5`. Use it instead of `flutter build hap` when installing a release build; Flutter may otherwise normalize pre-release version names during its intermediate build.
 - `tool/sync_ohos_flutter_assets.sh`: only needed for specific DevEco/hvigor asset-sync workflows; **not required** for normal `flutter build hap`.
 
 ### 6. Common issues
